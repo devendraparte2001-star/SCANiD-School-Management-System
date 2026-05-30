@@ -15,7 +15,7 @@ import Marks from "@/pages/Marks";
 import Attendance from "@/pages/Attendance";
 import Fees from "@/pages/Fees";
 import Messages from "@/pages/Messages";
-import Teachers from "@/pages/Teachers";
+import Staff from "@/pages/Staff";
 import Schools from "@/pages/Schools";
 import Login from "@/pages/Login";
 import Profile from "@/pages/Profile";
@@ -100,7 +100,7 @@ export default function App() {
                 <Route path="/attendance" element={<Attendance user={user} />} />
                 <Route path="/fees" element={<Fees user={user} />} />
                 <Route path="/messages" element={<Messages user={user} />} />
-                <Route path="/teachers" element={<Teachers user={user} />} />
+                <Route path="/staff" element={<Staff user={user} />} />
                 <Route path="/profile" element={<Profile user={user} />} />
                 <Route path="/settings" element={<Settings user={user} />} />
                 {/* 

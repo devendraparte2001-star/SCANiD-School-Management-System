@@ -11,7 +11,8 @@ GO
 
 CREATE PROCEDURE [dbo].[sp_ManageStudent]
     @Action NVARCHAR(50),
-    @Id INT = NULL,    
+    @Id INT = NULL,
+    @RegistrationNumber NVARCHAR(100) = NULL,
     @Name NVARCHAR(255) = NULL,
     @FirstName NVARCHAR(100) = NULL,
     @MiddleName NVARCHAR(100) = NULL,

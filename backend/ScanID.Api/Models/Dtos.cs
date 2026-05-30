@@ -46,43 +46,96 @@ namespace ScanID.Api.Models
     }
 
     /// <summary>
-    /// Safe teacher payload returned to clients. Nested user data is reduced to display fields only.
+    /// Safe staff payload returned to clients. Sensitive fields are intentionally excluded.
     /// </summary>
-    public class TeacherDto
+    public class StaffDto
     {
         public int Id { get; set; }
         public int UserId { get; set; }
         public int SchoolId { get; set; }
-        public string EmployeeId { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty; // Maps to employee code
+        public string? Initials { get; set; }
         public string? Department { get; set; }
         public string? Qualification { get; set; }
-        public string? ContactNumber { get; set; }
+        public string? ContactNumber { get; set; } // Contact 1
+        public string? Contact2 { get; set; } // Secondary Contact Number
         public string Status { get; set; } = "Active";
         public string? ProfilePhotoPath { get; set; }
         public string? Experience { get; set; }
         public string? Subject { get; set; }
         public int? StandardId { get; set; }
         public int? SectionId { get; set; }
+        public bool IsClassTeacher { get; set; }
+
+        // Legacy Staff Fields
+        public string? Gender { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public int? BloodGroupId { get; set; }
+        public DateTime? RetirementDate { get; set; }
+        public int? ReligionId { get; set; }
+        public int? CasteId { get; set; }
+        public int? SubCasteId { get; set; }
+        public int? CategoryId { get; set; }
+        public DateTime? DateOfJoining { get; set; }
+        public string? Address { get; set; }
+        public int? CityId { get; set; }
+        public int? StateId { get; set; }
+        public string? BioId { get; set; }
+        public string? Rfid { get; set; }
+        public int? ShiftId { get; set; }
+
+        // Descriptive helper strings fetched from joins
+        public string? BloodGroupName { get; set; }
+        public string? ReligionName { get; set; }
+        public string? CasteName { get; set; }
+        public string? SubCasteName { get; set; }
+        public string? CategoryName { get; set; }
+        public string? CityName { get; set; }
+        public string? StateName { get; set; }
+        public string? ShiftName { get; set; }
+        public string? StandardName { get; set; }
+        public string? SectionName { get; set; }
+
         public UserDto? User { get; set; }
     }
 
     /// <summary>
-    /// Teacher write contract. It accepts only fields editable from the teacher form.
+    /// Staff write contract. It accepts only fields editable from the staff form.
     /// </summary>
-    public class TeacherWriteDto
+    public class StaffWriteDto
     {
         public int UserId { get; set; }
         public int SchoolId { get; set; }
         public string EmployeeId { get; set; } = string.Empty;
+        public string? Initials { get; set; }
         public string? Department { get; set; }
         public string? Qualification { get; set; }
         public string? ContactNumber { get; set; }
+        public string? Contact2 { get; set; }
         public string Status { get; set; } = "Active";
         public string? ProfilePhotoPath { get; set; }
         public string? Experience { get; set; }
         public string? Subject { get; set; }
         public int? StandardId { get; set; }
         public int? SectionId { get; set; }
+        public bool IsClassTeacher { get; set; }
+
+        public string? Gender { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public int? BloodGroupId { get; set; }
+        public DateTime? RetirementDate { get; set; }
+        public int? ReligionId { get; set; }
+        public int? CasteId { get; set; }
+        public int? SubCasteId { get; set; }
+        public int? CategoryId { get; set; }
+        public DateTime? DateOfJoining { get; set; }
+        public string? Address { get; set; }
+        public int? CityId { get; set; }
+        public int? StateId { get; set; }
+        public string? BioId { get; set; }
+        public string? Rfid { get; set; }
+        public int? ShiftId { get; set; }
+
         public UserCreateDto? User { get; set; }
         public string? CreatedBy { get; set; }
         public string? ModifiedBy { get; set; }

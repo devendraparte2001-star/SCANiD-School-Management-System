@@ -93,7 +93,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             
             // Staff & HR Group
             { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: adminRoles },
-            { id: 7, title: "Teacher Catalog", icon: "UserCheck", path: "/teachers", parentId: 6, sortOrder: 1, roleIds: adminRoles },
+            { id: 7, title: "Staff Management", icon: "Users", path: "/staff", parentId: 6, sortOrder: 1, roleIds: adminRoles },
             
             // Administrative Group
             { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: allRoles },

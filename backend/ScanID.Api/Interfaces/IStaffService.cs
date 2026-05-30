@@ -5,13 +5,13 @@ using System.Threading.Tasks;
 namespace ScanID.Api.Interfaces
 {
     /// <summary>
-    /// Service Interface for Teacher Registry operations.
+    /// Service Interface for Staff Management operations.
     /// Supports Dependency Injection and decoupled system interactions.
     /// </summary>
-    public interface ITeacherService
+    public interface IStaffService
     {
-        Task<IEnumerable<Teacher>> GetTeachersAsync(int? schoolId);
-        Task<(IEnumerable<Teacher> Data, int TotalCount)> GetTeachersPagedAsync(
+        Task<IEnumerable<Staff>> GetStaffAsync(int? schoolId);
+        Task<(IEnumerable<Staff> Data, int TotalCount)> GetStaffPagedAsync(
             int? schoolId,
             int? academicYearId,
             int page,
@@ -21,10 +21,10 @@ namespace ScanID.Api.Interfaces
             string? search,
             string? status,
             string? subject);
-        Task<Teacher?> GetTeacherByIdAsync(int id);
-        Task<Teacher> CreateTeacherAsync(Teacher teacher);
-        Task<bool> UpdateTeacherAsync(Teacher teacher);
-        Task<bool> DeleteTeacherAsync(int id);
+        Task<Staff?> GetStaffByIdAsync(int id);
+        Task<Staff> CreateStaffAsync(Staff staff);
+        Task<bool> UpdateStaffAsync(Staff staff);
+        Task<bool> DeleteStaffAsync(int id);
         Task<bool> SavePhotoPathAsync(int id, string path);
     }
 }

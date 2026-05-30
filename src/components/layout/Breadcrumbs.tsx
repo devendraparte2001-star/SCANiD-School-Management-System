@@ -128,7 +128,7 @@ export default function Breadcrumbs({ user }: BreadcrumbsProps) {
     if (cleanPath === "/attendance") return CalendarCheck;
     if (cleanPath === "/fees") return CreditCard;
     if (cleanPath === "/messages") return MessageSquare;
-    if (cleanPath === "/teachers") return UserCheck;
+    if (cleanPath === "/teachers" || cleanPath === "/staff") return Users;
     if (cleanPath === "/profile") return User;
     if (cleanPath === "/settings") return Settings;
     if (cleanPath === "/notifications") return Bell;
@@ -173,7 +173,7 @@ export default function Breadcrumbs({ user }: BreadcrumbsProps) {
     if (cleanName.includes("attendance")) return CalendarCheck;
     if (cleanName.includes("fee")) return CreditCard;
     if (cleanName.includes("message") || cleanName.includes("chat") || cleanName.includes("comm")) return MessageSquare;
-    if (cleanName.includes("teacher") || cleanName.includes("faculty")) return UserCheck;
+    if (cleanName.includes("teacher") || cleanName.includes("faculty") || cleanName.includes("staff")) return Users;
     if (cleanName.includes("profile")) return User;
     if (cleanName.includes("setting")) return Settings;
     if (cleanName.includes("log") || cleanName.includes("audit")) return Terminal;

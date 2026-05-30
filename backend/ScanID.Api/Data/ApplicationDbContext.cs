@@ -20,7 +20,7 @@ namespace ScanID.Api.Data
         public DbSet<Attendance> Attendance { get; set; }
         public DbSet<Fee> Fees { get; set; }
         public DbSet<Mark> Marks { get; set; }
-        public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<Staff> Staff { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<ErrorLog> ErrorLogs { get; set; }
@@ -66,7 +66,7 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<Attendance>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Fee>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Mark>().HasQueryFilter(x => !x.IsDeleted);
-            modelBuilder.Entity<Teacher>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<Staff>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Message>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Notification>().HasQueryFilter(x => !x.IsDeleted);
 

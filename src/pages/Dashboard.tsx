@@ -107,12 +107,12 @@ export default function Dashboard({ user }: DashboardProps) {
           onClick={() => navigate(isAdmin || isTeacher ? "/students" : "/attendance")}
         />
         <StatCard 
-          title={isAdmin || isTeacher ? "Active Teachers" : "Class Rank"}
+          title={isAdmin || isTeacher ? "Active Staff" : "Class Rank"}
           value={stats?.totalTeachers?.toLocaleString() || "..."}
           trend="+4"
           icon={Users}
           color="bg-violet-50 text-violet-600"
-          onClick={() => navigate(isAdmin ? "/teachers" : "/students")}
+          onClick={() => navigate(isAdmin ? "/staff" : "/students")}
         />
         <StatCard 
           title={isAdmin ? "Fee Collection" : "Upcoming Exams"}

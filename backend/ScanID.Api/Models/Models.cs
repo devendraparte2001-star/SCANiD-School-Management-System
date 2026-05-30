@@ -294,29 +294,79 @@ namespace ScanID.Api.Models
     }
 
     /// <summary>
-    /// Represents a teacher record.
+    /// Represents a staff record.
     /// </summary>
-    public class Teacher : BaseEntity
+    [Table("Staff")]
+    public class Staff : BaseEntity
     {
         public int Id { get; set; }
         public int UserId { get; set; }
         public int SchoolId { get; set; }
-        public string EmployeeId { get; set; } = string.Empty;
+        public string EmployeeId { get; set; } = string.Empty; // Employee Code
+        public string? Initials { get; set; }
         public string? Department { get; set; }
         public string? Qualification { get; set; }
-        public string? ContactNumber { get; set; }
+        public string? ContactNumber { get; set; } // Contact 1
+        public string? Contact2 { get; set; } // Secondary Contact
         public string Status { get; set; } = "Active";
         public string? ProfilePhotoPath { get; set; }
         public string? Experience { get; set; }
         public string? Subject { get; set; }
         public int? StandardId { get; set; }
         public int? SectionId { get; set; }
+        public bool IsClassTeacher { get; set; } = false;
+
+        public string? Gender { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public int? BloodGroupId { get; set; }
+        public DateTime? RetirementDate { get; set; }
+        public int? ReligionId { get; set; }
+        public int? CasteId { get; set; }
+        public int? SubCasteId { get; set; }
+        public int? CategoryId { get; set; }
+        public DateTime? DateOfJoining { get; set; }
+        public string? Address { get; set; }
+        public int? CityId { get; set; }
+        public int? StateId { get; set; }
+        public string? BioId { get; set; }
+        public string? Rfid { get; set; }
+        public int? ShiftId { get; set; }
 
         [ForeignKey("UserId")]
         public User? User { get; set; }
 
         [ForeignKey("SchoolId")]
         public School? School { get; set; }
+
+        [ForeignKey("StandardId")]
+        public Standard? Standard { get; set; }
+
+        [ForeignKey("SectionId")]
+        public Section? Section { get; set; }
+
+        [ForeignKey("BloodGroupId")]
+        public BloodGroup? BloodGroup { get; set; }
+
+        [ForeignKey("ReligionId")]
+        public Religion? Religion { get; set; }
+
+        [ForeignKey("CasteId")]
+        public Caste? Caste { get; set; }
+
+        [ForeignKey("SubCasteId")]
+        public SubCaste? SubCaste { get; set; }
+
+        [ForeignKey("CategoryId")]
+        public Category? Category { get; set; }
+
+        [ForeignKey("CityId")]
+        public City? City { get; set; }
+
+        [ForeignKey("StateId")]
+        public State? State { get; set; }
+
+        [ForeignKey("ShiftId")]
+        public Shift? Shift { get; set; }
     }
 
     /// <summary>

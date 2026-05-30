@@ -115,7 +115,7 @@ const mockFallbacks: Record<string, any> = {
     { id: 5, title: "Examination & Marks", icon: "BarChart3", path: "/marks", parentId: 2, sortOrder: 3, roleIds: [1, 2, 3, 4, 5] },
     
     { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: [1, 2] },
-    { id: 7, title: "Teacher Catalog", icon: "UserCheck", path: "/teachers", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
+    { id: 7, title: "Staff Management", icon: "Users", path: "/staff", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
     
     { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: [1, 2, 3, 4, 5] },
     { id: 9, title: "Fee Management", icon: "CreditCard", path: "/fees", parentId: 8, sortOrder: 1, roleIds: [1, 2, 5] },
@@ -169,6 +169,9 @@ const mockFallbacks: Record<string, any> = {
     { id: 3, name: "Teacher", description: "Academic and attendance access", isActive: true },
     { id: 4, name: "Student", description: "Student-level access", isActive: true },
     { id: 5, name: "Parent", description: "Parent-level access", isActive: true },
+  ],
+  "/staff": [
+    { id: 1, userId: 2, schoolId: 1, name: "John Doe", employeeId: "EMP001", initials: "Mr.", status: "Active", contactNumber: "9876543210" }
   ],
   "/users": [
     { id: 1, fullName: "Super Admin", username: "admin", role: "superadmin" },
@@ -270,7 +273,7 @@ api.interceptors.response.use(
         const mockData = mockFallbacks[mockKey];
         // Wrap in { data: [...] } for specific paths
         const needsDataWrap = cleanUrl.includes("/masters/") || 
-                            ["/schools", "/users", "/navigation", "/teachers", "/students", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));
+                            ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));
         
         const finalResponseData = needsDataWrap ? { data: mockData } : mockData;
           
@@ -356,16 +359,32 @@ export const apiService = {
     });
   },
 
-  // Teachers
+  // Staff Management
+  getStaff: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) =>
+    api.get("/staff", { params: { schoolId, academicYearId, ...params } }),
+  createStaff: (data: ApiObject) => api.post("/staff", data),
+  updateStaff: (id: number, data: ApiObject) => api.put(`/staff/${id}`, data),
+  deleteStaff: (id: number) => api.delete(`/staff/${id}`),
+  uploadStaffPhoto: (id: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/staff/${id}/photo`, formData, {
+      headers: {
+        "Content-Type": undefined,
+      },
+    });
+  },
+
+  // Teachers (backward compatibility aliases)
   getTeachers: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) =>
-    api.get("/teachers", { params: { schoolId, academicYearId, ...params } }),
-  createTeacher: (data: TeacherWriteRequest) => api.post("/teachers", data),
-  updateTeacher: (id: number, data: TeacherWriteRequest) => api.put(`/teachers/${id}`, data),
-  deleteTeacher: (id: number) => api.delete(`/teachers/${id}`),
+    api.get("/staff", { params: { schoolId, academicYearId, ...params } }),
+  createTeacher: (data: TeacherWriteRequest) => api.post("/staff", data),
+  updateTeacher: (id: number, data: TeacherWriteRequest) => api.put(`/staff/${id}`, data),
+  deleteTeacher: (id: number) => api.delete(`/staff/${id}`),
   uploadTeacherPhoto: (id: number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return api.post(`/teachers/${id}/photo`, formData, {
+    return api.post(`/staff/${id}/photo`, formData, {
       headers: {
         "Content-Type": undefined,
       },
