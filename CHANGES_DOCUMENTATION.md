@@ -312,5 +312,7 @@ This document records the exact changes, the root causes identified, and the fix
 - **Remediation**:
   1. **Unified Navigation Database Fixing Script**: Generated a complete master SQL migration script (`/fix_navigation_and_duplicates.sql`) that truncates the duplication, resets the identity seed, inserts unified, clean sequential navigation items, and wires up cohesive role-based access control (RBAC).
   2. **Routing / Path Synchronization**: Corrected the path from `/teachers` to `/staff` inside `NavigationController.cs` and `server.ts` to ensure flawless redirection when clicking the Staff Directory item.
+  3. **Backward-and-Forward Schema Robustness (Dynamic Seed Execution)**: Updated `seed_data.sql` with dynamic `EXEC sp_executesql` blocks. This ensures that when the seeding operations run, they programmatically query metadata to support either legacy `Teachers` / updated `Staff` schemas, and either present or dropped `RegistrationNumber` columns, completely removing any compile-time relational or parsing blockers in SQL Server.
+
 
 

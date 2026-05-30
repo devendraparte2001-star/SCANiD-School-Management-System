@@ -234,64 +234,149 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Id] = 7)
 SET IDENTITY_INSERT [dbo].[Users] OFF;
 GO
 
--- 3.2. TEACHERS
-SET IDENTITY_INSERT [dbo].[Teachers] ON;
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Teachers] WHERE [Id] = 1)
-    INSERT [dbo].[Teachers] ([Id], [UserId], [SchoolId], [EmployeeId], [Department], [Qualification], [Experience], [Subject], [StandardId], [SectionId], [ContactNumber], [Status], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) 
-    VALUES (1, 3, 1, N'EMP001', N'Mathematics Department', N'MA B.Ed', N'5+ Years', N'Mathematics', 1, 1, N'9876543210', N'Active', 1, 0, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
-SET IDENTITY_INSERT [dbo].[Teachers] OFF;
+-- 3.2. TEACHERS / STAFF
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM [dbo].[Staff] WHERE [Id] = 1)
+    BEGIN
+        SET IDENTITY_INSERT [dbo].[Staff] ON;
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'PersonalContact')
+        BEGIN
+            EXEC sp_executesql N'INSERT [dbo].[Staff] ([Id], [UserId], [SchoolId], [EmployeeId], [Department], [Qualification], [Experience], [Subject], [StandardId], [SectionId], [PersonalContact], [Status], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) 
+            VALUES (1, 3, 1, N''EMP001'', N''Mathematics Department'', N''MA B.Ed'', N''5+ Years'', N''Mathematics'', 1, 1, N''9876543210'', N''Active'', 1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE())';
+        END
+        ELSE
+        BEGIN
+            EXEC sp_executesql N'INSERT [dbo].[Staff] ([Id], [UserId], [SchoolId], [EmployeeId], [Department], [Qualification], [Experience], [Subject], [StandardId], [SectionId], [ContactNumber], [Status], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) 
+            VALUES (1, 3, 1, N''EMP001'', N''Mathematics Department'', N''MA B.Ed'', N''5+ Years'', N''Mathematics'', 1, 1, N''9876543210'', N''Active'', 1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE())';
+        END
+        SET IDENTITY_INSERT [dbo].[Staff] OFF;
+    END
+END
+ELSE IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Teachers]') AND type in (N'U'))
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM [dbo].[Teachers] WHERE [Id] = 1)
+    BEGIN
+        SET IDENTITY_INSERT [dbo].[Teachers] ON;
+        EXEC sp_executesql N'INSERT [dbo].[Teachers] ([Id], [UserId], [SchoolId], [EmployeeId], [Department], [Qualification], [Experience], [Subject], [StandardId], [SectionId], [ContactNumber], [Status], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) 
+        VALUES (1, 3, 1, N''EMP001'', N''Mathematics Department'', N''MA B.Ed'', N''5+ Years'', N''Mathematics'', 1, 1, N''9876543210'', N''Active'', 1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE())';
+        SET IDENTITY_INSERT [dbo].[Teachers] OFF;
+    END
+END
 GO
 
 -- 3.3. STUDENTS
-SET IDENTITY_INSERT [dbo].[Students] ON;
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Students] WHERE [Id] = 1)
-    INSERT [dbo].[Students] (
-        [Id], [RegistrationNumber], [Name], [SchoolId], [Status], [RollNumber],
-        [FirstName], [MiddleName], [LastName],
-        [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
-        [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
-        [SchoolSectionId], [AdmissionDate], [Email],
-        [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
-        [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
-        [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
-        [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
-    ) 
-    VALUES (
-        1, N'REG1001', N'Shivansh Sanjay Khopkar', 1, N'Active', 1,
-        N'Shivansh', N'Sanjay', N'Khopkar',
-        N'REG1001', N'Male', N'2015-05-20', N'123 Education Lane, Mumbai', N'Shraddha Khopkar',
-        N'9876543210', N'9876543201', N'123456789012', N'UNIF-001', N'RF99221',
-        1, N'2024-05-01', N'shivansh@khopkar.com',
-        1, 1, 2, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1,
-        1, 0, NULL, 0, 0,
-        1, 0, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()
-    );
+BEGIN
+    SET IDENTITY_INSERT [dbo].[Students] ON;
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Students]') AND name = 'RegistrationNumber')
+    BEGIN
+        EXEC sp_executesql N'INSERT [dbo].[Students] (
+            [Id], [RegistrationNumber], [Name], [SchoolId], [Status], [RollNumber],
+            [FirstName], [MiddleName], [LastName],
+            [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
+            [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
+            [SchoolSectionId], [AdmissionDate], [Email],
+            [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
+            [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
+            [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
+            [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
+        ) 
+        VALUES (
+            1, N''REG1001'', N''Shivansh Sanjay Khopkar'', 1, N''Active'', 1,
+            N''Shivansh'', N''Sanjay'', N''Khopkar'',
+            N''REG1001'', N''Male'', N''2015-05-20'', N''123 Education Lane, Mumbai'', N''Shraddha Khopkar'',
+            N''9876543210'', N''9876543201'', N''123456789012'', N''UNIF-001'', N''RF99221'',
+            1, N''2024-05-01'', N''shivansh@khopkar.com'',
+            1, 1, 2, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1,
+            1, 0, NULL, 0, 0,
+            1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE()
+        )';
+    END
+    ELSE
+    BEGIN
+        EXEC sp_executesql N'INSERT [dbo].[Students] (
+            [Id], [Name], [SchoolId], [Status], [RollNumber],
+            [FirstName], [MiddleName], [LastName],
+            [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
+            [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
+            [SchoolSectionId], [AdmissionDate], [Email],
+            [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
+            [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
+            [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
+            [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
+        ) 
+        VALUES (
+            1, N''Shivansh Sanjay Khopkar'', 1, N''Active'', 1,
+            N''Shivansh'', N''Sanjay'', N''Khopkar'',
+            N''REG1001'', N''Male'', N''2015-05-20'', N''123 Education Lane, Mumbai'', N''Shraddha Khopkar'',
+            N''9876543210'', N''9876543201'', N''123456789012'', N''UNIF-001'', N''RF99221'',
+            1, N''2024-05-01'', N''shivansh@khopkar.com'',
+            1, 1, 2, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1,
+            1, 0, NULL, 0, 0,
+            1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE()
+        )';
+    END
+    SET IDENTITY_INSERT [dbo].[Students] OFF;
+END
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Students] WHERE [Id] = 2)
-    INSERT [dbo].[Students] (
-        [Id], [RegistrationNumber], [Name], [SchoolId], [Status], [RollNumber],
-        [FirstName], [MiddleName], [LastName],
-        [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
-        [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
-        [SchoolSectionId], [AdmissionDate], [Email],
-        [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
-        [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
-        [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
-        [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
-    ) 
-    VALUES (
-        2, N'REG1002', N'Aavya Amit Patil', 1, N'Active', 2,
-        N'Aavya', N'Amit', N'Patil',
-        N'REG1002', N'Female', N'2015-08-15', N'456 Ocean View, Pune', N'Alka Patil',
-        N'9876543211', N'9876543202', N'987654321098', N'UNIF-002', N'RF99222',
-        1, N'2024-05-01', N'aavya@patil.com',
-        1, 1, 2, 2, 2, 1, 2,
-        2, 1, 2, 1, 1, 2,
-        1, 0, NULL, 0, 0,
-        1, 0, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()
-    );
-SET IDENTITY_INSERT [dbo].[Students] OFF;
+BEGIN
+    SET IDENTITY_INSERT [dbo].[Students] ON;
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Students]') AND name = 'RegistrationNumber')
+    BEGIN
+        EXEC sp_executesql N'INSERT [dbo].[Students] (
+            [Id], [RegistrationNumber], [Name], [SchoolId], [Status], [RollNumber],
+            [FirstName], [MiddleName], [LastName],
+            [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
+            [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
+            [SchoolSectionId], [AdmissionDate], [Email],
+            [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
+            [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
+            [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
+            [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
+        ) 
+        VALUES (
+            2, N''REG1002'', N''Aavya Amit Patil'', 1, N''Active'', 2,
+            N''Aavya'', N''Amit'', N''Patil'',
+            N''REG1002'', N''Female'', N''2015-08-15'', N''456 Ocean View, Pune'', N''Alka Patil'',
+            N''9876543211'', N''9876543202'', N''987654321098'', N''UNIF-002'', N''RF99222'',
+            1, N''2024-05-01'', N''aavya@patil.com'',
+            1, 1, 2, 2, 2, 1, 2,
+            2, 1, 2, 1, 1, 2,
+            1, 0, NULL, 0, 0,
+            1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE()
+        )';
+    END
+    ELSE
+    BEGIN
+        EXEC sp_executesql N'INSERT [dbo].[Students] (
+            [Id], [Name], [SchoolId], [Status], [RollNumber],
+            [FirstName], [MiddleName], [LastName],
+            [GrNo], [Gender], [DateOfBirth], [Address], [MotherName],
+            [FatherContactNo], [MotherContactNo], [AadharCard], [UniformId], [Rfid],
+            [SchoolSectionId], [AdmissionDate], [Email],
+            [StandardId], [SectionId], [AcademicYearId], [CasteId], [SubCasteId], [ReligionId], [BloodGroupId],
+            [HouseId], [AdmissionTypeId], [CityId], [StateId], [ShiftId], [CategoryId],
+            [Sms], [IsStateBoard], [ProfilePhotoPath], [DigitalUniform], [DigitalNotebook],
+            [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]
+        ) 
+        VALUES (
+            2, N''Aavya Amit Patil'', 1, N''Active'', 2,
+            N''Aavya'', N''Amit'', N''Patil'',
+            N''REG1002'', N''Female'', N''2015-08-15'', N''456 Ocean View, Pune'', N''Alka Patil'',
+            N''9876543211'', N''9876543202'', N''987654321098'', N''UNIF-002'', N''RF99222'',
+            1, N''2024-05-01'', N''aavya@patil.com'',
+            1, 1, 2, 2, 2, 1, 2,
+            2, 1, 2, 1, 1, 2,
+            1, 0, NULL, 0, 0,
+            1, 0, N''SYSTEM'', GETUTCDATE(), N''SYSTEM'', GETUTCDATE()
+        )';
+    END
+    SET IDENTITY_INSERT [dbo].[Students] OFF;
+END
 GO
 
 
