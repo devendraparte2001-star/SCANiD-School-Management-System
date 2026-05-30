@@ -184,13 +184,13 @@ namespace ScanID.Api.Utilities
                 }
             }
 
-            // Teacher Custom Joins mapping
-            if (item is Models.Teacher teacher)
+            // Staff Custom Joins mapping
+            if (item is Models.Staff staff)
             {
                 if ((columns.Contains("UserName") && reader["UserName"] != DBNull.Value) || 
                     (columns.Contains("UserEmail") && reader["UserEmail"] != DBNull.Value))
                 {
-                    teacher.User = new Models.User
+                    staff.User = new Models.User
                     {
                         Name = columns.Contains("UserName") && reader["UserName"] != DBNull.Value ? reader["UserName"].ToString() : null,
                         Email = columns.Contains("UserEmail") && reader["UserEmail"] != DBNull.Value ? reader["UserEmail"].ToString() : null
@@ -198,7 +198,7 @@ namespace ScanID.Api.Utilities
                 }
                 if (columns.Contains("SchoolName") && reader["SchoolName"] != DBNull.Value)
                 {
-                    teacher.School = new Models.School { Name = reader["SchoolName"].ToString() ?? string.Empty };
+                    staff.School = new Models.School { Name = reader["SchoolName"].ToString() ?? string.Empty };
                 }
             }
 

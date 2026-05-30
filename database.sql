@@ -358,30 +358,49 @@ END
 GO
 
 -- 5. Staff and Resource Tables
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Teachers]') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
 BEGIN
-CREATE TABLE [dbo].[Teachers](
+CREATE TABLE [dbo].[Staff](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[UserId] [int] NOT NULL,
 	[SchoolId] [int] NOT NULL,
-	[EmployeeId] [nvarchar](max) NOT NULL,
-	[Department] [nvarchar](max) NULL,
-	[Qualification] [nvarchar](max) NULL,
+	[EmployeeId] [nvarchar](255) NOT NULL,
+	[Initials] [nvarchar](50) NULL,
+	[Department] [nvarchar](100) NULL,
+	[Qualification] [nvarchar](100) NULL,
+	[PersonalContact] [nvarchar](50) NULL,
+	[EmergencyContact] [nvarchar](100) NULL,
+	[Status] [nvarchar](50) NOT NULL DEFAULT (N'Active'),
+	[ProfilePhotoPath] [nvarchar](255) NULL,
 	[Experience] [nvarchar](100) NULL,
 	[Subject] [nvarchar](200) NULL,
 	[StandardId] [int] NULL,
 	[SectionId] [int] NULL,
-	[ContactNumber] [nvarchar](max) NULL,
-	[Status] [nvarchar](max) NOT NULL DEFAULT (N'Active'),
-    [IsActive] [bit] NOT NULL DEFAULT (1),
-    [IsDeleted] [bit] NOT NULL DEFAULT (0),
-    [CreatedBy] [nvarchar](max) NULL,
+	[IsClassTeacher] [bit] NOT NULL DEFAULT (0),
+	[Gender] [nvarchar](50) NULL,
+	[DateOfBirth] [datetime2](7) NULL,
+	[BloodGroupId] [int] NULL,
+	[RetirementDate] [datetime2](7) NULL,
+	[ReligionId] [int] NULL,
+	[CasteId] [int] NULL,
+	[SubCasteId] [int] NULL,
+	[CategoryId] [int] NULL,
+	[DateOfJoining] [datetime2](7) NULL,
+	[Address] [nvarchar](max) NULL,
+	[CityId] [int] NULL,
+	[StateId] [int] NULL,
+	[BioId] [nvarchar](100) NULL,
+	[Rfid] [nvarchar](100) NULL,
+	[ShiftId] [int] NULL,
+	[IsActive] [bit] NOT NULL DEFAULT (1),
+	[IsDeleted] [bit] NOT NULL DEFAULT (0),
+	[CreatedBy] [nvarchar](max) NULL,
 	[CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
-    [ModifiedBy] [nvarchar](max) NULL,
-    [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
- CONSTRAINT [PK_Teachers] PRIMARY KEY CLUSTERED ([Id] ASC),
- CONSTRAINT [FK_Teachers_Schools_SchoolId] FOREIGN KEY([SchoolId]) REFERENCES [dbo].[Schools] ([Id]),
- CONSTRAINT [FK_Teachers_Users_UserId] FOREIGN KEY([UserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE CASCADE
+	[ModifiedBy] [nvarchar](max) NULL,
+	[ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+ CONSTRAINT [PK_Staff] PRIMARY KEY CLUSTERED ([Id] ASC),
+ CONSTRAINT [FK_Staff_Schools_SchoolId] FOREIGN KEY([SchoolId]) REFERENCES [dbo].[Schools] ([Id]),
+ CONSTRAINT [FK_Staff_Users_UserId] FOREIGN KEY([UserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE CASCADE
 )
 END
 GO

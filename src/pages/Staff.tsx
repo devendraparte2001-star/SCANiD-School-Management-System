@@ -275,8 +275,8 @@ export default function Staff({ user }: { user: any }) {
           initials: t.initials || "",
           name: getVal("name") || getVal("fullName") || "Unnamed Staff Member",
           email: getVal("email") || "N/A",
-          phone: getVal("contactNumber") || getVal("phone") || "N/A",
-          contact2: t.contact2 || "",
+          phone: getVal("personalContact") || getVal("contactNumber") || getVal("phone") || "N/A",
+          contact2: t.emergencyContact || t.contact2 || "",
           qualification: t.qualification || "N/A",
           experience: t.experience || "N/A",
           subject: t.subject || t.department || "N/A",
@@ -401,8 +401,8 @@ export default function Staff({ user }: { user: any }) {
         "Core Expertise": t.subject || "",
         "Credentials": t.qualification || "",
         "Status": t.status || "Active",
-        "Phone": t.phone || "",
-        "Alternative contact": t.contact2 || "",
+        "Personal Contact": t.phone || "",
+        "Emergency Contact": t.contact2 || "",
         "Gender": t.gender || "",
         "Class Teacher": t.isClassTeacher ? "Yes" : "No",
         "State": t.stateName || "",
@@ -500,8 +500,8 @@ export default function Staff({ user }: { user: any }) {
         initials: formData.initials || "",
         department: formData.subject || "Faculty",
         qualification: formData.qualification || "",
-        contactNumber: formData.phone || "",
-        contact2: formData.contact2 || "",
+        personalContact: formData.phone || "",
+        emergencyContact: formData.contact2 || "",
         status: formData.status || "Active",
         profilePhotoPath: formData.photo || "",
         experience: formData.experience || "",
@@ -967,7 +967,7 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2 col-span-1">
-                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.phone ? "text-red-500" : "text-slate-400")}>Primary Phone Line *</Label>
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.phone ? "text-red-500" : "text-slate-400")}>Personal Contact *</Label>
                           <Input 
                             ref={el => { inputRefs.current["phone"] = el; }}
                             value={formData.phone} 
@@ -983,7 +983,7 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2 col-span-1">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Alternative Contact</Label>
+                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Emergency Contact</Label>
                           <Input 
                             value={formData.contact2} 
                             maxLength={15}

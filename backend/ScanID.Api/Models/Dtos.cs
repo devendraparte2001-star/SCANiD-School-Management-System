@@ -57,8 +57,8 @@ namespace ScanID.Api.Models
         public string? Initials { get; set; }
         public string? Department { get; set; }
         public string? Qualification { get; set; }
-        public string? ContactNumber { get; set; } // Contact 1
-        public string? Contact2 { get; set; } // Secondary Contact Number
+        public string? PersonalContact { get; set; } // Personal Contact (previously ContactNumber)
+        public string? EmergencyContact { get; set; } // Emergency Contact (previously Contact2)
         public string Status { get; set; } = "Active";
         public string? ProfilePhotoPath { get; set; }
         public string? Experience { get; set; }
@@ -110,8 +110,8 @@ namespace ScanID.Api.Models
         public string? Initials { get; set; }
         public string? Department { get; set; }
         public string? Qualification { get; set; }
-        public string? ContactNumber { get; set; }
-        public string? Contact2 { get; set; }
+        public string? PersonalContact { get; set; }
+        public string? EmergencyContact { get; set; }
         public string Status { get; set; } = "Active";
         public string? ProfilePhotoPath { get; set; }
         public string? Experience { get; set; }

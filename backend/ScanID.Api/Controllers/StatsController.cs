@@ -28,7 +28,7 @@ namespace ScanID.Api.Controllers
         public async Task<IActionResult> GetDashboardStats(int? schoolId, int? academicYearId)
         {
             var studentQuery = _context.Students.AsNoTracking().AsQueryable();
-            var teacherQuery = _context.Teachers.AsNoTracking().AsQueryable();
+            var teacherQuery = _context.Staff.AsNoTracking().AsQueryable();
             var attendanceQuery = _context.Attendance.AsNoTracking().AsQueryable();
 
             if (schoolId.HasValue)
