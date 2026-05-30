@@ -57,7 +57,7 @@ BEGIN
     INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES (13, @StudentRoleId); -- Marks
 END
 
--- Staff & HR (2000) and Teacher Catalog (21)
+-- Staff & HR (2000) and Staff Directory (21)
 INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId])
 SELECT n.Id, r.Id
 FROM (SELECT 2000 AS Id UNION SELECT 21) n

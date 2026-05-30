@@ -293,3 +293,13 @@ This document records the exact changes, the root causes identified, and the fix
 
 - `/incremental_staff_contact_audit_update.sql`: Bypassed compile-time bound validation constraints via runtime dynamic SQL wrappers, ensuring smooth incremental deployment.
 - `/database.sql`: Re-engineered legacy `Teachers` stored procedures (`sp_GetTeachers`, `sp_GetTeachersPaged`, `sp_ManageTeacher`) to use `Staff` schemas and parameters (`sp_GetStaff`, `sp_GetStaffPaged`, `sp_ManageStaff`), adjusting analytics queries to execute seamlessly.
+
+---
+
+## 30. Issue: Sidebar Navigation Displays Legacy "Teacher Catalog" instead of "Staff Directory"
+- **Root Cause**: The sidebar items are served dynamically by both the backend API (`NavigationController.cs`) and the development server proxy configuration (`server.ts`). Both definitions, along with multiple SQL files (`update_navigation_v3.sql`, `seed_data.sql`, `incremental_navigation_update.sql`), had hardcoded the legacy title "Teacher Catalog".
+- **Remediation**:
+  1. **UI Controller Alignment**: Replaced all hardcoded references to `'Teacher Catalog'` with `'Staff Directory'` inside `NavigationController.cs` and `server.ts`.
+  2. **Migration Alignment**: Updated the default SQL insert statements in standard navigation seed files.
+  3. **Incremental Upgrade Script**: Introduced `/update_navigation_staff_directory.sql` to dynamically update any existing database entries matching the legacy title to the updated professional term `'Staff Directory'`.
+

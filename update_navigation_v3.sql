@@ -47,7 +47,7 @@ INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], 
 VALUES (6, N'Staff & HR', N'Users', NULL, NULL, 3, 1, GETUTCDATE());
 -- Children of Staff & HR
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedOn])
-VALUES (7, N'Teacher Catalog', N'UserCheck', N'/teachers', 6, 1, 1, GETUTCDATE());
+VALUES (7, N'Staff Directory', N'UserCheck', N'/teachers', 6, 1, 1, GETUTCDATE());
 
 -- Administrative (8)
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedOn])

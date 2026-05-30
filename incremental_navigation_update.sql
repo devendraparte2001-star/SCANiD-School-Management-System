@@ -64,7 +64,7 @@ INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], 
 
 -- Level 1: Sub-items for Staff & HR (2000)
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder]) VALUES 
-(21, N'Teacher Catalog', N'UserCheck', N'/teachers', 2000, 1);
+(21, N'Staff Directory', N'UserCheck', N'/teachers', 2000, 1);
 
 -- Level 1: Sub-items for Administrative (3000)
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder]) VALUES 

@@ -342,7 +342,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 9)
 -- Sub-items for Staff & HR (ParentId: 3)
 IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 10)
     INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) 
-    VALUES (10, N'Teacher Catalog', N'UserCheck', N'/teachers', 3, 1, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+    VALUES (10, N'Staff Directory', N'UserCheck', N'/teachers', 3, 1, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
 
 -- Sub-items for Administrative (ParentId: 4)
 IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 11)

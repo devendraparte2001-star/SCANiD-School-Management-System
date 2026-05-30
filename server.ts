@@ -300,7 +300,7 @@ async function startServer() {
     
     // Staff & HR Group (6)
     { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: [1, 2] },
-    { id: 7, title: "Teacher Catalog", icon: "UserCheck", path: "/teachers", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
+    { id: 7, title: "Staff Directory", icon: "UserCheck", path: "/teachers", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
     { id: 432, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 6, sortOrder: 2, roleIds: [1, 2] },
     
     // Administrative Group (8)
