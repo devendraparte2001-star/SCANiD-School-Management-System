@@ -43,39 +43,18 @@ BEGIN
             [Temp_ModifiedBy] = [ModifiedBy],
             [Temp_ModifiedOn] = [ModifiedOn]');
 
-        -- C. Drop default constraints to allow column removal
-        DECLARE @ConstraintName NVARCHAR(200);
+        -- C. Drop default constraints to allow column removal dynamically
+        DECLARE @DropConstraintsSql NVARCHAR(MAX) = '';
+        SELECT @DropConstraintsSql = @DropConstraintsSql + 'ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + d.name + '];' + CHAR(13) + CHAR(10)
+        FROM sys.default_constraints d
+        INNER JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
+        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff')
+          AND c.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn');
 
-        -- IsActive Default
-        SELECT @ConstraintName = d.name 
-        FROM sys.default_constraints d 
-        JOIN sys.columns c ON d.parent_column_id = c.column_id 
-        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff') AND c.name = 'IsActive';
-        IF @ConstraintName IS NOT NULL EXEC('ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + @ConstraintName + ']');
-
-        -- IsDeleted Default
-        SET @ConstraintName = NULL;
-        SELECT @ConstraintName = d.name 
-        FROM sys.default_constraints d 
-        JOIN sys.columns c ON d.parent_column_id = c.column_id 
-        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff') AND c.name = 'IsDeleted';
-        IF @ConstraintName IS NOT NULL EXEC('ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + @ConstraintName + ']');
-
-        -- CreatedOn Default
-        SET @ConstraintName = NULL;
-        SELECT @ConstraintName = d.name 
-        FROM sys.default_constraints d 
-        JOIN sys.columns c ON d.parent_column_id = c.column_id 
-        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff') AND c.name = 'CreatedOn';
-        IF @ConstraintName IS NOT NULL EXEC('ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + @ConstraintName + ']');
-
-        -- ModifiedOn Default
-        SET @ConstraintName = NULL;
-        SELECT @ConstraintName = d.name 
-        FROM sys.default_constraints d 
-        JOIN sys.columns c ON d.parent_column_id = c.column_id 
-        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff') AND c.name = 'ModifiedOn';
-        IF @ConstraintName IS NOT NULL EXEC('ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + @ConstraintName + ']');
+        IF @DropConstraintsSql <> ''
+        BEGIN
+            EXEC sp_executesql @DropConstraintsSql;
+        END;
 
         -- D. Drop original columns physically re-indexing the table layout
         ALTER TABLE [dbo].[Staff] DROP COLUMN [IsActive];
