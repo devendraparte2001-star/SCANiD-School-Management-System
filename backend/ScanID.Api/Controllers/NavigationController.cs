@@ -140,7 +140,7 @@ namespace ScanID.Api.Controllers
                 
                 // Staff & HR Group
                 new { id = 6, title = "Staff & HR", icon = "Users", path = (string?)null, parentId = (int?)null, sortOrder = 3, roleIds = adminOnly },
-                new { id = 7, title = "Staff Directory", icon = "UserCheck", path = "/teachers", parentId = 6, sortOrder = 1, roleIds = adminOnly },
+                new { id = 7, title = "Staff Directory", icon = "UserCheck", path = "/staff", parentId = 6, sortOrder = 1, roleIds = adminOnly },
                 
                 // Administrative Group
                 new { id = 8, title = "Administrative", icon = "ShieldCheck", path = (string?)null, parentId = (int?)null, sortOrder = 4, roleIds = all },

@@ -303,3 +303,14 @@ This document records the exact changes, the root causes identified, and the fix
   2. **Migration Alignment**: Updated the default SQL insert statements in standard navigation seed files.
   3. **Incremental Upgrade Script**: Introduced `/update_navigation_staff_directory.sql` to dynamically update any existing database entries matching the legacy title to the updated professional term `'Staff Directory'`.
 
+---
+
+## 31. Issue: Left Sidebar Menu Duplication and Redirection Failure on Clicking Staff Management
+- **Root Cause**:
+  1. **Menu Duplication**: The database contained overlapping navigation configuration entries. Running older seed routines (`seed_data.sql`) along with higher ID customization patches (`incremental_navigation_update.sql` which used IDs `1000`, `2000`, `3000`, `4000`, `5000`) caused both low and high ID parent containers to co-exist (e.g. duplicate folders for "Staff & HR", "Administrative", and "Masters & Config" in the sidebar). This also explained the non-sequential IDs.
+  2. **Staff Management Redirection Failure**: The path for "Staff Directory" in the database config, seed files, and server files was set to `/teachers`, whereas the React SPA routing in `App.tsx` only matches `/staff`. This mismatch caused the React wildcard route to intercept the click, redirecting the user back to the home view rather than opening the Staff Management interface.
+- **Remediation**:
+  1. **Unified Navigation Database Fixing Script**: Generated a complete master SQL migration script (`/fix_navigation_and_duplicates.sql`) that truncates the duplication, resets the identity seed, inserts unified, clean sequential navigation items, and wires up cohesive role-based access control (RBAC).
+  2. **Routing / Path Synchronization**: Corrected the path from `/teachers` to `/staff` inside `NavigationController.cs` and `server.ts` to ensure flawless redirection when clicking the Staff Directory item.
+
+
