@@ -314,5 +314,24 @@ This document records the exact changes, the root causes identified, and the fix
   2. **Routing / Path Synchronization**: Corrected the path from `/teachers` to `/staff` inside `NavigationController.cs` and `server.ts` to ensure flawless redirection when clicking the Staff Directory item.
   3. **Backward-and-Forward Schema Robustness (Dynamic Seed Execution)**: Updated `seed_data.sql` with dynamic `EXEC sp_executesql` blocks. This ensures that when the seeding operations run, they programmatically query metadata to support either legacy `Teachers` / updated `Staff` schemas, and either present or dropped `RegistrationNumber` columns, completely removing any compile-time relational or parsing blockers in SQL Server.
 
+---
+
+## 32. Issue: Persistent High/Out-of-Order Primary Key IDs and Redundant Older Scripts
+- **Root Cause**: While a master fix script (`/fix_navigation_and_duplicates.sql`) was developed earlier, multiple historical update or seeding scripts remained in the codebase (namely `/seed_data.sql`, `/incremental_navigation_update.sql`, `/update_navigation_v2.sql`, `/update_navigation_v3.sql`). These older files still configured high navigation IDs (e.g., `1000`, `2000`) or outdated column orders, creating a race condition where executing older setups would completely override/restore the legacy duplicated state.
+- **Remediation**:
+  1. **Global Schema Realignment**: Re-engineered all 5 primary seeding and update scripts (`/seed_data.sql`, `/fix_navigation_and_duplicates.sql`, `/incremental_navigation_update.sql`, `/update_navigation_v2.sql`, and `/update_navigation_v3.sql`) to execute the *exact same* unified, sequential navigation seeding script.
+  2. **Consolidated IDs & Mappings**: All scripts now clean old relationships, reset the identity keys, insert clean sequential primary keys (IDs 1-23, General Masters 45, and sub-masters 451-459), map roles dynamically and resiliently, and reference `/staff` for the directory.
+  3. **Double Navigation Sidebar Fixed**: Rebuilding or re-seeding the database using any script (or series of scripts) now produces the identical, sequential, and proper primary key assignments. No double menu containers can ever be generated.
+
+---
+
+## 33. Modified/Synchronized Files List
+
+- `/seed_data.sql`: Replaced the legacy Navigation Items (Section 4) with the unified, sequential seeding structure and robust dynamic RBAC role mappings.
+- `/fix_navigation_and_duplicates.sql`: Re-synchronized the clean-up routines to align with standard sequential values.
+- `/incremental_navigation_update.sql`: Replaced high ID structures (`1000`, `2000`) with sequential primary keys.
+- `/update_navigation_v2.sql` & `/update_navigation_v3.sql`: Synced identical schema parameters to guarantee forward-and-backward safety across all past DB versions.
+- `/CHANGES_DOCUMENTATION.md`: Documented the final master consolidation.
+
 
 
