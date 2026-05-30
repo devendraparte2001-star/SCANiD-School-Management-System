@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -58,6 +59,13 @@ namespace ScanID.Api.Utilities
             using var command = connection.CreateCommand();
             command.CommandText = spName;
             command.CommandType = CommandType.StoredProcedure;
+
+            // Associate command with EF Core transaction, if any is active
+            var currentTx = context.Database.CurrentTransaction?.GetDbTransaction();
+            if (currentTx != null)
+            {
+                command.Transaction = currentTx;
+            }
 
             foreach (var p in parameters)
             {
@@ -246,6 +254,13 @@ namespace ScanID.Api.Utilities
             using var command = connection.CreateCommand();
             command.CommandText = spName;
             command.CommandType = CommandType.StoredProcedure;
+
+            // Associate command with EF Core transaction, if any is active
+            var currentTx = context.Database.CurrentTransaction?.GetDbTransaction();
+            if (currentTx != null)
+            {
+                command.Transaction = currentTx;
+            }
 
             foreach (var p in parameters)
             {

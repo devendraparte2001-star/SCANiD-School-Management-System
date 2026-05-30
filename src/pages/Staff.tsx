@@ -472,12 +472,14 @@ export default function Staff({ user }: { user: any }) {
       }
     };
 
+    checkField("schoolId", !formData.schoolId);
     checkField("firstName", !formData.firstName?.trim());
     checkField("lastName", !formData.lastName?.trim());
+    checkField("gender", !formData.gender);
     checkField("email", !formData.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email));
     checkField("phone", !formData.phone?.trim() || !/^\d{10}$/.test(formData.phone.replace(/\D/g, "")));
+    checkField("shiftId", !formData.shiftId);
     checkField("qualification", !formData.qualification?.trim());
-    checkField("schoolId", !formData.schoolId);
 
     setFormErrors(newErrors);
 
@@ -704,7 +706,7 @@ export default function Staff({ user }: { user: any }) {
                         <div className="space-y-2">
                           <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.schoolId ? "text-red-500" : "text-slate-400")}>Campus Branch {formErrors.schoolId && "*"}</Label>
                           <Select 
-                            value={formData.schoolId.toString()} 
+                            value={formData.schoolId ? formData.schoolId.toString() : ""} 
                             onValueChange={(v) => {
                               setFormData({...formData, schoolId: v});
                               if (formErrors.schoolId) setFormErrors(prev => ({ ...prev, schoolId: false }));
@@ -724,6 +726,9 @@ export default function Staff({ user }: { user: any }) {
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
+                              <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">
+                                Select Campus
+                              </SelectItem>
                               {schools.map(s => (
                                 <SelectItem key={s.id} value={s.id.toString()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
                                   <span className="text-sm uppercase tracking-tight">{s.name}</span>
@@ -739,12 +744,27 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Shift Selection</Label>
-                          <Select value={formData.shiftId} onValueChange={v => setFormData({...formData, shiftId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Shift" />
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.shiftId ? "text-red-500" : "text-slate-400")}>Shift Selection *</Label>
+                          <Select 
+                            value={formData.shiftId ? formData.shiftId.toString() : ""} 
+                            onValueChange={v => {
+                              setFormData({...formData, shiftId: v});
+                              if (formErrors.shiftId) setFormErrors(prev => ({ ...prev, shiftId: false }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["shiftId"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
+                                formErrors.shiftId && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
+                              <SelectValue placeholder="Select Shift">
+                                {formData.shiftId ? shifts.find(sh => sh.id.toString() === formData.shiftId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100">
+                              <SelectItem value="" className="font-black py-3 px-4 rounded-xl text-xs uppercase tracking-widest text-slate-400 italic">Select Shift</SelectItem>
                               {shifts.map(sh => (
                                 <SelectItem key={sh.id} value={sh.id.toString()} className="font-black py-3 px-4 rounded-xl text-xs uppercase tracking-widest">{sh.name}</SelectItem>
                               ))}
@@ -816,7 +836,7 @@ export default function Staff({ user }: { user: any }) {
                           <p className="text-[9px] text-slate-400 font-bold text-center leading-relaxed max-w-[150px]">Click window to update high-res biometric portrait.</p>
                         </div>
 
-                        {/* Name Grid Layout */}
+                         {/* Name Grid Layout */}
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="space-y-2">
                             <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.firstName ? "text-red-500" : "text-slate-400")}>First Name *</Label>
@@ -824,16 +844,16 @@ export default function Staff({ user }: { user: any }) {
                               ref={el => { inputRefs.current["firstName"] = el; }}
                               value={formData.firstName} 
                               onChange={e => {
-                                setFormData({...formData, firstName: e.target.value});
-                                if (formErrors.firstName) setFormErrors(prev => ({ ...prev, firstName: false }));
+                                  setFormData({...formData, firstName: e.target.value});
+                                  if (formErrors.firstName) setFormErrors(prev => ({ ...prev, firstName: false }));
                               }} 
                               placeholder="Sophia" 
-                              className={cn("h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm placeholder:text-slate-300", formErrors.firstName && "border-red-500 ring-2-red-500")}
+                              className={cn("h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all", formErrors.firstName && "border-red-500 ring-2 ring-red-500/10")}
                             />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Middle Name</Label>
-                            <Input value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} placeholder="Optional" className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm" />
+                            <Input value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} placeholder="Optional" className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all" />
                           </div>
                           <div className="space-y-2">
                             <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.lastName ? "text-red-500" : "text-slate-400")}>Last Name *</Label>
@@ -845,17 +865,32 @@ export default function Staff({ user }: { user: any }) {
                                 if (formErrors.lastName) setFormErrors(prev => ({ ...prev, lastName: false }));
                               }} 
                               placeholder="Williams" 
-                              className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm"
+                              className={cn("h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all", formErrors.lastName && "border-red-500 ring-2 ring-red-500/10")}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Gender</Label>
-                            <Select value={formData.gender} onValueChange={v => setFormData({...formData, gender: v})}>
-                              <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                                <SelectValue placeholder="Gender" />
+                            <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.gender ? "text-red-500" : "text-slate-400")}>Gender *</Label>
+                            <Select 
+                              value={formData.gender || ""} 
+                              onValueChange={v => {
+                                setFormData({...formData, gender: v});
+                                if (formErrors.gender) setFormErrors(prev => ({ ...prev, gender: false }));
+                              }}
+                            >
+                              <SelectTrigger 
+                                ref={el => { inputRefs.current["gender"] = el; }}
+                                className={cn(
+                                  "h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
+                                  formErrors.gender && "border-red-500 ring-2 ring-red-500/10"
+                                )}
+                              >
+                                <SelectValue placeholder="Gender">
+                                  {formData.gender || undefined}
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl border-slate-100 shadow-xl p-2">
+                                <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Gender</SelectItem>
                                 <SelectItem value="Male" className="font-black text-xs uppercase tracking-widest">Male</SelectItem>
                                 <SelectItem value="Female" className="font-black text-xs uppercase tracking-widest">Female</SelectItem>
                                 <SelectItem value="Other" className="font-black text-xs uppercase tracking-widest">Other</SelectItem>
@@ -865,16 +900,19 @@ export default function Staff({ user }: { user: any }) {
 
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Date of Birth</Label>
-                            <Input type="date" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm text-slate-800" />
+                            <Input type="date" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm text-slate-800 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all" />
                           </div>
 
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Blood Group</Label>
-                            <Select value={formData.bloodGroupId} onValueChange={v => setFormData({...formData, bloodGroupId: v})}>
-                              <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                                <SelectValue placeholder="Blood Group" />
+                            <Select value={formData.bloodGroupId ? formData.bloodGroupId.toString() : ""} onValueChange={v => setFormData({...formData, bloodGroupId: v})}>
+                              <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                                <SelectValue placeholder="Select Blood Group">
+                                  {formData.bloodGroupId ? bloodGroups.find(bg => bg.id.toString() === formData.bloodGroupId.toString())?.name : undefined}
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100">
+                                <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Blood Group</SelectItem>
                                 {bloodGroups.map(bg => (
                                   <SelectItem key={bg.id} value={bg.id.toString()} className="font-black py-3 px-4 rounded-xl text-xs uppercase tracking-widest">{bg.name}</SelectItem>
                                 ))}
@@ -887,11 +925,14 @@ export default function Staff({ user }: { user: any }) {
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Religion</Label>
-                          <Select value={formData.religionId} onValueChange={v => setFormData({...formData, religionId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Religion" />
+                          <Select value={formData.religionId ? formData.religionId.toString() : ""} onValueChange={v => setFormData({...formData, religionId: v})}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select Religion">
+                                {formData.religionId ? religions.find(rel => rel.id.toString() === formData.religionId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Religion</SelectItem>
                               {religions.map(rel => (
                                 <SelectItem key={rel.id} value={rel.id.toString()} className="font-black text-xs uppercase tracking-widest">{rel.name}</SelectItem>
                               ))}
@@ -901,11 +942,14 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Caste Category</Label>
-                          <Select value={formData.categoryId} onValueChange={v => setFormData({...formData, categoryId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Category" />
+                          <Select value={formData.categoryId ? formData.categoryId.toString() : ""} onValueChange={v => setFormData({...formData, categoryId: v})}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select Category">
+                                {formData.categoryId ? categories.find(cat => cat.id.toString() === formData.categoryId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Category</SelectItem>
                               {categories.map(cat => (
                                 <SelectItem key={cat.id} value={cat.id.toString()} className="font-black text-xs uppercase tracking-widest">{cat.name}</SelectItem>
                               ))}
@@ -915,11 +959,14 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Specific Caste</Label>
-                          <Select value={formData.casteId} onValueChange={v => setFormData({...formData, casteId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Caste" />
+                          <Select value={formData.casteId ? formData.casteId.toString() : ""} onValueChange={v => setFormData({...formData, casteId: v, subCasteId: ""})}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select Caste">
+                                {formData.casteId ? castes.find(cas => cas.id.toString() === formData.casteId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Caste</SelectItem>
                               {castes.map(cas => (
                                 <SelectItem key={cas.id} value={cas.id.toString()} className="font-black text-xs uppercase tracking-widest">{cas.name}</SelectItem>
                               ))}
@@ -929,12 +976,15 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Sub Caste</Label>
-                          <Select value={formData.subCasteId} onValueChange={v => setFormData({...formData, subCasteId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select SubCaste" />
+                          <Select value={formData.subCasteId ? formData.subCasteId.toString() : ""} onValueChange={v => setFormData({...formData, subCasteId: v})} disabled={!formData.casteId}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select SubCaste">
+                                {formData.subCasteId ? subCastes.find(sc => sc.id.toString() === formData.subCasteId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
-                              {subCastes.map(sc => (
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select SubCaste</SelectItem>
+                              {subCastes.filter(sc => !formData.casteId || sc.casteId?.toString() === formData.casteId?.toString()).map(sc => (
                                 <SelectItem key={sc.id} value={sc.id.toString()} className="font-black text-xs uppercase tracking-widest">{sc.name}</SelectItem>
                               ))}
                             </SelectContent>
@@ -1002,11 +1052,14 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2 md:col-span-3">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">State</Label>
-                          <Select value={formData.stateId} onValueChange={v => setFormData({...formData, stateId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select State" />
+                          <Select value={formData.stateId ? formData.stateId.toString() : ""} onValueChange={v => setFormData({...formData, stateId: v, cityId: ""})}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select State">
+                                {formData.stateId ? states.find(st => st.id.toString() === formData.stateId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100">
+                            <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select State</SelectItem>
                               {states.map(st => (
                                 <SelectItem key={st.id} value={st.id.toString()} className="font-black text-xs uppercase tracking-widest">{st.name}</SelectItem>
                               ))}
@@ -1016,12 +1069,15 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2 md:col-span-3">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">City</Label>
-                          <Select value={formData.cityId} onValueChange={v => setFormData({...formData, cityId: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select City" />
+                          <Select value={formData.cityId ? formData.cityId.toString() : ""} onValueChange={v => setFormData({...formData, cityId: v})} disabled={!formData.stateId}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select City">
+                                {formData.cityId ? cities.find(ct => ct.id.toString() === formData.cityId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100">
-                              {cities.map(ct => (
+                            <SelectContent className="rounded-2xl shadow-xl p-2 border-slate-100 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select City</SelectItem>
+                              {cities.filter(ct => !formData.stateId || ct.stateId?.toString() === formData.stateId?.toString()).map(ct => (
                                 <SelectItem key={ct.id} value={ct.id.toString()} className="font-black text-xs uppercase tracking-widest">{ct.name}</SelectItem>
                               ))}
                             </SelectContent>
@@ -1066,11 +1122,14 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Academic Grade/Standard</Label>
-                          <Select value={formData.standardId} onValueChange={v => setFormData({...formData, standardId: v})}>
+                          <Select value={formData.standardId ? formData.standardId.toString() : ""} onValueChange={v => setFormData({...formData, standardId: v, sectionId: ""})}>
                             <SelectTrigger className="h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Standard" />
+                              <SelectValue placeholder="Select Standard">
+                                {formData.standardId ? standards.find(st => st.id.toString() === formData.standardId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2 max-h-56">
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Standard</SelectItem>
                               {standards.map(st => (
                                 <SelectItem key={st.id} value={st.id.toString()} className="font-black text-xs uppercase tracking-widest">{st.name}</SelectItem>
                               ))}
@@ -1080,12 +1139,15 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Grade Division/Section</Label>
-                          <Select value={formData.sectionId} onValueChange={v => setFormData({...formData, sectionId: v})}>
+                          <Select value={formData.sectionId ? formData.sectionId.toString() : ""} onValueChange={v => setFormData({...formData, sectionId: v})} disabled={!formData.standardId}>
                             <SelectTrigger className="h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Select Section" />
+                              <SelectValue placeholder="Select Section">
+                                {formData.sectionId ? sections.find(sec => sec.id.toString() === formData.sectionId.toString())?.name : undefined}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2 max-h-56">
-                              {sections.map(sec => (
+                              <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Section</SelectItem>
+                              {sections.filter(sec => !formData.standardId || sec.standardId?.toString() === formData.standardId?.toString()).map(sec => (
                                 <SelectItem key={sec.id} value={sec.id.toString()} className="font-black text-xs uppercase tracking-widest">{sec.name}</SelectItem>
                               ))}
                             </SelectContent>
