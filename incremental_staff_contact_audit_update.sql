@@ -20,75 +20,123 @@ GO
 -- 2. Move Audit Trail Columns to the End of the Staff Table for Architectural Consistency
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
 BEGIN
-    -- Only run relocation if IsActive is in the table
+    -- Create temp table with all audit columns
+    IF OBJECT_ID('tempdb..#TempStaffAudit') IS NOT NULL DROP TABLE #TempStaffAudit;
+    
+    CREATE TABLE #TempStaffAudit (
+        Id INT PRIMARY KEY,
+        IsActive BIT,
+        IsDeleted BIT,
+        CreatedBy NVARCHAR(MAX),
+        CreatedOn DATETIME2(7),
+        ModifiedBy NVARCHAR(MAX),
+        ModifiedOn DATETIME2(7)
+    );
+
+    -- Dynamically insert existing values
+    DECLARE @SelectSql NVARCHAR(MAX) = 'INSERT INTO #TempStaffAudit (Id, IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn) SELECT Id';
+
     IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'IsActive')
+        SET @SelectSql = @SelectSql + ', IsActive';
+    ELSE
+        SET @SelectSql = @SelectSql + ', 1';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'IsDeleted')
+        SET @SelectSql = @SelectSql + ', IsDeleted';
+    ELSE
+        SET @SelectSql = @SelectSql + ', 0';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'CreatedBy')
+        SET @SelectSql = @SelectSql + ', CreatedBy';
+    ELSE
+        SET @SelectSql = @SelectSql + ', NULL';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'CreatedOn')
+        SET @SelectSql = @SelectSql + ', CreatedOn';
+    ELSE
+        SET @SelectSql = @SelectSql + ', GETUTCDATE()';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'ModifiedBy')
+        SET @SelectSql = @SelectSql + ', ModifiedBy';
+    ELSE
+        SET @SelectSql = @SelectSql + ', NULL';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'ModifiedOn')
+        SET @SelectSql = @SelectSql + ', ModifiedOn';
+    ELSE
+        SET @SelectSql = @SelectSql + ', GETUTCDATE()';
+
+    SET @SelectSql = @SelectSql + ' FROM [dbo].[Staff]';
+
+    EXEC sp_executesql @SelectSql;
+
+    -- Drop default constraints to allow column removal dynamically
+    DECLARE @DropConstraintsSql NVARCHAR(MAX) = '';
+    SELECT @DropConstraintsSql = @DropConstraintsSql + 'ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + d.name + '];' + CHAR(13) + CHAR(10)
+    FROM sys.default_constraints d
+    INNER JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
+    WHERE d.parent_object_id = OBJECT_ID('dbo.Staff')
+      AND c.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn');
+
+    IF @DropConstraintsSql <> ''
     BEGIN
-        -- A. Create temporary columns to hold the values safely
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_IsActive')
-        BEGIN
-            ALTER TABLE [dbo].[Staff] ADD [Temp_IsActive] [bit] NULL;
-            ALTER TABLE [dbo].[Staff] ADD [Temp_IsDeleted] [bit] NULL;
-            ALTER TABLE [dbo].[Staff] ADD [Temp_CreatedBy] [nvarchar](max) NULL;
-            ALTER TABLE [dbo].[Staff] ADD [Temp_CreatedOn] [datetime2](7) NULL;
-            ALTER TABLE [dbo].[Staff] ADD [Temp_ModifiedBy] [nvarchar](max) NULL;
-            ALTER TABLE [dbo].[Staff] ADD [Temp_ModifiedOn] [datetime2](7) NULL;
-        END;
-
-        -- B. Preserve audit data
-        EXEC('UPDATE [dbo].[Staff] SET 
-            [Temp_IsActive] = [IsActive],
-            [Temp_IsDeleted] = [IsDeleted],
-            [Temp_CreatedBy] = [CreatedBy],
-            [Temp_CreatedOn] = [CreatedOn],
-            [Temp_ModifiedBy] = [ModifiedBy],
-            [Temp_ModifiedOn] = [ModifiedOn]');
-
-        -- C. Drop default constraints to allow column removal dynamically
-        DECLARE @DropConstraintsSql NVARCHAR(MAX) = '';
-        SELECT @DropConstraintsSql = @DropConstraintsSql + 'ALTER TABLE [dbo].[Staff] DROP CONSTRAINT [' + d.name + '];' + CHAR(13) + CHAR(10)
-        FROM sys.default_constraints d
-        INNER JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
-        WHERE d.parent_object_id = OBJECT_ID('dbo.Staff')
-          AND c.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn');
-
-        IF @DropConstraintsSql <> ''
-        BEGIN
-            EXEC sp_executesql @DropConstraintsSql;
-        END;
-
-        -- D. Drop original columns physically re-indexing the table layout
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [IsActive];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [IsDeleted];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [CreatedBy];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [CreatedOn];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [ModifiedBy];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [ModifiedOn];
-
-        -- E. Append columns back (this appends them cleanly at the physical end of the block/record)
-        ALTER TABLE [dbo].[Staff] ADD [IsActive] [bit] NOT NULL CONSTRAINT [DF_Staff_IsActive] DEFAULT (1);
-        ALTER TABLE [dbo].[Staff] ADD [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_Staff_IsDeleted] DEFAULT (0);
-        ALTER TABLE [dbo].[Staff] ADD [CreatedBy] [nvarchar](max) NULL;
-        ALTER TABLE [dbo].[Staff] ADD [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Staff_CreatedOn] DEFAULT (GETUTCDATE());
-        ALTER TABLE [dbo].[Staff] ADD [ModifiedBy] [nvarchar](max) NULL;
-        ALTER TABLE [dbo].[Staff] ADD [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Staff_ModifiedOn] DEFAULT (GETUTCDATE());
-
-        -- F. Restore data from temporary structures
-        EXEC('UPDATE [dbo].[Staff] SET 
-            [IsActive] = COALESCE([Temp_IsActive], 1),
-            [IsDeleted] = COALESCE([Temp_IsDeleted], 0),
-            [CreatedBy] = [Temp_CreatedBy],
-            [CreatedOn] = COALESCE([Temp_CreatedOn], GETUTCDATE()),
-            [ModifiedBy] = [Temp_ModifiedBy],
-            [ModifiedOn] = COALESCE([Temp_ModifiedOn], GETUTCDATE())');
-
-        -- G. Clean up temporary columns
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsActive];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsDeleted];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedBy];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedOn];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedBy];
-        ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedOn];
+        EXEC sp_executesql @DropConstraintsSql;
     END;
+
+    -- Drop original columns dynamically if they exist
+    DECLARE @DropColumnsSql NVARCHAR(MAX) = 'ALTER TABLE [dbo].[Staff] DROP COLUMN ';
+    DECLARE @ColumnsToDrop NVARCHAR(MAX) = '';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'IsActive')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[IsActive],';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'IsDeleted')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[IsDeleted],';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'CreatedBy')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[CreatedBy],';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'CreatedOn')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[CreatedOn],';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'ModifiedBy')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[ModifiedBy],';
+
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'ModifiedOn')
+        SET @ColumnsToDrop = @ColumnsToDrop + '[ModifiedOn],';
+
+    IF @ColumnsToDrop <> ''
+    BEGIN
+        SET @ColumnsToDrop = LEFT(@ColumnsToDrop, LEN(@ColumnsToDrop) - 1);
+        SET @DropColumnsSql = @DropColumnsSql + @ColumnsToDrop;
+        EXEC sp_executesql @DropColumnsSql;
+    END;
+
+    -- Append columns back cleanly at the physical end of the block/record dynamically
+    EXEC('
+    ALTER TABLE [dbo].[Staff] ADD [IsActive] [bit] NOT NULL CONSTRAINT [DF_Staff_IsActive] DEFAULT (1);
+    ALTER TABLE [dbo].[Staff] ADD [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_Staff_IsDeleted] DEFAULT (0);
+    ALTER TABLE [dbo].[Staff] ADD [CreatedBy] [nvarchar](max) NULL;
+    ALTER TABLE [dbo].[Staff] ADD [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Staff_CreatedOn] DEFAULT (GETUTCDATE());
+    ALTER TABLE [dbo].[Staff] ADD [ModifiedBy] [nvarchar](max) NULL;
+    ALTER TABLE [dbo].[Staff] ADD [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Staff_ModifiedOn] DEFAULT (GETUTCDATE());
+    ');
+
+    -- Restore data from temporary structures
+    EXEC('
+    UPDATE s SET 
+        s.[IsActive] = COALESCE(t.[IsActive], 1),
+        s.[IsDeleted] = COALESCE(t.[IsDeleted], 0),
+        s.[CreatedBy] = t.[CreatedBy],
+        s.[CreatedOn] = COALESCE(t.[CreatedOn], GETUTCDATE()),
+        s.[ModifiedBy] = t.[ModifiedBy],
+        s.[ModifiedOn] = COALESCE(t.[ModifiedOn], GETUTCDATE())
+    FROM [dbo].[Staff] s
+    INNER JOIN #TempStaffAudit t ON s.Id = t.Id;
+    ');
+
+    -- Clean up temporary table
+    IF OBJECT_ID('tempdb..#TempStaffAudit') IS NOT NULL DROP TABLE #TempStaffAudit;
 END;
 GO
 

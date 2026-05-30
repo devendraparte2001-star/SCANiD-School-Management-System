@@ -278,7 +278,18 @@ This document records the exact changes, the root causes identified, and the fix
 - `/backend/ScanID.Api/Services/UserService.cs`: Standardized SQL parameter bindings on user modifications.
 - `/update_audit_trail_fields.sql`: Repeatable migration script handling the full suite of audit parameter changes.
 
+---
 
+## 28. Issue: SQL Server Constraint Conflicts and Column Drift on Auditing and Contact Details Schema Shifts
+- **Root Cause**: During initial runs of `/incremental_staff_contact_audit_update.sql`, standard T-SQL `ALTER TABLE DROP COLUMN` commands for `CreatedOn`, `IsActive`, and `IsDeleted` failed because automatically generated Default Constraints retained their old names (even after the table was renamed from `Teachers` to `Staff`). The resulting script termination left the database in a partially-migrated state where some audit columns were deleted, but the additions were never executed. On subsequent runs, checking for the existence of `IsActive` evaluated to `FALSE`, completely skipping the restoration step. This left the table permanently without `IsActive` and `IsDeleted` audit columns, causing compile-time failures on subsequent stored procedures.
+- **Remediation**:
+  1. **Dynamic Schema Drift Healing**: Reengineered `/incremental_staff_contact_audit_update.sql` to dynamically and independently inspect each required audit column. If columns exist, they are backed up to a temporary table and dropped dynamically. If they are missing due to a previous aborted migration, default values (`1` or `0`) are set in the backup structure.
+  2. **Total Stored Procedure Alignment**: Dropped all legacy procedures and cleanly compiled the fully unified `sp_GetStaff`, `sp_GetStaffPaged`, and `sp_ManageStaff` procedures independently of standard sequential constraints.
+  3. **Vite + React Client Compliance**: Verified that client-side staff directories, form controls, and validation schemas cleanly align with the updated database field layout (`PersonalContact` and `EmergencyContact`), achieving error-free builds and seamless user performance.
 
+---
 
+## 29. Modified Files Summary (Database Migration Safe Execution and Stored Procedures Alignment)
 
+- `/incremental_staff_contact_audit_update.sql`: Bypassed compile-time bound validation constraints via runtime dynamic SQL wrappers, ensuring smooth incremental deployment.
+- `/database.sql`: Re-engineered legacy `Teachers` stored procedures (`sp_GetTeachers`, `sp_GetTeachersPaged`, `sp_ManageTeacher`) to use `Staff` schemas and parameters (`sp_GetStaff`, `sp_GetStaffPaged`, `sp_ManageStaff`), adjusting analytics queries to execute seamlessly.
