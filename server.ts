@@ -339,6 +339,7 @@ async function startServer() {
     { id: 457, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 45, sortOrder: 7, roleIds: [1, 2] },
     { id: 458, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 45, sortOrder: 8, roleIds: [1, 2] },
     { id: 459, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 45, sortOrder: 9, roleIds: [1, 2] },
+    { id: 460, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 45, sortOrder: 10, roleIds: [1, 2] },
 
     // System Audit (23)
     { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] },

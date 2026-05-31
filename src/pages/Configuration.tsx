@@ -515,6 +515,12 @@ export default function Configuration({
       scanIDEmail: item?.scanIDEmail || "",
       inChargeContact: item?.inChargeContact || "",
       status: item?.status || "Active",
+      startTime: item?.startTime || "",
+      endTime: item?.endTime || "",
+      graceInTime: item?.graceInTime || "",
+      spanInTime: item?.spanInTime || "",
+      lunchStart: item?.lunchStart || "",
+      lunchEnd: item?.lunchEnd || "",
     });
     setIsDialogOpen(true);
   };
@@ -605,7 +611,14 @@ export default function Configuration({
       }
 
       // Add type-specific fields with proper type conversion
-      if (activeTab === "academic-years") {
+      if (activeTab === "shifts") {
+        payload.startTime = formData.startTime;
+        payload.endTime = formData.endTime;
+        payload.graceInTime = formData.graceInTime;
+        payload.spanInTime = formData.spanInTime;
+        payload.lunchStart = formData.lunchStart;
+        payload.lunchEnd = formData.lunchEnd;
+      } else if (activeTab === "academic-years") {
         payload.isCurrent = formData.isCurrent;
       } else if (activeTab === "houses") {
         payload.color = formData.color;
@@ -899,7 +912,7 @@ export default function Configuration({
                     {activeTab !== "role-assignment" &&
                       activeTab !== "navigation" && (
                         <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                          Description
+                          {activeTab === "shifts" ? "Shift Details / Timings" : "Description"}
                         </TableHead>
                       )}
                     <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -1215,8 +1228,29 @@ export default function Configuration({
 
                         {activeTab !== "role-assignment" &&
                           activeTab !== "navigation" && (
-                            <TableCell className="text-xs font-bold text-slate-400 max-w-[200px] truncate leading-relaxed italic">
-                              {item.description || "No metadata found"}
+                            <TableCell className="text-xs text-slate-500 max-w-[300px]">
+                              {activeTab === "shifts" ? (
+                                <div className="flex flex-col gap-1 text-[11px] font-medium">
+                                  <div className="flex items-center gap-1 text-slate-700 font-bold">
+                                    <Clock size={12} className="text-blue-500 shrink-0" />
+                                    <span>Time: {item.startTime || "N/A"} - {item.endTime || "N/A"}</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-black flex items-center gap-3">
+                                    <span>Grace Limit: {item.graceInTime || "N/A"}</span>
+                                    <span>•</span>
+                                    <span>Late Limit: {item.spanInTime || "N/A"}</span>
+                                  </div>
+                                  {(item.lunchStart || item.lunchEnd) && (
+                                    <div className="text-[10px] text-slate-400 italic">
+                                      Recess: {item.lunchStart || "N/A"} to {item.lunchEnd || "N/A"}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="font-bold text-slate-400 italic truncate block max-w-[200px]">
+                                  {item.description || "No metadata found"}
+                                </span>
+                              )}
                             </TableCell>
                           )}
 
@@ -1365,6 +1399,91 @@ export default function Configuration({
                 }}
               />
             </div>
+
+            {activeTab === "shifts" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startTime" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Shift Start Time
+                    </Label>
+                    <Input
+                      id="startTime"
+                      type="time" 
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.startTime}
+                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endTime" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Shift End Time
+                    </Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.endTime}
+                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="graceInTime" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Late Arrival Grace Time
+                    </Label>
+                    <Input
+                      id="graceInTime"
+                      type="time"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.graceInTime}
+                      onChange={(e) => setFormData({ ...formData, graceInTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="spanInTime" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Late (Very Late) Limit
+                    </Label>
+                    <Input
+                      id="spanInTime"
+                      type="time"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.spanInTime}
+                      onChange={(e) => setFormData({ ...formData, spanInTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lunchStart" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Recess/Lunch Start
+                    </Label>
+                    <Input
+                      id="lunchStart"
+                      type="time"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.lunchStart}
+                      onChange={(e) => setFormData({ ...formData, lunchStart: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lunchEnd" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Recess/Lunch End
+                    </Label>
+                    <Input
+                      id="lunchEnd"
+                      type="time"
+                      className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                      value={formData.lunchEnd}
+                      onChange={(e) => setFormData({ ...formData, lunchEnd: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {activeTab === "navigation" && (
               <>

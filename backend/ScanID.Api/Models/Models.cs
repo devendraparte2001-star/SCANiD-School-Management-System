@@ -527,6 +527,12 @@ namespace ScanID.Api.Models
         public int Id { get; set; }
         [Required]
         public string Name { get; set; } = string.Empty;
+        public string? StartTime { get; set; }
+        public string? EndTime { get; set; }
+        public string? GraceInTime { get; set; }
+        public string? SpanInTime { get; set; }
+        public string? LunchStart { get; set; }
+        public string? LunchEnd { get; set; }
     }
 
     /// <summary> Master data for academic subjects. </summary>

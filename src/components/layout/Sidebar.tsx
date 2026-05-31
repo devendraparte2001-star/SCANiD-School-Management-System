@@ -131,6 +131,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 457, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 45, sortOrder: 7, roleIds: adminRoles },
             { id: 458, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 45, sortOrder: 8, roleIds: adminRoles },
             { id: 459, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 45, sortOrder: 9, roleIds: adminRoles },
+            { id: 460, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 45, sortOrder: 10, roleIds: adminRoles },
 
             { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
           ];
@@ -217,6 +218,31 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             );
             if (schoolSecItem && Number(schoolSecItem.parentId) !== generalMastersId) {
               schoolSecItem.parentId = generalMastersId;
+            }
+          }
+
+          // 4. Ensure Shift Timetable (ID 460) is present under General Masters
+          const hasShiftsNav = rawData.some((item: any) => 
+            item.title === "Shift Timetable" || 
+            (item.path && item.path.includes("/shifts"))
+          );
+          if (!hasShiftsNav) {
+            rawData.push({
+              id: 460,
+              title: "Shift Timetable",
+              icon: "Clock",
+              path: "/configuration/shifts",
+              parentId: generalMastersId,
+              sortOrder: 10,
+              roleIds: adminRoles
+            });
+          } else {
+            const shiftsNavItem = rawData.find((item: any) => 
+              item.title === "Shift Timetable" || 
+              (item.path && item.path.includes("/shifts"))
+            );
+            if (shiftsNavItem && Number(shiftsNavItem.parentId) !== generalMastersId) {
+              shiftsNavItem.parentId = generalMastersId;
             }
           }
         }

@@ -242,6 +242,12 @@ BEGIN
 CREATE TABLE [dbo].[Shifts](
     [Id] [int] IDENTITY(1,1) NOT NULL,
     [Name] [nvarchar](100) NOT NULL,
+    [StartTime] [nvarchar](15) NULL,
+    [EndTime] [nvarchar](15) NULL,
+    [GraceInTime] [nvarchar](15) NULL,
+    [SpanInTime] [nvarchar](15) NULL,
+    [LunchStart] [nvarchar](15) NULL,
+    [LunchEnd] [nvarchar](15) NULL,
     [IsActive] [bit] NOT NULL DEFAULT (1),
     [IsDeleted] [bit] NOT NULL DEFAULT (0),
     [CreatedBy] [nvarchar](max) NULL,
