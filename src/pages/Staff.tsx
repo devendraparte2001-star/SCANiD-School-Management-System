@@ -27,7 +27,9 @@ import {
   ChevronsRight,
   Download,
   Loader2,
-  Check
+  Check,
+  Upload,
+  FileSpreadsheet
 } from "lucide-react";
 import { 
   Table, 
@@ -115,6 +117,7 @@ interface StaffMember {
   rfid?: string;
   shiftId?: string;
   shiftName?: string;
+  role?: string;
 }
 
 export default function Staff({ user }: { user: any }) {
@@ -140,6 +143,13 @@ export default function Staff({ user }: { user: any }) {
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
   const [localPhotoPreview, setLocalPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // States for bulk staff onboarding with template mapping & validation
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadResults, setUploadResults] = useState<any[]>([]);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSubject, setFilterSubject] = useState<string>("all");
@@ -191,7 +201,8 @@ export default function Staff({ user }: { user: any }) {
     bioId: "",
     rfid: "",
     shiftId: "",
-    photo: ""
+    photo: "",
+    role: "teacher"
   });
 
   // Load all system masters
@@ -309,7 +320,8 @@ export default function Staff({ user }: { user: any }) {
           bioId: t.bioId || "",
           rfid: t.rfid || "",
           shiftId: t.shiftId?.toString() || "",
-          shiftName: t.shiftName || ""
+          shiftName: t.shiftName || "",
+          role: getVal("role") || "teacher"
         };
       });
 
@@ -380,6 +392,306 @@ export default function Staff({ user }: { user: any }) {
       }
     }
   }, [isAddDialogOpen]);
+
+  // Bulk Upload drag-and-drop & file parsing helpers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+        toast.error("Invalid file format. Please drop an Excel sheet (.xlsx or .xls).");
+        return;
+      }
+      processBulkSpreadsheet(file);
+    }
+  };
+
+  // Generates and downloads a custom Excel blueprint spreadsheet for staff bulk upload
+  const downloadSampleExcel = () => {
+    try {
+      const headers = [
+        "Initials", "FirstName", "MiddleName", "LastName", "Gender", "Email", "Phone", "EmergencyContact",
+        "Qualification", "Experience", "Subject", "Standard", "Division", "RFID", "BioID", "Shift",
+        "Status", "Address", "Role"
+      ];
+
+      const sampleData = [
+        {
+          Initials: "MR",
+          FirstName: "John",
+          MiddleName: "Robert",
+          LastName: "Smith",
+          Gender: "Male",
+          Email: "john.smith@school.com",
+          Phone: "9876543210",
+          EmergencyContact: "9876543211",
+          Qualification: "MA B.Ed",
+          Experience: "5+ Years",
+          Subject: "Mathematics",
+          Standard: standards[0]?.name || "10th Standard",
+          Division: sections[0]?.name || "A",
+          RFID: "12345678901",
+          BioID: "BIO-101",
+          Shift: shifts[0]?.name || "MORNING",
+          Status: "Active",
+          Address: "123 Education Lane",
+          Role: "teacher"
+        }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
+      XLSX.utils.book_append_sheet(wb, ws, "Staff Template");
+      XLSX.writeFile(wb, "Staff_Bulk_Upload_Template.xlsx");
+      toast.success("Excel blueprint template downloaded successfully!");
+    } catch (e) {
+      console.error("Template error:", e);
+      toast.error("Failed to generate blueprint template.");
+    }
+  };
+
+  // Parses Excel staff templates, validates data integrity, and processes via APIs
+  const processBulkSpreadsheet = async (file: File) => {
+    setIsProcessing(true);
+    setUploadResults([]);
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+
+        if (rawData.length === 0) {
+          toast.error("The uploaded spreadsheet is empty.");
+          setIsProcessing(false);
+          return;
+        }
+
+        // Setup immediate pending log status rows
+        const initialResults = rawData.map((item: any, index: number) => ({
+          id: index,
+          name: `${item.FirstName || ""} ${item.LastName || ""}`.trim() || `Row ${index + 1}`,
+          status: 'pending',
+          error: null
+        }));
+        setUploadResults(initialResults);
+
+        const processedStaffList = rawData.map((item: any, index: number) => {
+          try {
+            const getFieldCleanVal = (keysToSearch: string[]): string => {
+              for (const key of keysToSearch) {
+                const matchKey = Object.keys(item).find(k => k.toLowerCase() === key.toLowerCase());
+                if (matchKey && item[matchKey] !== undefined && item[matchKey] !== null) {
+                  return item[matchKey].toString().trim();
+                }
+              }
+              return "";
+            };
+
+            const fName = getFieldCleanVal(["FirstName", "first_name", "name"]);
+            const lName = getFieldCleanVal(["LastName", "last_name"]);
+            const mName = getFieldCleanVal(["MiddleName", "middle_name"]);
+            const email = getFieldCleanVal(["Email", "email", "mail"]);
+            const phone = getFieldCleanVal(["Phone", "phone", "contact", "personal_contact"]);
+            const initials = getFieldCleanVal(["Initials", "initials"]);
+            const gender = getFieldCleanVal(["Gender", "gender"]) || "Male";
+            const qualification = getFieldCleanVal(["Qualification", "qualification", "degree"]);
+            const experience = getFieldCleanVal(["Experience", "experience"]);
+            const subject = getFieldCleanVal(["Subject", "subject", "expertise", "department"]);
+            const rfid = getFieldCleanVal(["RFID", "rfid", "cardid", "card_id"]);
+            const bioId = getFieldCleanVal(["BioID", "bio_id", "bioid"]);
+            const address = getFieldCleanVal(["Address", "address"]);
+            const status = getFieldCleanVal(["Status", "status"]) || "Active";
+            const role = getFieldCleanVal(["Role", "role"]) || "teacher";
+
+            // Resolve Standard ID from DB list
+            const stdName = getFieldCleanVal(["Standard", "standard", "grade", "class"]);
+            const stdMasterId = stdName ? standards.find(s => s.name?.toString().toLowerCase().trim() === stdName.toLowerCase())?.id : undefined;
+
+            // Resolve Section/Division ID from DB list
+            const divName = getFieldCleanVal(["Division", "division", "section"]);
+            const divMasterId = divName ? sections.find(s => s.name?.toString().toLowerCase().trim() === divName.toLowerCase())?.id : undefined;
+
+            // Resolve Shift ID from DB list
+            const shName = getFieldCleanVal(["Shift", "shift", "shiftname"]);
+            const shiftMasterId = shName ? shifts.find(s => s.name?.toString().toLowerCase().trim() === shName.toLowerCase())?.id : undefined;
+
+            // Resolve School ID
+            const schName = getFieldCleanVal(["SchoolName", "School"]);
+            const schoolId = schName ? (schools.find(s => s.name?.toString().toLowerCase().trim() === schName.toLowerCase())?.id || user.schoolId || 1) : (user.schoolId || 1);
+
+            return {
+              firstName: fName,
+              lastName: lName,
+              middleName: mName,
+              schoolId: parseSafeInt(schoolId) || 1,
+              employeeId: `EMP-${Date.now()}-${index}`,
+              initials: initials || "",
+              department: subject || "Faculty",
+              qualification: qualification || "",
+              personalContact: phone || "",
+              emergencyContact: getFieldCleanVal(["EmergencyContact", "emergency_contact", "contact2"]) || "",
+              status: status,
+              profilePhotoPath: "",
+              experience: experience || "",
+              subject: subject || "",
+              standardId: parseSafeInt(stdMasterId) || null,
+              sectionId: parseSafeInt(divMasterId) || null,
+              isClassTeacher: false,
+              gender: gender,
+              dateOfBirth: null,
+              bloodGroupId: null,
+              retirementDate: null,
+              religionId: null,
+              casteId: null,
+              subCasteId: null,
+              categoryId: null,
+              dateOfJoining: new Date().toISOString().split('T')[0],
+              address: address,
+              cityId: null,
+              stateId: null,
+              bioId: bioId,
+              rfid: rfid,
+              shiftId: parseSafeInt(shiftMasterId) || null,
+              user: {
+                username: (email ? email.split('@')[0] : "user") + Date.now().toString().slice(-4) + index,
+                name: `${fName} ${lName}`.trim(),
+                passwordHash: "DefaultPass123!",
+                email: email || `user.${index}@example.com`,
+                role: role,
+                schoolId: parseSafeInt(schoolId) || 1
+              }
+            };
+          } catch (e) {
+            console.error(`Row ${index + 1} processing error:`, e);
+            return null;
+          }
+        });
+
+        // Loop constraints/validation
+        let failCount = 0;
+        const chunkSize = 2; // balanced chunk size for UI responsiveness
+        for (let i = 0; i < processedStaffList.length; i += chunkSize) {
+          const chunk = processedStaffList.slice(i, i + chunkSize);
+          const chunkIndices = Array.from({ length: chunk.length }, (_, k) => i + k);
+
+          setUploadResults(prev => prev.map(res =>
+            chunkIndices.includes(res.id) ? { ...res, status: 'processing' } : res
+          ));
+
+          await Promise.all(chunk.map(async (staffRecord, idx) => {
+            const actualIndex = chunkIndices[idx];
+            if (!staffRecord) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'Invalid record alignment' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            // Require fields checks (First Name, Email, Standard, Section, RFID)
+            if (!staffRecord.firstName?.trim()) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'First Name is a mandatory field' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            if (!staffRecord.user?.email?.trim()) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'Email is a mandatory field' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            if (!staffRecord.standardId) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'Academic Grade/Standard is a mandatory field' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            if (!staffRecord.sectionId) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'Grade Division/Section is a mandatory field' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            // RFID alphanumeric length (11 or 24)
+            const rfVal = staffRecord.rfid?.trim() || "";
+            const isRfidValid = rfVal !== "" && (rfVal.length === 11 || rfVal.length === 24) && /^[a-zA-Z0-9]+$/.test(rfVal);
+            if (!isRfidValid) {
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: 'RFID Tag is a mandatory field and must be alphanumeric with exactly 11 or 24 characters' } : res
+              ));
+              failCount++;
+              return;
+            }
+
+            try {
+              // Call API service directly to create
+              await apiService.createStaff(staffRecord as any);
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'success' } : res
+              ));
+            } catch (err: any) {
+              const errorMessage = err?.response?.data?.message || err?.message || "Integration error";
+              setUploadResults(prev => prev.map(res =>
+                res.id === actualIndex ? { ...res, status: 'error', error: errorMessage } : res
+              ));
+              failCount++;
+            }
+          }));
+        }
+
+        if (failCount === 0) {
+          toast.success(`Successfully uploaded all ${rawData.length} staff records!`);
+        } else {
+          toast.warning(`Uploaded completed. ${rawData.length - failCount} success, ${failCount} failed.`);
+        }
+        fetchStaffData();
+      } catch (err: any) {
+        toast.error("An error occurred during file parsing.");
+        console.error(err);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+        toast.error("Invalid file format. Please upload an Excel sheet (.xlsx or .xls).");
+        return;
+      }
+      processBulkSpreadsheet(file);
+    }
+  };
 
   const handleSort = (key: string) => {
     if (sortBy === key) {
@@ -454,7 +766,8 @@ export default function Staff({ user }: { user: any }) {
       bioId: "",
       rfid: "",
       shiftId: "",
-      photo: ""
+      photo: "",
+      role: "teacher"
     });
     setSelectedStaff(null);
     setIsEditing(false);
@@ -472,6 +785,9 @@ export default function Staff({ user }: { user: any }) {
       }
     };
 
+    const rf = formData.rfid?.trim() || "";
+    const isRfidValid = rf !== "" && (rf.length === 11 || rf.length === 24) && /^[a-zA-Z0-9]+$/.test(rf);
+
     checkField("schoolId", !formData.schoolId);
     checkField("firstName", !formData.firstName?.trim());
     checkField("lastName", !formData.lastName?.trim());
@@ -480,11 +796,18 @@ export default function Staff({ user }: { user: any }) {
     checkField("phone", !formData.phone?.trim() || !/^\d{10}$/.test(formData.phone.replace(/\D/g, "")));
     checkField("shiftId", !formData.shiftId);
     checkField("qualification", !formData.qualification?.trim());
+    checkField("standardId", !formData.standardId);
+    checkField("sectionId", !formData.sectionId);
+    checkField("rfid", !isRfidValid);
 
     setFormErrors(newErrors);
 
     if (firstErrorField) {
-      toast.error("Please enter correct and complete fields before submitting.");
+      if (firstErrorField === "rfid" && !isRfidValid) {
+        toast.error("RFID Tag Number must be alphanumeric and exactly 11 or 24 characters.");
+      } else {
+        toast.error("Please enter correct and complete fields before submitting.");
+      }
       const element = inputRefs.current[firstErrorField];
       if (element) {
         element.focus();
@@ -533,7 +856,7 @@ export default function Staff({ user }: { user: any }) {
            name: `${formData.firstName} ${formData.lastName}`.trim(),
            passwordHash: "DefaultPass123!",
            email: formData.email,
-           role: "teacher",
+           role: formData.role || "teacher",
            schoolId: parseSafeInt(formData.schoolId) || 1
         },
         CreatedBy: isEditing ? undefined : (user.name || user.email),
@@ -658,23 +981,24 @@ export default function Staff({ user }: { user: any }) {
           </div>
         </div>
         {isAdmin && (
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if(!open) resetForm(); else fetchMasters(); }}>
-            <DeleteConfirmation 
-              isOpen={isDeleteDialogOpen}
-              onClose={() => setIsDeleteDialogOpen(false)}
-              onConfirm={confirmDelete}
-              loading={loading && isDeleteDialogOpen}
-              title="Decommission Staff Onboarding Record"
-              description={`This will permanently delete ${deleteInfo?.name}'s record. Related active identity tags will be deactivated.`}
-            />
-            <DialogTrigger
-              render={
-                <div className="flex items-center justify-center gap-2 h-11 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20 text-white border-none outline-none cursor-pointer font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-0.5 active:scale-95">
-                  <UserPlus size={18} className="stroke-[3]" /> Onboard Staff
-                </div>
-              }
-            />
-            <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col p-0 border-none shadow-3xl rounded-[2.5rem] overflow-hidden">
+          <div className="flex flex-row items-center gap-4">
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if(!open) resetForm(); else fetchMasters(); }}>
+              <DeleteConfirmation 
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={confirmDelete}
+                loading={loading && isDeleteDialogOpen}
+                title="Decommission Staff Onboarding Record"
+                description={`This will permanently delete ${deleteInfo?.name}'s record. Related active identity tags will be deactivated.`}
+              />
+              <DialogTrigger
+                render={
+                  <div className="flex items-center justify-center gap-2 h-11 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20 text-white border-none outline-none cursor-pointer font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-0.5 active:scale-95">
+                    <UserPlus size={18} className="stroke-[3]" /> Onboard Staff
+                  </div>
+                }
+              />
+              <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] flex flex-col p-0 border-none shadow-3xl rounded-[2.5rem] overflow-hidden">
                 <div className="bg-slate-900 px-10 py-8 text-white relative shrink-0">
                   <div className="relative z-10 flex items-center justify-between">
                     <DialogHeader>
@@ -773,17 +1097,33 @@ export default function Staff({ user }: { user: any }) {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">RFID Tag Number</Label>
-                          <Input value={formData.rfid} onChange={e => setFormData({...formData, rfid: e.target.value})} placeholder="RFID Tag UID" className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white" />
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.rfid ? "text-red-500" : "text-slate-400")}>RFID Tag Number *</Label>
+                          <Input 
+                            ref={el => { inputRefs.current["rfid"] = el; }}
+                            value={formData.rfid} 
+                            maxLength={24}
+                            onChange={e => {
+                              const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 24);
+                              setFormData({...formData, rfid: cleaned});
+                              if (formErrors.rfid) setFormErrors(prev => ({ ...prev, rfid: false }));
+                            }} 
+                            placeholder="Alphanumeric (exactly 11 or 24 characters)" 
+                            className={cn(
+                              "h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
+                              formErrors.rfid && "border-red-500 ring-2 ring-red-500/10"
+                            )}
+                          />
                         </div>
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Bio Station ID</Label>
                           <Input value={formData.bioId} onChange={e => setFormData({...formData, bioId: e.target.value})} placeholder="Biometric Machine ID" className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white" />
                         </div>
+                      </div>
 
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Status</Label>
                           <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
@@ -794,6 +1134,23 @@ export default function Staff({ user }: { user: any }) {
                               <SelectItem value="Active" className="font-black text-xs uppercase tracking-widest">Active</SelectItem>
                               <SelectItem value="On Leave" className="font-black text-xs uppercase tracking-widest">On Leave</SelectItem>
                               <SelectItem value="Resigned" className="font-black text-xs uppercase tracking-widest">Resigned</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assign User Role *</Label>
+                          <Select value={formData.role || "teacher"} onValueChange={(v: any) => setFormData({...formData, role: v})}>
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
+                              <SelectValue placeholder="Assign Staff Role" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-slate-100 p-2 shadow-xl">
+                              <SelectItem value="teacher" className="font-black text-xs uppercase tracking-widest">Teacher</SelectItem>
+                              <SelectItem value="peon" className="font-black text-xs uppercase tracking-widest">Peon</SelectItem>
+                              <SelectItem value="accountant" className="font-black text-xs uppercase tracking-widest">Accountant</SelectItem>
+                              <SelectItem value="headmaster" className="font-black text-xs uppercase tracking-widest">Headmaster</SelectItem>
+                              <SelectItem value="principal" className="font-black text-xs uppercase tracking-widest">Principal</SelectItem>
+                              <SelectItem value="admin" className="font-black text-xs uppercase tracking-widest">Admin</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1121,9 +1478,21 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Academic Grade/Standard</Label>
-                          <Select value={formData.standardId ? formData.standardId.toString() : ""} onValueChange={v => setFormData({...formData, standardId: v, sectionId: ""})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm">
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.standardId ? "text-red-500" : "text-slate-400")}>Academic Grade/Standard *</Label>
+                          <Select 
+                            value={formData.standardId ? formData.standardId.toString() : ""} 
+                            onValueChange={v => {
+                              setFormData({...formData, standardId: v, sectionId: ""});
+                              if (formErrors.standardId) setFormErrors(prev => ({ ...prev, standardId: false }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["standardId"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm",
+                                formErrors.standardId && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
                               <SelectValue placeholder="Select Standard">
                                 {formData.standardId ? standards.find(st => st.id.toString() === formData.standardId.toString())?.name : undefined}
                               </SelectValue>
@@ -1138,16 +1507,29 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Grade Division/Section</Label>
-                          <Select value={formData.sectionId ? formData.sectionId.toString() : ""} onValueChange={v => setFormData({...formData, sectionId: v})} disabled={!formData.standardId}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm">
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.sectionId ? "text-red-500" : "text-slate-400")}>Grade Division/Section *</Label>
+                          <Select 
+                            value={formData.sectionId ? formData.sectionId.toString() : ""} 
+                            onValueChange={v => {
+                              setFormData({...formData, sectionId: v});
+                              if (formErrors.sectionId) setFormErrors(prev => ({ ...prev, sectionId: false }));
+                            }} 
+                            disabled={!formData.standardId}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["sectionId"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-white font-black text-slate-800 rounded-2xl px-5 text-sm",
+                                formErrors.sectionId && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
                               <SelectValue placeholder="Select Section">
                                 {formData.sectionId ? sections.find(sec => sec.id.toString() === formData.sectionId.toString())?.name : undefined}
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2 max-h-56">
                               <SelectItem value="" className="font-black text-xs uppercase tracking-widest text-slate-400 italic">Select Section</SelectItem>
-                              {sections.filter(sec => !formData.standardId || sec.standardId?.toString() === formData.standardId?.toString()).map(sec => (
+                              {sections.map(sec => (
                                 <SelectItem key={sec.id} value={sec.id.toString()} className="font-black text-xs uppercase tracking-widest">{sec.name}</SelectItem>
                               ))}
                             </SelectContent>
@@ -1198,7 +1580,166 @@ export default function Staff({ user }: { user: any }) {
                 </DialogFooter>
               </DialogContent>
           </Dialog>
-        )}
+
+          {/* BULK STAFF UPLOAD SYSTEM */}
+          <Dialog open={isBulkUploadOpen} onOpenChange={(open) => { setIsBulkUploadOpen(open); if(!open) { setUploadResults([]); } else { fetchMasters(); } }}>
+            <DialogTrigger
+              render={
+                <div className="flex items-center justify-center gap-2 h-11 px-8 rounded-2xl bg-slate-900 hover:bg-slate-800 shadow-xl shadow-slate-900/20 text-white border-none outline-none cursor-pointer font-black text-xs uppercase tracking-widest transition-all hover:-translate-y-0.5 active:scale-95">
+                  <Upload size={18} className="stroke-[3]" /> Bulk Upload
+                </div>
+              }
+            />
+            <DialogContent className="sm:max-w-[750px] w-[95vw] max-h-[90vh] flex flex-col p-0 border-none shadow-3xl rounded-[2.5rem] overflow-hidden">
+              <div className="bg-slate-900 px-10 py-8 text-white relative shrink-0">
+                <div className="relative z-10 flex items-center justify-between">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-4">
+                      <div className="p-3 bg-indigo-500 rounded-2xl shadow-2xl shadow-indigo-500/20">
+                        <Upload size={24} className="text-white" />
+                      </div>
+                      Bulk Import Staff Directory
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 text-sm mt-1 font-bold uppercase tracking-wider">
+                      Upload Excel spreadsheet (.xlsx, .xls) to onboard staff records in bulk.
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+                <div className="absolute right-[-5%] top-[-5%] w-72 h-72 bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-10 py-8 bg-white custom-scrollbar space-y-8">
+                {/* Drag zone container frame */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "border-2 border-dashed rounded-[2rem] p-10 flex flex-col items-center justify-center text-center gap-4 transition-all duration-300 bg-slate-50/50 cursor-pointer min-h-[220px]",
+                    isDragging ? "border-indigo-500 bg-indigo-50/25 scale-[0.99]" : "border-slate-200 hover:border-indigo-400 hover:bg-slate-50",
+                    isProcessing && "relative pointer-events-none opacity-80"
+                  )}
+                  onClick={() => bulkFileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={bulkFileInputRef}
+                    onChange={handleBulkFileChange}
+                    className="hidden"
+                    accept=".xlsx,.xls"
+                    disabled={isProcessing}
+                  />
+
+                  {isProcessing ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 bg-white shadow-xl shadow-indigo-100 rounded-full">
+                        <Loader2 className="animate-spin text-indigo-500" size={32} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-black text-slate-800 uppercase tracking-widest animate-pulse">Processing Spreadsheet</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-wide">Validating fields and inserting records...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-white shadow-xl shadow-slate-100 rounded-2xl text-slate-400 hover:text-indigo-500 hover:shadow-indigo-500/10 transition-all">
+                        <FileSpreadsheet size={36} className="stroke-[1.5]" />
+                      </div>
+                      <div className="space-y-1 max-w-sm">
+                        <p className="text-sm font-black text-slate-800 uppercase tracking-wider">Drag & Drop Staff Spreadsheet</p>
+                        <p className="text-[11px] text-slate-400 font-bold leading-normal">
+                          Supports .xlsx, .xls format files. Click anywhere to browse your local directories.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-4 rounded-xl border-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          bulkFileInputRef.current?.click();
+                        }}
+                      >
+                        Choose File
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* Info row with Download sample button */}
+                <div className="flex items-center justify-between gap-4 p-5 bg-blue-50/20 border border-blue-100/50 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-white shadow-sm rounded-xl text-blue-600">
+                      <FileSpreadsheet size={18} />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-black text-slate-800 uppercase tracking-wider">XLSX Import Blueprint</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Verify headers and layout against active standards.</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={downloadSampleExcel}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-4 rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 font-black text-[10px] uppercase tracking-widest transition-all"
+                  >
+                    <Download size={14} className="mr-1.5" /> Download Blueprint
+                  </Button>
+                </div>
+
+                {/* Upload statuses log */}
+                {uploadResults.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Importer Stream Monitor</h4>
+                      <span className="text-[9px] font-bold text-slate-400 italic">Total Rows: {uploadResults.length}</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-50 custom-scrollbar">
+                      {uploadResults.map(result => (
+                        <div key={result.id} className="flex items-center justify-between p-3 px-4 hover:bg-slate-50/50 text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-[10px] text-slate-400">#{(result.id + 1).toString().padStart(2, '0')}</span>
+                            <span className="font-black text-slate-800 uppercase tracking-tight">{result.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {result.status === 'pending' && <Badge variant="outline" className="bg-slate-50 text-slate-400 border-slate-100">Pending</Badge>}
+                            {result.status === 'processing' && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-500 border-blue-100 flex items-center gap-1">
+                                <Loader2 className="animate-spin" size={10} /> Importer
+                              </Badge>
+                            )}
+                            {result.status === 'success' && <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-100 font-black">SUCCESS</Badge>}
+                            {result.status === 'error' && (
+                              <SimpleTooltip content={result.error}>
+                                <Badge variant="outline" className="bg-rose-50 text-rose-500 border-rose-100 cursor-help font-black max-w-[200px] truncate">
+                                  FAILED: {result.error}
+                                </Badge>
+                              </SimpleTooltip>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="bg-slate-50 px-10 py-6 shrink-0 border-t border-slate-100">
+                <Button
+                  className="w-full bg-slate-900 hover:bg-black font-black rounded-2xl h-12 text-[10px] uppercase tracking-[0.2em]"
+                  onClick={() => {
+                    setIsBulkUploadOpen(false);
+                    setUploadResults([]);
+                  }}
+                  disabled={isProcessing}
+                >
+                  Dismiss Importer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
       </div>
 
       <Card className="dashboard-card border-none overflow-hidden">
@@ -1377,7 +1918,8 @@ export default function Staff({ user }: { user: any }) {
                                 bioId: staffObj.bioId,
                                 rfid: staffObj.rfid,
                                 shiftId: staffObj.shiftId,
-                                photo: staffObj.photo || ""
+                                photo: staffObj.photo || "",
+                                role: staffObj.role || "teacher"
                               });
                               setIsAddDialogOpen(true);
                             }}>
