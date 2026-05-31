@@ -367,4 +367,19 @@ This document records the exact changes, the root causes identified, and the fix
 - `/CHANGES_DOCUMENTATION.md`: Appended documentation for the latest batch of updates.
 
 
+---
 
+## 38. Issue: Shifts Schema Realignment (Audit Trail Fields at the End)
+- **Root Cause**: The custom columns (`StartTime`, `EndTime`, `GraceInTime`, `SpanInTime`, `LunchStart`, `LunchEnd`) added to `dbo.Shifts` via an incremental update script originally ran after the audit trail fields (`IsActive`, `IsDeleted`, `CreatedBy`, `CreatedOn`, `ModifiedBy`, `ModifiedOn`). Depending on the state of the database, this pattern created a mismatch where audit fields were placed in the middle of the table, conflicting with strict enterprise database standards.
+- **Remediation**:
+  1. **Audit-Trail Realignment Algorithm**: Re-engineered `/incremental_shifts_schema.sql` to execute a multi-phase structural migration. The script dynamically stages any existing `Shifts` data (including previously added timetables and audit metadata) into a temporary staging table, drops all default constraints on the audit columns dynamically, and drops the columns. It then appends the custom columns (`StartTime`, `EndTime`, etc.) and immediately adds the standard audit trail columns (`IsActive`, `IsDeleted`, etc.) back at the physical end of the structure.
+  2. **Data Preservation & Consolidation**: Staged records are seamlessly restored back to the newly realigned table structure, preserving existing entries perfectly.
+  3. **Master Schema Sync**: Synchronized `/database.sql` to define the matching sequential column structure for all fresh installations.
+
+---
+
+## 39. Modified/Synchronized Files List (Batch 4)
+
+- `/incremental_shifts_schema.sql`: Extensively rewritten to utilize dynamic constraint dropping and data staging to guarantee proper physical column order with audit trail fields at the end.
+- `/database.sql`: Verified that the master definition of `dbo.Shifts` has the correct sequence with audit fields at the bottom of the table.
+- `/CHANGES_DOCUMENTATION.md`: Documented the realignment process and schema standards.
