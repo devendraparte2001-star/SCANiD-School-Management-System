@@ -301,7 +301,7 @@ async function startServer() {
     // Staff & HR Group (6)
     { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: [1, 2] },
     { id: 7, title: "Staff Directory", icon: "UserCheck", path: "/staff", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
-    { id: 432, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 6, sortOrder: 2, roleIds: [1, 2] },
+    { id: 24, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 6, sortOrder: 2, roleIds: [1, 2] },
     
     // Administrative Group (8)
     { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: [1, 2, 3, 4, 5] },
@@ -328,19 +328,19 @@ async function startServer() {
     { id: 21, title: "Academic Years", icon: "Calendar", path: "/configuration/academic-years", parentId: 18, sortOrder: 3, roleIds: [1, 2] },
     { id: 22, title: "Subject Registry", icon: "BookOpen", path: "/configuration/subjects", parentId: 18, sortOrder: 4, roleIds: [1, 2] },
     
-    // General Masters Sub-group (45)
-    { id: 45, title: "General Masters", icon: "Database", path: null, parentId: 11, sortOrder: 5, roleIds: [1, 2] },
-    { id: 451, title: "Religion Master", icon: "Heart", path: "/configuration/religions", parentId: 45, sortOrder: 1, roleIds: [1, 2] },
-    { id: 452, title: "Blood Group Master", icon: "Droplets", path: "/configuration/blood-groups", parentId: 45, sortOrder: 2, roleIds: [1, 2] },
-    { id: 453, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 45, sortOrder: 3, roleIds: [1, 2] },
-    { id: 454, title: "Sub-Caste Master", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 45, sortOrder: 4, roleIds: [1, 2] },
-    { id: 455, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 45, sortOrder: 5, roleIds: [1, 2] },
-    { id: 456, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 45, sortOrder: 6, roleIds: [1, 2] },
-    { id: 457, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 45, sortOrder: 7, roleIds: [1, 2] },
-    { id: 458, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 45, sortOrder: 8, roleIds: [1, 2] },
-    { id: 459, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 45, sortOrder: 9, roleIds: [1, 2] },
-    { id: 460, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 45, sortOrder: 10, roleIds: [1, 2] },
-
+    // General Masters Sub-group (25)
+    { id: 25, title: "General Masters", icon: "Database", path: null, parentId: 11, sortOrder: 5, roleIds: [1, 2] },
+    { id: 26, title: "Religion Master", icon: "Heart", path: "/configuration/religions", parentId: 25, sortOrder: 1, roleIds: [1, 2] },
+    { id: 27, title: "Blood Group Master", icon: "Droplets", path: "/configuration/blood-groups", parentId: 25, sortOrder: 2, roleIds: [1, 2] },
+    { id: 28, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 25, sortOrder: 3, roleIds: [1, 2] },
+    { id: 29, title: "Sub-Caste Master", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 25, sortOrder: 4, roleIds: [1, 2] },
+    { id: 30, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 25, sortOrder: 5, roleIds: [1, 2] },
+    { id: 31, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 25, sortOrder: 6, roleIds: [1, 2] },
+    { id: 32, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 25, sortOrder: 7, roleIds: [1, 2] },
+    { id: 33, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 25, sortOrder: 8, roleIds: [1, 2] },
+    { id: 34, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 25, sortOrder: 9, roleIds: [1, 2] },
+    { id: 35, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 25, sortOrder: 10, roleIds: [1, 2] },
+ 
     // System Audit (23)
     { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] },
   ];

@@ -93,7 +93,8 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             
             // Staff & HR Group
             { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: adminRoles },
-            { id: 7, title: "Staff Management", icon: "Users", path: "/staff", parentId: 6, sortOrder: 1, roleIds: adminRoles },
+            { id: 7, title: "Staff Directory", icon: "UserCheck", path: "/staff", parentId: 6, sortOrder: 1, roleIds: adminRoles },
+            { id: 24, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 6, sortOrder: 2, roleIds: adminRoles },
             
             // Administrative Group
             { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: allRoles },
@@ -121,17 +122,17 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 22, title: "Subject Registry", icon: "BookOpen", path: "/configuration/subjects", parentId: 18, sortOrder: 4, roleIds: adminRoles },
             
             // General Masters Sub-group
-            { id: 45, title: "General Masters", icon: "Database", path: null, parentId: 11, sortOrder: 5, roleIds: adminRoles },
-            { id: 451, title: "Religions", icon: "Heart", path: "/configuration/religions", parentId: 45, sortOrder: 1, roleIds: adminRoles },
-            { id: 452, title: "Blood Group", icon: "Droplets", path: "/configuration/blood-groups", parentId: 45, sortOrder: 2, roleIds: adminRoles },
-            { id: 453, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 45, sortOrder: 3, roleIds: adminRoles },
-            { id: 454, title: "Sub-Caste", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 45, sortOrder: 4, roleIds: adminRoles },
-            { id: 455, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 45, sortOrder: 5, roleIds: adminRoles },
-            { id: 456, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 45, sortOrder: 6, roleIds: adminRoles },
-            { id: 457, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 45, sortOrder: 7, roleIds: adminRoles },
-            { id: 458, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 45, sortOrder: 8, roleIds: adminRoles },
-            { id: 459, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 45, sortOrder: 9, roleIds: adminRoles },
-            { id: 460, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 45, sortOrder: 10, roleIds: adminRoles },
+            { id: 25, title: "General Masters", icon: "Database", path: null, parentId: 11, sortOrder: 5, roleIds: adminRoles },
+            { id: 26, title: "Religions", icon: "Heart", path: "/configuration/religions", parentId: 25, sortOrder: 1, roleIds: adminRoles },
+            { id: 27, title: "Blood Group", icon: "Droplets", path: "/configuration/blood-groups", parentId: 25, sortOrder: 2, roleIds: adminRoles },
+            { id: 28, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 25, sortOrder: 3, roleIds: adminRoles },
+            { id: 29, title: "Sub-Caste", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 25, sortOrder: 4, roleIds: adminRoles },
+            { id: 30, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 25, sortOrder: 5, roleIds: adminRoles },
+            { id: 31, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 25, sortOrder: 6, roleIds: adminRoles },
+            { id: 32, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 25, sortOrder: 7, roleIds: adminRoles },
+            { id: 33, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 25, sortOrder: 8, roleIds: adminRoles },
+            { id: 34, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 25, sortOrder: 9, roleIds: adminRoles },
+            { id: 35, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 25, sortOrder: 10, roleIds: adminRoles },
 
             { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
           ];
@@ -143,14 +144,14 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
           const generalMastersId = Number(generalMastersItem.id);
           const adminRoles = [1, 2];
 
-          // 1. Ensure States Master (ID 457) is present under General Masters
+          // 1. Ensure States Master (ID 32) is present under General Masters
           const hasStates = rawData.some((item: any) => 
             item.title === "States Master" || 
             (item.path && item.path.includes("/states"))
           );
           if (!hasStates) {
             rawData.push({
-              id: 457,
+              id: 32,
               title: "States Master",
               icon: "Map",
               path: "/configuration/states",
@@ -169,14 +170,14 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             }
           }
 
-          // 2. Ensure Cities Master (ID 458) is present under General Masters
+          // 2. Ensure Cities Master (ID 33) is present under General Masters
           const hasCities = rawData.some((item: any) => 
             item.title === "Cities Master" || 
             (item.path && item.path.includes("/cities"))
           );
           if (!hasCities) {
             rawData.push({
-              id: 458,
+              id: 33,
               title: "Cities Master",
               icon: "MapPin",
               path: "/configuration/cities",
@@ -195,14 +196,14 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             }
           }
 
-          // 3. Ensure School Sections (ID 459) is present under General Masters
+          // 3. Ensure School Sections (ID 34) is present under General Masters
           const hasSchoolSections = rawData.some((item: any) => 
             item.title === "School Sections" || 
             (item.path && item.path.includes("/school-sections"))
           );
           if (!hasSchoolSections) {
             rawData.push({
-              id: 459,
+              id: 34,
               title: "School Sections",
               icon: "Layers",
               path: "/configuration/school-sections",
@@ -221,14 +222,14 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             }
           }
 
-          // 4. Ensure Shift Timetable (ID 460) is present under General Masters
+          // 4. Ensure Shift Timetable (ID 35) is present under General Masters
           const hasShiftsNav = rawData.some((item: any) => 
             item.title === "Shift Timetable" || 
             (item.path && item.path.includes("/shifts"))
           );
           if (!hasShiftsNav) {
             rawData.push({
-              id: 460,
+              id: 35,
               title: "Shift Timetable",
               icon: "Clock",
               path: "/configuration/shifts",
