@@ -567,10 +567,10 @@ export default function Attendance({ user }: { user: any }) {
           <button 
             onClick={() => setActiveTab("daily")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all uppercase tracking-wider",
+              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
               activeTab === "daily" 
-                ? "bg-white text-slate-900 shadow-sm" 
-                : "text-slate-400 hover:text-slate-900"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+                : "text-slate-500 hover:text-slate-900"
             )}
           >
             Roll Call
@@ -578,10 +578,10 @@ export default function Attendance({ user }: { user: any }) {
           <button 
             onClick={() => setActiveTab("manual")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all uppercase tracking-wider",
+              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
               activeTab === "manual" 
-                ? "bg-white text-slate-900 shadow-sm" 
-                : "text-slate-400 hover:text-slate-900"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+                : "text-slate-500 hover:text-slate-900"
             )}
           >
             Manual Upload
@@ -589,10 +589,10 @@ export default function Attendance({ user }: { user: any }) {
           <button 
             onClick={() => setActiveTab("report")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all uppercase tracking-wider",
+              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
               activeTab === "report" 
-                ? "bg-white text-slate-900 shadow-sm" 
-                : "text-slate-400 hover:text-slate-900"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+                : "text-slate-500 hover:text-slate-900"
             )}
           >
             Reports
@@ -601,11 +601,11 @@ export default function Attendance({ user }: { user: any }) {
       </div>
 
       {/* -----------------------------------------
-          DAILY ATTENDANCE TAB
+          DAILY ATTENDANCE & REPORT SHARED GRID LAYOUT
          ----------------------------------------- */}
-      {activeTab === "daily" && (
+      {(activeTab === "daily" || activeTab === "report") && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
+          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] overflow-hidden bg-white h-fit">
             <CardHeader className="border-b border-slate-50 px-8 py-6">
               <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Attendance Context</CardTitle>
               <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Select unit and date registry</CardDescription>
@@ -658,11 +658,14 @@ export default function Attendance({ user }: { user: any }) {
                 <Select value={selectedStandard} onValueChange={(val) => setSelectedStandard(val || "")}>
                   <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
                     <SelectValue placeholder="Select Standard">
-                      {standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined}
+                      {selectedStandard === "all" 
+                        ? "All Standards" 
+                        : (standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
                     <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Standard</SelectItem>
+                    <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Standards</SelectItem>
                     {Array.isArray(standardsMaster) && standardsMaster.map(std => (
                       <SelectItem key={std.id} value={std.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">{std.name}</SelectItem>
                     ))}
@@ -676,11 +679,14 @@ export default function Attendance({ user }: { user: any }) {
                 <Select value={selectedSection} onValueChange={(val) => setSelectedSection(val || "")}>
                   <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
                     <SelectValue placeholder="Select Division">
-                      {selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined}
+                      {selectedSection === "all" 
+                        ? "All Divisions" 
+                        : (selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
                     <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Division</SelectItem>
+                    <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Divisions</SelectItem>
                     {Array.isArray(sectionsMaster) && sectionsMaster.map(sec => (
                       <SelectItem key={sec.id} value={sec.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">Division {sec.name}</SelectItem>
                     ))}
@@ -705,103 +711,249 @@ export default function Attendance({ user }: { user: any }) {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-3 shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden">
-            <CardHeader className="pb-6 border-b border-slate-100 bg-white px-8 pt-8 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-black text-slate-900">Attendance Sheet</CardTitle>
-                <CardDescription className="text-slate-500 font-medium tracking-tight">Daily Roll Call Registry for students</CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({...x, status: 'present'})))}>Mark All Present</Button>
-                {canManage && (
-                  <Button 
-                    className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-bold" 
-                    onClick={handleSave}
-                    disabled={isSaving || loading}
-                  >
-                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
-                    {isSaving ? "Saving..." : "Save Changes"}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center p-24">
-                  <Loader2 size={32} className="animate-spin text-emerald-600" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                      <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
-                        <TableHead className="w-[120px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Digital ID</TableHead>
-                        <TableHead className="w-16 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Roll</TableHead>
-                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Student Identity</TableHead>
-                        <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
-                        {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Array.isArray(students) && students.map((student) => (
-                      <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-50/50 h-20">
-                        <TableCell className="pl-8 font-mono text-xs font-black text-blue-600 rounded-lg">{student.grno || `GR-${student.id}`}</TableCell>
-                        <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
-                        <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            className={cn(
-                              "capitalize font-bold text-[10px] px-3",
-                              student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
-                              student.status === 'absent' ? "bg-red-100 text-red-700" :
-                              "bg-amber-100 text-amber-700"
-                            )}
-                            variant="secondary"
-                          >
-                            {student.status}
-                          </Badge>
-                        </TableCell>
-                        {canManage && (
-                          <TableCell className="text-right pr-8">
-                            <div className="flex justify-end gap-1.5 font-bold">
-                              <Button 
-                                size="icon" 
-                                variant={student.status === 'present' ? "default" : "outline"} 
-                                className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
-                                onClick={() => updateStatus(student.id, 'present')}
-                              >
-                                <Check size={14} />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant={student.status === 'absent' ? "default" : "outline"}
-                                className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
-                                onClick={() => updateStatus(student.id, 'absent')}
-                              >
-                                <X size={14} />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant={student.status === 'late' ? "default" : "outline"}
-                                className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
-                                onClick={() => updateStatus(student.id, 'late')}
-                              >
-                                <Clock size={14} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                    {students.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-slate-400 font-bold">No student records found. Select an active scholastic branch or academic class standard.</TableCell>
-                      </TableRow>
+          {/* Right Main Panel */}
+          <div className="lg:col-span-3 space-y-6">
+            
+            {/* If Roll Call tab is active */}
+            {activeTab === "daily" && (
+              <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white">
+                <CardHeader className="pb-6 border-b border-slate-100 bg-white px-8 pt-8 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-black text-slate-900">Attendance Sheet</CardTitle>
+                    <CardDescription className="text-slate-500 font-medium tracking-tight">Daily Roll Call Registry for students</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({...x, status: 'present'})))}>Mark All Present</Button>
+                    {canManage && (
+                      <Button 
+                        className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-bold" 
+                        onClick={handleSave}
+                        disabled={isSaving || loading}
+                      >
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+                        {isSaving ? "Saving..." : "Save Changes"}
+                      </Button>
                     )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loading ? (
+                    <div className="flex items-center justify-center p-24">
+                      <Loader2 size={32} className="animate-spin text-emerald-600" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                          <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
+                            <TableHead className="w-[120px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Digital ID</TableHead>
+                            <TableHead className="w-16 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Roll</TableHead>
+                            <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Student Identity</TableHead>
+                            <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
+                            {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.isArray(students) && students.map((student) => (
+                          <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-50/50 h-20">
+                            <TableCell className="pl-8 font-mono text-xs font-black text-blue-600 rounded-lg">{student.grno || `GR-${student.id}`}</TableCell>
+                            <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
+                            <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={cn(
+                                  "capitalize font-bold text-[10px] px-3",
+                                  student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
+                                  student.status === 'absent' ? "bg-red-100 text-red-700" :
+                                  "bg-amber-100 text-amber-700"
+                                )}
+                                variant="secondary"
+                              >
+                                {student.status}
+                              </Badge>
+                            </TableCell>
+                            {canManage && (
+                              <TableCell className="text-right pr-8">
+                                <div className="flex justify-end gap-1.5 font-bold">
+                                  <Button 
+                                    size="icon" 
+                                    variant={student.status === 'present' ? "default" : "outline"} 
+                                    className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
+                                    onClick={() => updateStatus(student.id, 'present')}
+                                  >
+                                    <Check size={14} />
+                                  </Button>
+                                  <Button 
+                                    size="icon" 
+                                    variant={student.status === 'absent' ? "default" : "outline"}
+                                    className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
+                                    onClick={() => updateStatus(student.id, 'absent')}
+                                  >
+                                    <X size={14} />
+                                  </Button>
+                                  <Button 
+                                    size="icon" 
+                                    variant={student.status === 'late' ? "default" : "outline"}
+                                    className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
+                                    onClick={() => updateStatus(student.id, 'late')}
+                                  >
+                                    <Clock size={14} />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                        {students.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-12 text-slate-400 font-bold">No student records found. Select an active scholastic branch or academic class standard.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* If Reports tab is active */}
+            {activeTab === "report" && (
+              <div className="space-y-6">
+                {/* Bento aggregate cards row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                  
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
+                    <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
+                      <BarChart3 size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Class Average</p>
+                      <h3 className="text-2xl font-black text-slate-900">{aggregateRate}%</h3>
+                      <span className="text-[9px] text-teal-600 font-bold block mt-0.5">+1.2% versus overall target</span>
+                    </div>
+                  </Card>
+
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
+                    <div className="bg-blue-50 p-4 rounded-xl text-blue-600">
+                      <Users size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Attendance Monitored</p>
+                      <h3 className="text-2xl font-black text-slate-900">{students.length}</h3>
+                      <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">Active pupils tracked daily</span>
+                    </div>
+                  </Card>
+
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
+                    <div className="bg-amber-50 p-4 rounded-xl text-amber-600">
+                      <Clock size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Late Registry Rate</p>
+                      <h3 className="text-2xl font-black text-slate-900">1.8%</h3>
+                      <span className="text-[9px] text-amber-600 font-bold block mt-0.5">Below margin limit criteria</span>
+                    </div>
+                  </Card>
+
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
+                    <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
+                      <TrendingUp size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Preservation Index</p>
+                      <h3 className="text-2xl font-black text-slate-900">Solid (A+)</h3>
+                      <span className="text-[9px] text-emerald-600 font-bold block mt-0.5">Highly compliant student base</span>
+                    </div>
+                  </Card>
+
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                  
+                  {/* Recharts chart visualization */}
+                  <Card className="xl:col-span-3 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-8">
+                    <div className="mb-6">
+                      <CardTitle className="text-lg font-black text-slate-900">Attendance Trends</CardTitle>
+                      <CardDescription className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">7-day presence variance timeline</CardDescription>
+                    </div>
+                    <div className="h-72 w-full pr-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorOverall" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorStaff" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                          <YAxis domain={[60, 100]} stroke="#94a3b8" fontSize={11} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 'bold', paddingTop: 10 }} />
+                          <Area type="monotone" name="Student Presence %" dataKey="overall" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorOverall)" />
+                          <Area type="monotone" name="Staff Attendance %" dataKey="staffRate" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorStaff)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+
+                  {/* Attendance standings */}
+                  <Card className="xl:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden flex flex-col">
+                    <CardHeader className="border-b border-slate-50 px-8 py-6 pt-8 bg-white">
+                      <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Active Standings</CardTitle>
+                      <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Attendees ranking evaluation list</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-1 overflow-y-auto max-h-[300px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead className="pl-6 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</TableHead>
+                            <TableHead className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Roster Ratio</TableHead>
+                            <TableHead className="pr-6 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Ratio Rate</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {reportRoster.map((rep) => (
+                            <TableRow key={rep.id} className="h-14 hover:bg-slate-50/50">
+                              <TableCell className="pl-6 flex flex-col gap-0.5 justify-center">
+                                <span className="font-extrabold text-slate-800 text-sm tracking-tight">{rep.name}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">GR {rep.grno || `GR-${rep.id}`}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className="text-[10px] font-extrabold text-slate-500">
+                                  {rep.present} / 20 Present
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="pr-6 text-right">
+                                <span className={cn(
+                                  "text-sm font-black",
+                                  rep.rate >= 90 ? "text-emerald-600" :
+                                  rep.rate >= 75 ? "text-amber-600" :
+                                  "text-red-600"
+                                )}>
+                                  {rep.rate}%
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {reportRoster.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-12 text-slate-400 font-semibold h-[200px]">No standing analytics computed. Ensure active students are registered.</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
       )}
 
@@ -1267,148 +1419,6 @@ export default function Attendance({ user }: { user: any }) {
       )}
     </div>
   )}
-
-      {/* -----------------------------------------
-          ATTENDANCE ANALYSIS REPORT TAB
-         ----------------------------------------- */}
-      {activeTab === "report" && (
-        <div className="space-y-6">
-          
-          {/* Bento aggregate cards row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-              <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
-                <BarChart3 size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-400">Class Average</p>
-                <h3 className="text-2xl font-black text-slate-900">{aggregateRate}%</h3>
-                <span className="text-[9px] text-teal-600 font-bold block mt-0.5">+1.2% versus overall target</span>
-              </div>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-              <div className="bg-blue-50 p-4 rounded-xl text-blue-600">
-                <Users size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-400">Attendance Monitored</p>
-                <h3 className="text-2xl font-black text-slate-900">{students.length}</h3>
-                <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">Active pupils tracked daily</span>
-              </div>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-              <div className="bg-amber-50 p-4 rounded-xl text-amber-600">
-                <Clock size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-400">Late Registry Rate</p>
-                <h3 className="text-2xl font-black text-slate-900">1.8%</h3>
-                <span className="text-[9px] text-amber-600 font-bold block mt-0.5">Below margin limit criteria</span>
-              </div>
-            </Card>
-
-            <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-              <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-400">Preservation Index</p>
-                <h3 className="text-2xl font-black text-slate-900">Solid (A+)</h3>
-                <span className="text-[9px] text-emerald-600 font-bold block mt-0.5">Highly compliant student base</span>
-              </div>
-            </Card>
-
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            
-            {/* Recharts chart visualization */}
-            <Card className="lg:col-span-3 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-8">
-              <div className="mb-6">
-                <CardTitle className="text-lg font-black text-slate-900">Attendance Trends</CardTitle>
-                <CardDescription className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">7-day presence variance timeline</CardDescription>
-              </div>
-              <div className="h-72 w-full pr-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorOverall" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorStaff" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis domain={[60, 100]} stroke="#94a3b8" fontSize={11} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 'bold', paddingTop: 10 }} />
-                    <Area type="monotone" name="Student Presence %" dataKey="overall" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorOverall)" />
-                    <Area type="monotone" name="Staff Attendance %" dataKey="staffRate" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorStaff)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Attendance standings */}
-            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden flex flex-col">
-              <CardHeader className="border-b border-slate-50 px-8 py-6 pt-8 bg-white">
-                <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Active Standings</CardTitle>
-                <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Attendees ranking evaluation list</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-y-auto max-h-[300px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50">
-                      <TableHead className="pl-6 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</TableHead>
-                      <TableHead className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Roster Ratio</TableHead>
-                      <TableHead className="pr-6 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Ratio Rate</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportRoster.map((rep) => (
-                      <TableRow key={rep.id} className="h-14 hover:bg-slate-50/50">
-                        <TableCell className="pl-6 flex flex-col gap-0.5 justify-center">
-                          <span className="font-extrabold text-slate-800 text-sm tracking-tight">{rep.name}</span>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">GR {rep.grno || `GR-${rep.id}`}</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="text-[10px] font-extrabold text-slate-500">
-                            {rep.present} / 20 Present
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="pr-6 text-right">
-                          <span className={cn(
-                            "text-sm font-black",
-                            rep.rate >= 90 ? "text-emerald-600" :
-                            rep.rate >= 75 ? "text-amber-600" :
-                            "text-red-600"
-                          )}>
-                            {rep.rate}%
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {reportRoster.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-12 text-slate-400 font-semibold h-[200px]">No standing analytics computed. Ensure active students are registered.</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-          </div>
-
-        </div>
-      )}
 
     </div>
   );
