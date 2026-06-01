@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ScanID.Api.Data;
+using ScanID.Api.Interfaces;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

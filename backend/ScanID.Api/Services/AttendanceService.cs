@@ -205,7 +205,7 @@ namespace ScanID.Api.Services
                         new SqlParameter("@PunchTime", record.PunchTime ?? record.InTime),
                         new SqlParameter("@MachineId", (object?)record.MachineId ?? DBNull.Value),
                         new SqlParameter("@TransactionId", (object?)record.TransactionId ?? DBNull.Value),
-                        new SqlParameter("@CreatedDateTime", (object?)record.CreatedDateTime ?? DBNull.Value)
+                        new SqlParameter("@CreatedDateTime", (object?)record.CreatedOn ?? DBNull.Value)
                     );
                     return true;
                 }
