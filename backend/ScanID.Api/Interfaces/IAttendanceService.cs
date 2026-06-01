@@ -14,5 +14,11 @@ namespace ScanID.Api.Interfaces
         Task<IEnumerable<Attendance>> GetAttendanceAsync(DateTime date, int? schoolId, int? academicYearId);
         Task<bool> SubmitAttendanceAsync(Attendance attendance);
         Task<bool> SubmitBulkAttendanceAsync(IEnumerable<Attendance> records);
+        
+        // Iodata Raw scanner logging endpoints
+        Task<IEnumerable<IodataRecord>> GetIodataRecordsAsync(DateTime? date);
+        Task<IodataRecord?> ProcessSingleIodataLineAsync(string line);
+        Task<bool> ReprocessIodataRecordAsync(int recordId);
+        void EnqueueIodataLines(List<string> lines);
     }
 }

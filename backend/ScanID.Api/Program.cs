@@ -53,6 +53,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IMarkService, MarkService>();
 
+// Register Singleton queue service and hosted background worker for raw card scan (iodata) processing
+builder.Services.AddSingleton<IIodataQueueService, IodataQueueService>();
+builder.Services.AddHostedService<IodataBackgroundWorker>();
+
 // Configure CORS for React Frontend from appsettings/env instead of hard-coded origins.
 builder.Services.AddCors(options =>
 {

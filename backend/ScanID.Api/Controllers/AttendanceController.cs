@@ -61,5 +61,48 @@ namespace ScanID.Api.Controllers
             if (!success) return StatusCode(500, "Failed to submit bulk attendance records.");
             return Ok();
         }
+
+        /// <summary>
+        /// Retrieves iodata parsed logs.
+        /// </summary>
+        [HttpGet("iodata")]
+        public async Task<ActionResult<IEnumerable<IodataRecord>>> GetIodataRecords(DateTime? date)
+        {
+            var records = await _attendanceService.GetIodataRecordsAsync(date);
+            return Ok(records);
+        }
+
+        /// <summary>
+        /// Enqueues multiple iodata raw string scans into the background queue.
+        /// </summary>
+        [HttpPost("iodata/enqueue")]
+        public IActionResult EnqueueIodataLines(List<string> lines)
+        {
+            if (lines == null || lines.Count == 0) return BadRequest("No lines provided.");
+            _attendanceService.EnqueueIodataLines(lines);
+            return Ok(new { Message = $"{lines.Count} lines enqueued successfully for background processing." });
+        }
+
+        /// <summary>
+        /// Reprocesses a single Iodata record manually using the exact same stored procedure.
+        /// </summary>
+        [HttpPost("iodata/reprocess/{id}")]
+        public async Task<IActionResult> ReprocessIodata(int id)
+        {
+            var success = await _attendanceService.ReprocessIodataRecordAsync(id);
+            if (!success) return StatusCode(500, "Reprocessing failed.");
+            return Ok(new { Message = "Record processed/re-uploaded successfully." });
+        }
+
+        /// <summary>
+        /// Processes a single raw scanner line string immediately.
+        /// </summary>
+        [HttpPost("iodata/process-single")]
+        public async Task<ActionResult<IodataRecord>> ProcessSingleLine([FromBody] string line)
+        {
+            var record = await _attendanceService.ProcessSingleIodataLineAsync(line);
+            if (record == null) return BadRequest("Failed to process line.");
+            return Ok(record);
+        }
     }
 }

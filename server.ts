@@ -19,6 +19,20 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Rewrite /SCANiD_ERP_API/api/ to /api/ internally so that in-memory mock routes can handle them
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/SCANiD_ERP_API/api')) {
+      req.url = req.url.replace('/SCANiD_ERP_API/api', '/api');
+    } else if (req.url.startsWith('/SCANiD_ERP_API/uploads')) {
+      req.url = req.url.replace('/SCANiD_ERP_API/uploads', '/uploads');
+    } else if (req.url.startsWith('/SCANiD_ERP_API/photos')) {
+      req.url = req.url.replace('/SCANiD_ERP_API/photos', '/photos');
+    } else if (req.url.startsWith('/SCANiD_ERP_API')) {
+      req.url = req.url.replace('/SCANiD_ERP_API', '');
+    }
+    next();
+  });
+
   app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
@@ -624,7 +638,7 @@ async function startServer() {
     const batchUniforms = new Set<string>();
 
     // Sets of identifiers currently registered in simulated database (existing students, case-insensitive checks)
-    const dbRegs = new Set<string>(students.map(s => (s.registrationNumber || s.grNo || s.grno || s.GRNO || "").toString().trim().toLowerCase()).filter(Boolean));
+    const dbRegs = new Set<string>(students.map(s => (s.registrationNumber || s.GrNo || s.grNo || s.grno || s.GRNO || "").toString().trim().toLowerCase()).filter(Boolean));
     const dbAadhars = new Set<string>(students.map(s => (s.aadharCard || s.aadharcard || "").toString().trim().toLowerCase()).filter(Boolean));
     const dbRfids = new Set<string>(students.map(s => (s.rfid || s.RFID || "").toString().trim().toLowerCase()).filter(Boolean));
     const dbUniforms = new Set<string>(students.map(s => (s.uniformId || s.uniformid || "").toString().trim().toLowerCase()).filter(Boolean));
@@ -634,10 +648,10 @@ async function startServer() {
       const index = idx + 1; // 1-based index representation for error display
 
       // a) RegistrationNumber / GRNO
-      const reg = (s.registrationNumber || s.grNo || s.grno || s.GRNO || "").toString().trim().toLowerCase();
+      const reg = (s.registrationNumber || s.GrNo || s.grNo || s.grno || s.GRNO || "").toString().trim().toLowerCase();
       if (reg) {
         if (batchRegs.has(reg) || dbRegs.has(reg)) {
-          return res.status(400).json({ message: `Row ${index}: Duplicate Registration Number/GRNO '${s.registrationNumber || s.grNo || s.grno || s.GRNO}' detected.` });
+          return res.status(400).json({ message: `Row ${index}: Duplicate Registration Number/GRNO '${s.registrationNumber || s.GrNo || s.grNo || s.grno || s.GRNO}' detected.` });
         }
         batchRegs.add(reg);
       }

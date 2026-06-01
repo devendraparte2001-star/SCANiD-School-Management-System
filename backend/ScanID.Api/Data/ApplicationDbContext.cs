@@ -27,6 +27,7 @@ namespace ScanID.Api.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<NavigationItem> NavigationItems { get; set; }
         public DbSet<NavigationRole> NavigationRoles { get; set; }
+        public DbSet<IodataRecord> IodataRecords { get; set; }
 
         // Master Data Sets
         public DbSet<Standard> Standards { get; set; }
@@ -69,6 +70,7 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<Staff>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Message>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Notification>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<IodataRecord>().HasQueryFilter(x => !x.IsDeleted);
 
             // Configure NavigationRole composite key
             modelBuilder.Entity<NavigationRole>()

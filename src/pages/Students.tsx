@@ -854,22 +854,93 @@ export default function Students({ user }: { user: UserType }) {
               s.name.toLowerCase().trim() === stateName.toLowerCase()
             )?.id : undefined);
 
+            // Robust Date Parsing Helper inside loop mapping
+            const parseAndFormatDate = (val: any): string | null => {
+              if (val === undefined || val === null) return null;
+              let str = val.toString().trim();
+              if (!str) return null;
+
+              // Check if it's an Excel serial number
+              const num = Number(str);
+              if (!isNaN(num) && num > 10000 && num < 100000) {
+                try {
+                  const excelEpoch = new Date(1899, 11, 30);
+                  const tempDate = new Date(excelEpoch.getTime() + num * 24 * 60 * 60 * 1000);
+                  const y = tempDate.getFullYear();
+                  const m = String(tempDate.getMonth() + 1).padStart(2, '0');
+                  const d = String(tempDate.getDate()).padStart(2, '0');
+                  return `${y}-${m}-${d}`;
+                } catch {
+                  // fallback
+                }
+              }
+
+              // Handle DD.MM.YYYY, DD/MM/YYYY, DD-MM-YYYY
+              const dmyMatch = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+              if (dmyMatch) {
+                const day = dmyMatch[1].padStart(2, '0');
+                const month = dmyMatch[2].padStart(2, '0');
+                const year = dmyMatch[3];
+                return `${year}-${month}-${day}`;
+              }
+
+              // Handle YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+              const ymdMatch = str.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+              if (ymdMatch) {
+                const year = ymdMatch[1];
+                const month = ymdMatch[2].padStart(2, '0');
+                const day = ymdMatch[3].padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              }
+
+              try {
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime())) {
+                  const y = parsed.getFullYear();
+                  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                  const d = String(parsed.getDate()).padStart(2, '0');
+                  return `${y}-${m}-${d}`;
+                }
+              } catch {
+                // fallback
+              }
+
+              return null;
+            };
+
             // Map standard fields for DB persistence
             const grno = getFieldCleanVal(["GRNO", "GrNo"]);
             const fName = getFieldCleanVal(["FirstName", "FNAME", "first_name"]);
             const mName = getFieldCleanVal(["MiddleName", "MNAME", "middle_name"]);
             const lName = getFieldCleanVal(["LastName", "LNAME", "last_name"]);
 
+            // Normalize Gender
+            let genderVal = getFieldCleanVal(["Gender", "GENDER"]);
+            if (genderVal.toLowerCase() === "m" || genderVal.toLowerCase() === "male") {
+              genderVal = "Male";
+            } else if (genderVal.toLowerCase() === "f" || genderVal.toLowerCase() === "female") {
+              genderVal = "Female";
+            } else {
+              genderVal = "Male"; // Default fallback
+            }
+
+            const rawRoll = getFieldCleanVal(["RollNumber", "Roll", "ROLLNO", "roll_number", "roll"]);
+            let rollNumberValue = parseInt(rawRoll) || 0;
+            if (isNaN(rollNumberValue)) rollNumberValue = 0;
+
+            let schoolIdVal = parseInt(schMasterId || item.SchoolId || user.schoolId || "1");
+            if (isNaN(schoolIdVal)) schoolIdVal = 1;
+
             return {
               GrNo: grno,
               name: `${fName} ${mName} ${lName}`.trim() || item.Name || `Student ${index + 1}`,
-              schoolId: parseInt(schMasterId || item.SchoolId || user.schoolId || "1"),
-              rollNumber: parseInt(getFieldCleanVal(["RollNumber", "ROLLNO", "roll_number"]) || "0"),
+              schoolId: schoolIdVal,
+              rollNumber: rollNumberValue,
               firstName: fName,
               middleName: mName,
               lastName: lName,
-              gender: getFieldCleanVal(["Gender", "GENDER"]) || "Male",
-              dateOfBirth: getFieldCleanVal(["DateOfBirth", "dob", "DOB", "birth_date"]),
+              gender: genderVal,
+              dateOfBirth: parseAndFormatDate(getFieldCleanVal(["DateOfBirth", "dob", "DOB", "birth_date"])),
               fatherContactNo: getFieldCleanVal(["FatherContactNo", "Mobile", "MOBILE", "contact_number", "Mobile no", "Mobile No", "MobileNo"]),
               motherContactNo: getFieldCleanVal(["MotherContactNo", "SecondaryMobile", "SecondaryContact", "SecondaryPhone", "contact2"]),
               email: getFieldCleanVal(["Email", "EMAIL"]),
@@ -893,7 +964,7 @@ export default function Students({ user }: { user: UserType }) {
               cityId: cityId,
               stateId: stateId,
               schoolSectionId: schoolSectionId,
-              admissionDate: getFieldCleanVal(["AdmissionDate", "admission_date"]),
+              admissionDate: parseAndFormatDate(getFieldCleanVal(["AdmissionDate", "admission_date"])),
 
               uniformId: getFieldCleanVal(["UniformID", "UniformId", "uniformid", "uniform_id"]),
               sms: getFieldCleanVal(["SecondarySMS", "sms"]) === "Yes" || getFieldCleanVal(["SecondarySMS", "sms"]).toLowerCase() === "true",
@@ -1102,8 +1173,11 @@ export default function Students({ user }: { user: UserType }) {
             successCount += validRows.length;
           } catch (error: any) {
             console.error(`Chunk ${i} upload error:`, error);
+            const errorMsg = typeof error.response?.data === 'string'
+              ? error.response.data
+              : (error.response?.data?.message || error.message || 'Server error');
             setUploadResults(prev => prev.map(res =>
-              chunkIndices.includes(res.id) ? { ...res, status: 'error', error: error.response?.data?.message || 'Server error' } : res
+              chunkIndices.includes(res.id) ? { ...res, status: 'error', error: errorMsg } : res
             ));
             failCount += chunk.length;
           }

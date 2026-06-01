@@ -35,7 +35,11 @@ import {
   AlertCircle, 
   TrendingUp, 
   Users, 
-  Layers
+  Layers,
+  Cpu,
+  Sliders,
+  RefreshCw,
+  Play
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -395,6 +399,117 @@ export default function Attendance({ user }: { user: any }) {
   };
 
   // -----------------------------------------
+  // State and Actions for RFID Iodata Auto-Processing Tab
+  // -----------------------------------------
+  const [manualSubTab, setManualSubTab] = useState<"classic" | "iodata">("iodata");
+  const [iodataLogs, setIodataLogs] = useState<any[]>([]);
+  const [iodataFile, setIodataFile] = useState<File | null>(null);
+  const [isUploadingIodata, setIsUploadingIodata] = useState(false);
+  const [iodataImportMode, setIodataImportMode] = useState<"background" | "immediate">("background");
+  const [iodataFilterDate, setIodataFilterDate] = useState<string>("");
+  const [iodataDragActive, setIodataDragActive] = useState(false);
+
+  const fetchIodataLogs = async () => {
+    try {
+      const res = await apiService.getIodataRecords(iodataFilterDate || undefined);
+      setIodataLogs(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+    } catch (err) {
+      console.error("Failed to fetch Iodata logs", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "manual" && manualSubTab === "iodata") {
+      fetchIodataLogs();
+    }
+  }, [activeTab, manualSubTab, iodataFilterDate]);
+
+  const handleIodataDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIodataDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIodataDragActive(false);
+    }
+  };
+
+  const handleIodataDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIodataDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setIodataFile(e.dataTransfer.files[0]);
+      toast.success(`Loaded iodata file: ${e.dataTransfer.files[0].name}`);
+    }
+  };
+
+  const handleIodataFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIodataFile(e.target.files[0]);
+      toast.success(`Loaded iodata file: ${e.target.files[0].name}`);
+    }
+  };
+
+  const handleIodataUploadSubmit = async () => {
+    if (!iodataFile) {
+      toast.error("Please load a valid iodata file first.");
+      return;
+    }
+
+    setIsUploadingIodata(true);
+    try {
+      const text = await iodataFile.text();
+      const lines = text.split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      if (lines.length === 0) {
+        toast.error("The selected file is empty.");
+        setIsUploadingIodata(false);
+        return;
+      }
+
+      if (iodataImportMode === "background") {
+        await apiService.enqueueIodataLines(lines);
+        toast.success(`Successfully enqueued ${lines.length} card scan lines into the back-end Background Service!`);
+      } else {
+        let successCount = 0;
+        for (const line of lines) {
+          try {
+            await apiService.processSingleIodataLine(line);
+            successCount++;
+          } catch (e) {
+            console.error("Immediate line processing error:", line, e);
+          }
+        }
+        toast.success(`Processed ${successCount} out of ${lines.length} scan records immediately using database stored procedures!`);
+      }
+
+      setIodataFile(null);
+      setTimeout(() => {
+        fetchIodataLogs();
+      }, 500);
+    } catch (err) {
+      console.error("Iodata processing failure:", err);
+      toast.error("Failed to parse and upload iodata scan records.");
+    } finally {
+      setIsUploadingIodata(false);
+    }
+  };
+
+  const handleReprocessIodata = async (id: number) => {
+    try {
+      await apiService.reprocessIodata(id);
+      toast.success("Record successfully reprocessed and attendance updated via stored procedure!");
+      fetchIodataLogs();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to manual reprocess this punch record.");
+    }
+  };
+
+  // -----------------------------------------
   // Report Analytics Calculations
   // -----------------------------------------
   // Construct dummy aggregate analysis logs
@@ -694,7 +809,37 @@ export default function Attendance({ user }: { user: any }) {
           MANUAL ATTENDANCE UPLOAD TAB
          ----------------------------------------- */}
       {activeTab === "manual" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6 w-full">
+          {/* Configurable Modern Sub-tab selection for Classic vs RFID Importer */}
+          <div className="flex bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
+            <button
+              onClick={() => setManualSubTab("iodata")}
+              className={cn(
+                "px-4 py-2 text-xs font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2",
+                manualSubTab === "iodata"
+                  ? "bg-white text-emerald-800 shadow-sm border-b-2 border-emerald-500"
+                  : "text-slate-400 hover:text-slate-700"
+              )}
+            >
+              <Cpu size={14} className="animate-pulse" />
+              RFID Auto Importer (IO Data)
+            </button>
+            <button
+              onClick={() => setManualSubTab("classic")}
+              className={cn(
+                "px-4 py-2 text-xs font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2",
+                manualSubTab === "classic"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-400 hover:text-slate-700"
+              )}
+            >
+              <Sliders size={14} />
+              Manual Roll Mark
+            </button>
+          </div>
+
+          {manualSubTab === "classic" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Settings panel */}
           <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white">
@@ -907,6 +1052,221 @@ export default function Attendance({ user }: { user: any }) {
           </Card>
         </div>
       )}
+
+      {/* Render RFID Iodata Auto-Importer Tab */}
+      {manualSubTab === "iodata" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+          
+          {/* RFID file uploader panel */}
+          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white">
+            <CardHeader className="border-b border-slate-50 px-8 py-6">
+              <CardTitle className="text-lg font-black text-slate-900 tracking-tight">RFID File Importer (IO Data)</CardTitle>
+              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Highly-configurable RFID log importer</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              
+              {/* Processing Mode selection */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Execution Priority Mode</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIodataImportMode("background")}
+                    className={cn(
+                      "py-3 px-3 rounded-xl text-left border flex flex-col justify-between transition-all h-24",
+                      iodataImportMode === "background"
+                        ? "border-emerald-500 bg-emerald-50/30 text-emerald-900 ring-2 ring-emerald-500/10"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
+                    )}
+                  >
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider">Background Queue</span>
+                    <span className="text-[9px] font-bold text-slate-400 leading-tight block">Uses C# Hosted background service & queue. Highly performant.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIodataImportMode("immediate")}
+                    className={cn(
+                      "py-3 px-3 rounded-xl text-left border flex flex-col justify-between transition-all h-24",
+                      iodataImportMode === "immediate"
+                        ? "border-slate-800 bg-slate-900 text-white shadow-md"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
+                    )}
+                  >
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider">Immediate Run</span>
+                    <span className="text-[9px] font-bold text-slate-400 leading-tight block">Fires individual DB stored procedures instantly on thread.</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Format specifications guide */}
+              <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100 font-sans">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5 font-sans">
+                  <FileText size={12} className="text-slate-400" />
+                  Expected IO Data Schema (CSV)
+                </p>
+                <p className="text-[9px] text-slate-400 font-bold leading-normal font-sans">
+                  Each raw line contains: <br />
+                  <code className="text-slate-600 font-mono font-black break-all">RFID/CARD ID, Punch Date, Punch Time, Machine ID, Transaction ID, Created DateTime</code>
+                </p>
+              </div>
+
+              {/* Direct drag and drop dropzone */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select IO Data Raw File</label>
+                <div 
+                  onDragEnter={handleIodataDrag}
+                  onDragOver={handleIodataDrag}
+                  onDragLeave={handleIodataDrag}
+                  onDrop={handleIodataDrop}
+                  className={cn(
+                    "border-2 border-dashed rounded-2xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer min-h-36",
+                    iodataDragActive ? "border-emerald-500 bg-emerald-50/20" : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/50",
+                    iodataFile && "border-solid border-emerald-500 bg-emerald-50/30"
+                  )}
+                >
+                  <input 
+                    type="file" 
+                    id="iodata-file-upload" 
+                    className="hidden" 
+                    accept=".csv,.txt"
+                    onChange={handleIodataFileChange}
+                  />
+                  <label htmlFor="iodata-file-upload" className="w-full h-full cursor-pointer">
+                    <UploadCloud className={cn("h-10 w-10 mx-auto mb-2 text-slate-400", iodataFile && "text-emerald-500 animate-bounce")} />
+                    {iodataFile ? (
+                      <div>
+                        <p className="text-xs font-black text-emerald-800">{iodataFile.name}</p>
+                        <p className="text-[10px] font-bold text-emerald-500 uppercase mt-1">{(iodataFile.size / 1024).toFixed(1)} KB • Loaded</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-bold text-slate-600">Drag or click to choose IO Data file</p>
+                        <p className="text-[9px] font-medium text-slate-400 uppercase mt-1">Supports raw .TXT or .CSV scan outputs</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleIodataUploadSubmit} 
+                disabled={isUploadingIodata || !iodataFile}
+                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs"
+              >
+                {isUploadingIodata ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing Scans...
+                  </>
+                ) : "Upload and Parse Scans"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* RFID Importer Logs Table */}
+          <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-50 px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
+              <div>
+                <CardTitle className="text-lg font-black text-slate-900 tracking-tight font-sans">Scanner Processing Logs</CardTitle>
+                <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Processed punch reports via sp_ProcessIodataRecord</CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <Input 
+                  type="date" 
+                  value={iodataFilterDate}
+                  onChange={(e) => setIodataFilterDate(e.target.value)}
+                  className="h-9 text-xs rounded-lg border-slate-200 font-bold uppercase tracking-wider w-36 bg-slate-50"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={fetchIodataLogs}
+                  className="h-9 w-9 border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 hover:text-slate-800"
+                >
+                  <RefreshCw size={14} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader className="bg-slate-50 border-b border-slate-100">
+                  <TableRow>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pl-8">Card RFID ID</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Resolved Person</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Role</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Punch Time</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Status</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pr-8 text-right">Reprocess</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {iodataLogs.map((log: any) => (
+                    <TableRow key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                      <TableCell className="font-mono text-xs text-slate-700 font-bold py-3 pl-8">{log.rfid}</TableCell>
+                      <TableCell className="font-bold text-slate-800 py-3">
+                        {log.matchedName || (
+                          <span className="text-red-500 flex items-center gap-1 font-bold">
+                            <AlertCircle size={12} /> Unknown Card
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {log.matchedName ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                            log.role?.toLowerCase() === "student" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                          )}>
+                            {log.role || (log.isStudent ? "student" : "staff")}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic font-semibold text-xs">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-3 font-semibold text-slate-500 whitespace-nowrap">
+                        <span className="text-slate-800 font-sans">{log.punchDate || log.date?.split("T")[0]}</span>
+                        <span className="text-slate-400 text-xs ml-1.5 font-bold font-sans">({log.punchTime || log.inTime})</span>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap",
+                          log.status === "On-Time" && "bg-emerald-50 text-emerald-755 border border-emerald-200",
+                          log.status === "Early" && "bg-blue-50 text-blue-755 border border-blue-200",
+                          log.status === "Late" && "bg-amber-50 text-amber-755 border border-amber-200",
+                          log.status === "Very Late" && "bg-red-50 text-red-755 border border-red-200",
+                          (!log.status || log.status.toLowerCase() === "error") && "bg-red-100 text-red-800 animate-pulse font-black border border-red-350"
+                        )}>
+                          {log.status || "FAIL / ERROR"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-3 pr-8 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReprocessIodata(log.id)}
+                          className="h-8 px-2.5 border-slate-200 hover:border-slate-800 hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ml-auto rounded-lg"
+                        >
+                          <RefreshCw size={11} className="text-slate-400 hover:text-slate-800" />
+                          Reprocess
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {iodataLogs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold">
+                        <Cpu className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        No parsed raw RFID data records found in buffer for the filtered settings.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  )}
 
       {/* -----------------------------------------
           ATTENDANCE ANALYSIS REPORT TAB

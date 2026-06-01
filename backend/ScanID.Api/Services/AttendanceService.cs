@@ -19,12 +19,14 @@ namespace ScanID.Api.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IErrorLogService _errorLogService;
+        private readonly IIodataQueueService _queueService;
 
-        // Dependency injection of ApplicationDbContext and IErrorLogService for persistent error logging
-        public AttendanceService(ApplicationDbContext context, IErrorLogService errorLogService)
+        // Dependency injection of ApplicationDbContext, IErrorLogService, and IIodataQueueService
+        public AttendanceService(ApplicationDbContext context, IErrorLogService errorLogService, IIodataQueueService queueService)
         {
             _context = context;
             _errorLogService = errorLogService;
+            _queueService = queueService;
         }
 
         /// <summary>
@@ -132,6 +134,98 @@ namespace ScanID.Api.Services
                     return false;
                 }
             });
+        }
+
+        public async Task<IEnumerable<IodataRecord>> GetIodataRecordsAsync(DateTime? date)
+        {
+            // Execute the stored procedure sp_GetIodataRecords to pull logs
+            return await DbMapper.ExecuteStoredProcedureAsync<IodataRecord>(
+                _context,
+                "dbo.sp_GetIodataRecords",
+                ("Date", date)
+            );
+        }
+
+        public async Task<IodataRecord?> ProcessSingleIodataLineAsync(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return null;
+
+            try
+            {
+                var parts = line.Split(',');
+                if (parts.Length >= 3)
+                {
+                    var rfid = parts[0].Trim();
+                    var punchDate = parts[1].Trim();
+                    var punchTime = parts[2].Trim();
+                    var machineId = parts.Length > 3 ? parts[3].Trim() : null;
+                    var transactionId = parts.Length > 4 ? parts[4].Trim() : null;
+                    var createdDateTime = parts.Length > 5 ? parts[5].Trim() : null;
+
+                    var records = await DbMapper.ExecuteStoredProcedureAsync<IodataRecord>(
+                        _context,
+                        "dbo.sp_ProcessIodataRecord",
+                        ("Rfid", rfid),
+                        ("PunchDate", punchDate),
+                        ("PunchTime", punchTime),
+                        ("MachineId", machineId),
+                        ("TransactionId", transactionId),
+                        ("CreatedDateTime", createdDateTime)
+                    );
+
+                    using var enumerator = records.GetEnumerator();
+                    return enumerator.MoveNext() ? enumerator.Current : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                await _errorLogService.InsertErrorLogAsync(
+                    ex.Message,
+                    "Error",
+                    ex.ToString(),
+                    $"AttendanceService.ProcessSingleIodataLineAsync - Raw line: {line}"
+                );
+            }
+            return null;
+        }
+
+        public async Task<bool> ReprocessIodataRecordAsync(int recordId)
+        {
+            return await ExecuteWithRetryAsync(async () =>
+            {
+                try
+                {
+                    var record = await _context.IodataRecords.FindAsync(recordId);
+                    if (record == null) return false;
+
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "EXEC dbo.sp_ProcessIodataRecord @Rfid, @PunchDate, @PunchTime, @MachineId, @TransactionId, @CreatedDateTime",
+                        new SqlParameter("@Rfid", record.Rfid),
+                        new SqlParameter("@PunchDate", record.PunchDate ?? record.Date.ToString("MM/dd/yyyy")),
+                        new SqlParameter("@PunchTime", record.PunchTime ?? record.InTime),
+                        new SqlParameter("@MachineId", (object?)record.MachineId ?? DBNull.Value),
+                        new SqlParameter("@TransactionId", (object?)record.TransactionId ?? DBNull.Value),
+                        new SqlParameter("@CreatedDateTime", (object?)record.CreatedDateTime ?? DBNull.Value)
+                    );
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    await _errorLogService.InsertErrorLogAsync(
+                        ex.Message,
+                        "Error",
+                        ex.ToString(),
+                        $"AttendanceService.ReprocessIodataRecordAsync - Record ID: {recordId}"
+                    );
+                    return false;
+                }
+            });
+        }
+
+        public void EnqueueIodataLines(List<string> lines)
+        {
+            if (lines == null || lines.Count == 0) return;
+            _queueService.EnqueueRange(lines);
         }
     }
 }

@@ -772,6 +772,35 @@ CREATE TABLE [dbo].[Notifications](
 END
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[IodataRecords]') AND type in (N'U'))
+BEGIN
+CREATE TABLE [dbo].[IodataRecords](
+    [Id] [int] IDENTITY(1,1) NOT NULL,
+    [Rfid] [nvarchar](100) NOT NULL,
+    [Date] [datetime2](7) NOT NULL,
+    [InTime] [nvarchar](15) NOT NULL,
+    [IsPresent] [bit] NOT NULL DEFAULT(1),
+    [IsStudent] [bit] NOT NULL DEFAULT(0),
+    [ShiftId] [int] NULL,
+    [GrNo] [nvarchar](100) NULL,
+    [MatchedName] [nvarchar](255) NULL,
+    [Role] [nvarchar](50) NULL,
+    [Status] [nvarchar](50) NULL,
+    [PunchDate] [nvarchar](50) NULL,
+    [PunchTime] [nvarchar](50) NULL,
+    [MachineId] [nvarchar](50) NULL,
+    [TransactionId] [nvarchar](50) NULL,
+    [IsActive] [bit] NOT NULL DEFAULT (1),
+    [IsDeleted] [bit] NOT NULL DEFAULT (0),
+    [CreatedBy] [nvarchar](max) NULL,
+    [CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [ModifiedBy] [nvarchar](max) NULL,
+    [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+ CONSTRAINT [PK_IodataRecords] PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+END
+GO
+
 -- 9. Sample Infrastructure Data
 IF NOT EXISTS (SELECT * FROM [dbo].[ErrorLogs] WHERE [Id] = 1)
 BEGIN

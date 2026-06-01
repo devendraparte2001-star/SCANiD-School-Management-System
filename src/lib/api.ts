@@ -32,6 +32,10 @@ const mockFallbacks: Record<string, any> = {
       address: "Localhost",
     },
   ],
+  "/attendance": [
+    { id: 1, studentId: 1, date: new Date().toISOString().split('T')[0], status: "Present" },
+    { id: 2, studentId: 2, date: new Date().toISOString().split('T')[0], status: "Absent" }
+  ],
   "/schools": [
     {
       id: 1,
@@ -274,7 +278,7 @@ api.interceptors.response.use(
         const mockData = mockFallbacks[mockKey];
         // Wrap in { data: [...] } for specific paths
         const needsDataWrap = cleanUrl.includes("/masters/") || 
-                            ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));
+                            ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/attendance", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));
         
         const finalResponseData = needsDataWrap ? { data: mockData } : mockData;
           
@@ -404,6 +408,10 @@ export const apiService = {
     }
     return api.post("/attendance", data);
   },
+  getIodataRecords: (date?: string) => api.get("/attendance/iodata", { params: { date } }),
+  enqueueIodataLines: (lines: string[]) => api.post("/attendance/iodata/enqueue", lines),
+  reprocessIodata: (id: number) => api.post(`/attendance/iodata/reprocess/${id}`),
+  processSingleIodataLine: (line: string) => api.post("/attendance/iodata/process-single", line),
 
   // Fees
   getFees: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) => api.get("/fees", { params: { schoolId, academicYearId, ...params } }),

@@ -584,5 +584,28 @@ namespace ScanID.Api.Models
         [Required]
         public string Name { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// Represents a parsed card log entry imported from an iodata text file.
+    /// </summary>
+    public class IodataRecord : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Rfid { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public string InTime { get; set; } = string.Empty;
+        public bool IsPresent { get; set; } = true;
+        public bool IsStudent { get; set; } = false;
+        public int? ShiftId { get; set; }
+        public string? GrNo { get; set; }
+        public string? MatchedName { get; set; }
+        public string? Role { get; set; }
+        public string? Status { get; set; }
+        public string? PunchDate { get; set; }
+        public string? PunchTime { get; set; }
+        public string? MachineId { get; set; }
+        public string? TransactionId { get; set; }
+    }
 }
 
