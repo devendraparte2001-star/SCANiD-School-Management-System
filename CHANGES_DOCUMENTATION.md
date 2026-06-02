@@ -454,5 +454,24 @@ This document records the exact changes, the root causes identified, and the fix
 - `/src/pages/Attendance.tsx`: Refined folder scanner logic catch block to gracefully parse and present deep server-side exceptions.
 - `/CHANGES_DOCUMENTATION.md`: Appended details for this final timeout performance patch.
 
+---
+
+## 46. Issue: Transactional Atomicity & Clean Reprocessing for Local Folder Scanner (Batch 8)
+- **Root Cause & Requirements**:
+  1. **Partial Ingestion state on Crashing or Timeouts**: When processing files in a range, a timeout or server drop would leave the system in a half-processed state. Re-running the parser would duplicate some rows or trigger sequential query fatigue on large database spaces.
+  2. **Non-Transactional Runs**: Files were read line-by-line, committing each line independently to the database with no recovery protocol if an operation failed or aborted mid-way.
+
+- **Remediation**:
+  1. **Transaction Isolation Scope Per File**: Wrapped each matching date file's processing inside an isolated database transaction (`BeginTransactionAsync`). 
+  2. **Atomic Replace-On-Read (Truncate-and-Reload)**: Introduced a pre-import clean-up routine. Before lines are parsed, any existing `IodataRecords` and correlated `Attendance` rows tagged with source `'IodataService'` for the target date are completely deleted under the transaction scope.
+  3. **Rollback Integrity on Failure**: If any exception or database constraint error occurs, the entire day's operations are immediately rolled back, logged in the core SQL Server error registers via the log service, and zero half-processed or corrupt states are left in the system. Successful previous days remain fully committed.
+
+---
+
+## 47. Modified/Synchronized Files List (Batch 8)
+
+- `/backend/ScanID.Api/Services/AttendanceService.cs`: Implemented transaction scopes, DELETE pre-import wipes, and clean rollbacks for date range scans.
+- `/CHANGES_DOCUMENTATION.md`: Appended documentation for Batch 8 release.
+
 
 

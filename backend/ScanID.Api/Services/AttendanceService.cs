@@ -270,18 +270,54 @@ namespace ScanID.Api.Services
                         var lines = await File.ReadAllLinesAsync(targetPath);
                         logs.Add($"[READ] Read {lines.Length} scan records from {fileNamePattern}");
 
-                        foreach (var line in lines)
+                        // Standard Industry Pattern: Process each school day's scanner log file inside its own atomic database transaction scope.
+                        // This guarantees that either all punch logs for a given day are fully ingested, or the entire day's operations are rolled back
+                        // to prevent corrupt, half-processed student/staff attendance entries.
+                        using var transaction = await _context.Database.BeginTransactionAsync();
+                        try
                         {
-                            if (string.IsNullOrWhiteSpace(line)) continue;
-                            try
+                            logs.Add($"[TX_START] Initiating atomic database transaction for date: {d:yyyy-MM-dd}");
+
+                            // Pre-import clean-up (Replace-On-Read / Truncate-and-Reload model):
+                            // To support clean, error-tolerant re-processing and completely bypass duplicate constraints,
+                            // we wipe any active IodataRecords or corresponding attendance entries created by 'IodataService' on match d. Date.
+                            await _context.Database.ExecuteSqlRawAsync(
+                                "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate)",
+                                new SqlParameter("@TargetDate", d.Date)
+                            );
+
+                            await _context.Database.ExecuteSqlRawAsync(
+                                "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate) AND [UploadSource] = 'IodataService'",
+                                new SqlParameter("@TargetDate", d.Date)
+                            );
+
+                            int localLinesCount = 0;
+                            foreach (var line in lines)
                             {
+                                if (string.IsNullOrWhiteSpace(line)) continue;
                                 await ProcessSingleIodataLineAsync(line);
-                                totalLinesProcessed++;
+                                localLinesCount++;
                             }
-                            catch (Exception ex)
-                            {
-                                logs.Add($"[LINE_ERROR] Failed parsing queue row in {fileNamePattern}: '{line}' - {ex.Message}");
-                            }
+
+                            // Commit daily transaction on total sequence success
+                            await transaction.CommitAsync();
+                            totalLinesProcessed += localLinesCount;
+                            
+                            logs.Add($"[TX_COMMIT] Successfully committed all {localLinesCount} records for {fileNamePattern}.");
+                        }
+                        catch (Exception fileEx)
+                        {
+                            // In case of any SQL exceptions, schema mismatch, or line timeouts, roll back all table mutations done during this date's processing blocks.
+                            await transaction.RollbackAsync();
+                            logs.Add($"[TX_ROLLBACK] Critical failure in '{fileNamePattern}'. Database state cleanly rolled back! Error: {fileEx.Message}");
+                            
+                            // High-performance incident reporting in core audit registers
+                            await _errorLogService.InsertErrorLogAsync(
+                                fileEx.Message,
+                                "Error",
+                                fileEx.ToString(),
+                                $"AttendanceService.ProcessIodataDateRangeAsync - Error during file import transaction rollback for {fileNamePattern}."
+                            );
                         }
                     }
                     else
