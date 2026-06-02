@@ -1452,7 +1452,7 @@ export default function Students({ user }: { user: UserType }) {
   };
 
   const filteredStudents = students; // Server now handles filtering, sorting and pagination
-  console.log("Rendering with students:", filteredStudents);
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-2 duration-500">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">

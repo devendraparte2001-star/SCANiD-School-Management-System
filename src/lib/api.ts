@@ -409,6 +409,7 @@ export const apiService = {
     return api.post("/attendance", data);
   },
   getIodataRecords: (date?: string) => api.get("/attendance/iodata", { params: { date } }),
+  processIodataRange: (fromDate: string, toDate: string) => api.post("/attendance/iodata/process-range", null, { params: { fromDate, toDate } }),
   enqueueIodataLines: (lines: string[]) => api.post("/attendance/iodata/enqueue", lines),
   reprocessIodata: (id: number) => api.post(`/attendance/iodata/reprocess/${id}`),
   processSingleIodataLine: (line: string) => api.post("/attendance/iodata/process-single", line),

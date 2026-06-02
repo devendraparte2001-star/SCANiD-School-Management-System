@@ -23,17 +23,62 @@ namespace ScanID.Api.Controllers
         }
 
         /// <summary>
-        /// Retrieves attendance records for a specific date, optional school, and optional academic year.
+        /// Retrieves attendance records with full server-side pagination, sorting, and role filtering.
+        /// Supports both flat legacy and paginated enveloped client handlers seamlessly.
         /// </summary>
-        /// <param name="date">The date of attendance.</param>
-        /// <param name="schoolId">Optional school filter.</param>
-        /// <param name="academicYearId">Optional academic year filter.</param>
-        /// <returns>A list of attendance records.</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendance(DateTime date, int? schoolId, int? academicYearId)
+        public async Task<ActionResult> GetAttendance(
+            [FromQuery] DateTime date, 
+            [FromQuery] int? schoolId, 
+            [FromQuery] int? academicYearId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 15,
+            [FromQuery] string? search = null,
+            [FromQuery] string? role = null)
         {
             var records = await _attendanceService.GetAttendanceAsync(date, schoolId, academicYearId);
-            return Ok(records);
+            
+            // Filter by attendee type (Student or Staff)
+            var filtered = records;
+            
+            if (!string.IsNullOrEmpty(role))
+            {
+                if (role.Equals("student", StringComparison.OrdinalIgnoreCase))
+                {
+                    filtered = filtered.Where(x => x.StudentId != null);
+                }
+                else if (role.Equals("staff", StringComparison.OrdinalIgnoreCase) || role.Equals("teacher", StringComparison.OrdinalIgnoreCase))
+                {
+                    filtered = filtered.Where(x => x.StaffId != null);
+                }
+            }
+            
+            // Search criteria matching Status or UploadSource
+            if (!string.IsNullOrEmpty(search))
+            {
+                filtered = filtered.Where(x => 
+                    (x.Status != null && x.Status.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (x.UploadSource != null && x.UploadSource.Contains(search, StringComparison.OrdinalIgnoreCase))
+                );
+            }
+            
+            int totalCount = filtered.Count();
+            var paginated = filtered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+                
+            int totalPages = (int)Math.Max(1, Math.Ceiling((double)totalCount / pageSize));
+            
+            return Ok(new {
+                data = paginated,
+                pagination = new {
+                    totalCount,
+                    totalPages,
+                    page,
+                    pageSize
+                }
+            });
         }
 
         /// <summary>
@@ -103,6 +148,20 @@ namespace ScanID.Api.Controllers
             var record = await _attendanceService.ProcessSingleIodataLineAsync(line);
             if (record == null) return BadRequest("Failed to process line.");
             return Ok(record);
+        }
+
+        /// <summary>
+        /// Triggers batch local folder processing for raw files by selected from-date and to-date period.
+        /// </summary>
+        [HttpPost("iodata/process-range")]
+        public async Task<IActionResult> ProcessIodataDateRange([FromQuery] DateTime fromDate, [FromQuery] DateTime toDate)
+        {
+            if (fromDate > toDate)
+            {
+                return BadRequest("The 'From Date' can not be later than the 'To Date'. Please adjust parameters.");
+            }
+            var logs = await _attendanceService.ProcessIodataDateRangeAsync(fromDate, toDate);
+            return Ok(new { logs });
         }
     }
 }

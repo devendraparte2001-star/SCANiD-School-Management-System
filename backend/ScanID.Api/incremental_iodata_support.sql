@@ -212,7 +212,7 @@ BEGIN
         INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
         VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, GETUTCDATE(), GETUTCDATE(), 1, 0);
 
-    -- Sync to Core Student Attendance registers (Present, Absent, Late)
+    -- Sync to Core Student/Staff Attendance registers (Present, Absent, Late)
     IF @StudentId IS NOT NULL
     BEGIN
         DECLARE @AttStatus NVARCHAR(50) = 'Present';
@@ -221,7 +221,17 @@ BEGIN
             SET @AttStatus = 'Late';
         END
         
-        EXEC dbo.sp_ManageAttendance @StudentId, @Date, @AttStatus, @Status, 'IodataService';
+        EXEC dbo.sp_ManageAttendance @StudentId = @StudentId, @Date = @Date, @Status = @AttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = NULL, @MarkedByUserId = 1, @UploadSource = 'IodataService';
+    END
+    ELSE IF @StaffId IS NOT NULL
+    BEGIN
+        DECLARE @StaffAttStatus NVARCHAR(50) = 'Present';
+        IF @Status = 'Very Late' OR @Status = 'Late'
+        BEGIN
+            SET @StaffAttStatus = 'Late';
+        END
+        
+        EXEC dbo.sp_ManageAttendance @StudentId = NULL, @Date = @Date, @Status = @StaffAttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = @StaffId, @MarkedByUserId = 1, @UploadSource = 'IodataService';
     END
 
     -- Return the processed result

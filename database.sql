@@ -550,10 +550,13 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[At
 BEGIN
 CREATE TABLE [dbo].[Attendance](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[StudentId] [int] NOT NULL,
+	[StudentId] [int] NULL,
+	[StaffId] [int] NULL,
 	[Date] [datetime2](7) NOT NULL,
 	[Status] [nvarchar](max) NOT NULL DEFAULT (N'Present'),
-	[MarkedByUserId] [int] NOT NULL,
+	[MarkedByUserId] [int] NOT NULL DEFAULT (1),
+    [UploadSource] [nvarchar](100) NOT NULL DEFAULT (N'Manual'),
+    [Remarks] [nvarchar](max) NULL,
     [IsActive] [bit] NOT NULL DEFAULT (1),
     [IsDeleted] [bit] NOT NULL DEFAULT (0),
     [CreatedBy] [nvarchar](max) NULL,
@@ -568,7 +571,9 @@ GO
 IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Attendance]') AND type in (N'U'))
 BEGIN
     IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Attendance_Students_StudentId')
-        ALTER TABLE [dbo].[Attendance] ADD CONSTRAINT [FK_Attendance_Students_StudentId] FOREIGN KEY([StudentId]) REFERENCES [dbo].[Students] ([Id]) ON DELETE CASCADE;
+        ALTER TABLE [dbo].[Attendance] ADD CONSTRAINT [FK_Attendance_Students_StudentId] FOREIGN KEY([StudentId]) REFERENCES [dbo].[Students] ([Id]);
+    IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Attendance_Staff_StaffId')
+        ALTER TABLE [dbo].[Attendance] ADD CONSTRAINT [FK_Attendance_Staff_StaffId] FOREIGN KEY([StaffId]) REFERENCES [dbo].[Staff] ([Id]);
 END
 GO
 
@@ -1672,13 +1677,13 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @TotalStudents INT;
-    DECLARE @TotalTeachers INT;
+    DECLARE @TotalStaff INT;
     DECLARE @FeeCollection NVARCHAR(50);
     DECLARE @AttendanceRate NVARCHAR(50);
     DECLARE @PerformanceTrend NVARCHAR(50);
 
     SELECT @TotalStudents = COUNT(*) FROM [dbo].[Students] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId) AND (@AcademicYearId IS NULL OR AcademicYearId = @AcademicYearId);
-    SELECT @TotalTeachers = COUNT(*) FROM [dbo].[Staff] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId);
+    SELECT @TotalStaff = COUNT(*) FROM [dbo].[Staff] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId);
 
     DECLARE @TotalFees DECIMAL(18,2);
     SELECT @TotalFees = SUM(Amount) FROM [dbo].[Fees] f INNER JOIN [dbo].[Students] s ON f.StudentId = s.Id WHERE f.IsDeleted = 0 AND s.IsDeleted = 0 AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId) AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId);
@@ -1697,7 +1702,7 @@ BEGIN
 
     SET @PerformanceTrend = '+2.4%';
 
-    SELECT @TotalStudents AS TotalStudents, @TotalTeachers AS TotalTeachers, @FeeCollection AS FeeCollection, @AttendanceRate AS AttendanceRate, @PerformanceTrend AS PerformanceTrend;
+    SELECT @TotalStudents AS TotalStudents, @TotalStaff AS TotalStaff, @FeeCollection AS FeeCollection, @AttendanceRate AS AttendanceRate, @PerformanceTrend AS PerformanceTrend;
 END;
 GO
 

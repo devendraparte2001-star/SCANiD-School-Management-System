@@ -243,18 +243,24 @@ namespace ScanID.Api.Models
 
 
     /// <summary>
-    /// Tracks student attendance.
+    /// Tracks student and staff attendance.
     /// </summary>
     public class Attendance : BaseEntity
     {
         public int Id { get; set; }
-        public int StudentId { get; set; }
+        public int? StudentId { get; set; }
+        public int? StaffId { get; set; }
         public DateTime Date { get; set; }
         public string Status { get; set; } = "Present";
-        public int MarkedByUserId { get; set; }
+        public int MarkedByUserId { get; set; } = 1;
+        public string UploadSource { get; set; } = "Manual";
+        public string? Remarks { get; set; }
 
         [ForeignKey("StudentId")]
         public Student? Student { get; set; }
+
+        [ForeignKey("StaffId")]
+        public Staff? Staff { get; set; }
     }
 
     /// <summary>

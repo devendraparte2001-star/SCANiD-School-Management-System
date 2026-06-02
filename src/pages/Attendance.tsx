@@ -83,6 +83,14 @@ export default function Attendance({ user }: { user: any }) {
   const [selectedStandard, setSelectedStandard] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");
 
+  // Server-side Toggle, Pagination, and Search for Daily Roll Book
+  const [recordType, setRecordType] = useState<"student" | "staff">("student");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [search, setSearch] = useState("");
+
   // -----------------------------------------
   // State for Manual Attendance Upload Tab
   // -----------------------------------------
@@ -95,6 +103,18 @@ export default function Attendance({ user }: { user: any }) {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
+
+  // Batch Local Folder Range processing states
+  const [ioFolderFromDate, setIoFolderFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [ioFolderToDate, setIoFolderToDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [folderScanLogs, setFolderScanLogs] = useState<string[]>([]);
+  const [isProcessingFolderScan, setIsProcessingFolderScan] = useState(false);
+
+  // Audit Logs database tracking states
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
   // -----------------------------------------
   // Check Permissions
@@ -156,54 +176,115 @@ export default function Attendance({ user }: { user: any }) {
     fetchTeachers();
   }, [user.schoolId, selectedSchoolId, user.role]);
 
-  // Fetch student roster and dynamic saved attendance for the active date
-  useEffect(() => {
-    const fetchStudentsAndAttendance = async () => {
-      setLoading(true);
-      try {
-        const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
-        const academicYearIdToUse = parseSafeInt(user.academicYearId);
-        const formattedDate = format(date, "yyyy-MM-dd");
+  // Fetch student/staff roster and dynamic saved attendance for the active date
+  const fetchStudentsAndAttendance = async () => {
+    setLoading(true);
+    try {
+      const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
+      const academicYearIdToUse = parseSafeInt(user.academicYearId);
+      const formattedDate = format(date, "yyyy-MM-dd");
 
-        const stdId = selectedStandard && selectedStandard !== "all" ? parseSafeInt(selectedStandard) : undefined;
-        const sectId = selectedSection && selectedSection !== "all" ? parseSafeInt(selectedSection) : undefined;
+      const stdId = selectedStandard && selectedStandard !== "all" ? parseSafeInt(selectedStandard) : undefined;
+      const sectId = selectedSection && selectedSection !== "all" ? parseSafeInt(selectedSection) : undefined;
 
-        // Execute in parallel to keep application fast
-        const [studentsRes, attendanceRes] = await Promise.all([
-          // @ts-ignore
-          apiService.getStudents(schoolIdToUse, academicYearIdToUse, { standardId: stdId, sectionId: sectId }),
-          apiService.getAttendance(formattedDate, schoolIdToUse, academicYearIdToUse)
-        ]);
+      // Parallelize getting active roster (paginated) and that day's attendance lists (full master list for date)
+      // Pass role filtering dynamically to getAttendance in parallel
+      const [rosterRes, attendanceRes] = await Promise.all([
+        recordType === "student"
+          ? apiService.getStudents(schoolIdToUse, academicYearIdToUse, { 
+              page, 
+              pageSize, 
+              search: search || undefined, 
+              standardId: stdId, 
+              sectionId: sectId 
+            })
+          : apiService.getStaff(schoolIdToUse, academicYearIdToUse, { 
+              page, 
+              pageSize, 
+              search: search || undefined 
+            }),
+        apiService.getAttendance(formattedDate, schoolIdToUse, academicYearIdToUse, {
+          role: recordType,
+          page: 1,
+          pageSize: 1000 // pull all for the day to match records locally
+        })
+      ]);
 
-        const studentData = Array.isArray(studentsRes.data) ? studentsRes.data : (studentsRes.data?.data || []);
-        const attendanceRecords = Array.isArray(attendanceRes.data) ? attendanceRes.data : (attendanceRes.data?.data || []);
+      const rawRoster = Array.isArray(rosterRes.data) 
+        ? rosterRes.data 
+        : (rosterRes.data?.data || []);
+      
+      const paginationObj = rosterRes.data?.pagination || {};
+      setTotalPages(paginationObj.totalPages || Math.ceil((rosterRes.data?.totalCount || rawRoster.length) / pageSize) || 1);
+      setTotalCount(rosterRes.data?.totalCount ?? paginationObj.totalCount ?? rawRoster.length);
 
-        setStudents(studentData.map((s: any) => {
-          const getVal = (prop: string, fallback?: any) => {
-            return s[prop] ?? s[prop.toLowerCase()] ?? s[prop.toUpperCase()] ?? fallback;
-          };
+      const attendanceRecords = Array.isArray(attendanceRes.data) 
+        ? attendanceRes.data 
+        : (attendanceRes.data?.data || []);
 
-          // Check if there is an existing database record for this student
-          const matchedRecord = attendanceRecords.find((r: any) => (r.studentId ?? r.StudentId) === s.id);
-          const currentStatus = matchedRecord ? (matchedRecord.status ?? matchedRecord.Status ?? "Present").toLowerCase() : "present";
+      // Mapping standard or staff records with local schema mappings safely
+      setStudents(rawRoster.map((s: any) => {
+        const getVal = (prop: string, fallback?: any) => {
+          if (!s) return fallback;
+          const userObj = s.user || {};
+          const sKeys = Object.keys(s);
+          const uKeys = Object.keys(userObj);
+          
+          const sMatch = sKeys.find(k => k.toLowerCase() === prop.toLowerCase());
+          if (sMatch) return s[sMatch];
+          
+          const uMatch = uKeys.find(k => k.toLowerCase() === prop.toLowerCase());
+          if (uMatch) return userObj[uMatch];
+          
+          return fallback;
+        };
 
+        // Determine matching daily attendance records from SQL DB
+        const matchedRecord = attendanceRecords.find((r: any) => {
+          if (recordType === "student") {
+            const rStudentId = r.studentId ?? r.StudentId;
+            return rStudentId !== null && rStudentId !== undefined && Number(rStudentId) === Number(s.id);
+          } else {
+            const rStaffId = r.staffId ?? r.StaffId;
+            return rStaffId !== null && rStaffId !== undefined && Number(rStaffId) === Number(s.id);
+          }
+        });
+
+        const currentStatus = matchedRecord 
+          ? (matchedRecord.status ?? matchedRecord.Status ?? "Present").toLowerCase() 
+          : "present";
+
+        if (recordType === "student") {
           return {
             id: s.id,
-            grno: getVal("GRNO") || s.registrationNumber || s.grno,
-            name: s.name || s.fullName || s.FullName || `${getVal("FNAME", "")} ${getVal("LNAME", "")}`.trim() || `Student ${s.id}`,
-            roll: getVal("ROLLNO") || s.rollNumber?.toString() || "0",
-            status: currentStatus
+            grno: s.grno || s.registrationNumber || s.registrationNo || `GR-${s.id}`,
+            name: s.name || s.fullName || s.FullName || `${getVal("fname", "")} ${getVal("lname", "")}`.trim() || `Student ${s.id}`,
+            roll: s.roll || s.rollNo || s.rollNumber?.toString() || "0",
+            status: currentStatus,
+            type: "student"
           };
-        }));
-      } catch (error) {
-        console.error("Failed to fetch students or daily attendance records", error);
-        toast.error("Failed to fetch students from API");
-      } finally {
-        setLoading(false);
-      }
-    };
+        } else {
+          return {
+            id: s.id,
+            grno: s.employeeId || s.initials || `EMP-${s.id}`,
+            name: getVal("name") || getVal("fullName") || `Staff Member ${s.id}`,
+            roll: s.department || s.subject || s.initials || "Staff",
+            status: currentStatus,
+            type: "staff"
+          };
+        }
+      }));
+    } catch (error) {
+      console.error("Failed to fetch custom roster or daily attendance records from cloud service", error);
+      toast.error("Failed to fetch attendance data from server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchStudentsAndAttendance();
-  }, [user.schoolId, user.academicYearId, user.role, selectedSchoolId, date, selectedStandard, selectedSection]);
+  }, [user.schoolId, user.academicYearId, user.role, selectedSchoolId, date, selectedStandard, selectedSection, recordType, page, pageSize, search]);
 
   // Update offline UI state
   const updateStatus = (id: string, status: string) => {
@@ -215,21 +296,31 @@ export default function Attendance({ user }: { user: any }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const records = students.map(s => ({
-        studentId: s.id,
-        date: date.toISOString(),
-        status: s.status.charAt(0).toUpperCase() + s.status.slice(1),
-        markedByUserId: parseSafeInt(user.id),
-        CreatedBy: user.name || user.email,
-        ModifiedBy: user.name || user.email
-      }));
+      const records = students.map(s => {
+        const payload: any = {
+          date: date.toISOString(),
+          status: s.status.charAt(0).toUpperCase() + s.status.slice(1),
+          markedByUserId: parseSafeInt(user.id),
+          CreatedBy: user.name || user.email,
+          ModifiedBy: user.name || user.email,
+          uploadSource: "Manual Upload",
+          remarks: `Daily roll registry for ${recordType}`
+        };
+        if (recordType === "student") {
+          payload.studentId = s.id;
+        } else {
+          payload.staffId = s.id;
+        }
+        return payload;
+      });
       
       // Submit safely via our dual-binding bulk transaction endpoint
       await apiService.markAttendance(records); 
-      toast.success("Attendance updated successfully in SQL Server");
+      toast.success(`${recordType === "student" ? "Student" : "Staff"} Attendance updated successfully in SQL Server`);
+      fetchStudentsAndAttendance();
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to save records to database");
+      console.error("Attendance bulk database save failure", error);
+      toast.error("Failed to save attendance changes to database");
     } finally {
       setIsSaving(false);
     }
@@ -423,6 +514,77 @@ export default function Attendance({ user }: { user: any }) {
       fetchIodataLogs();
     }
   }, [activeTab, manualSubTab, iodataFilterDate]);
+
+  // Execute processing of the raw background text scan files in local directory (C:\iodata) based on naming conventions
+  const handleIoFolderScan = async () => {
+    const start = parseISO(ioFolderFromDate);
+    const end = parseISO(ioFolderToDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      toast.error("Please enter correct and valid From & To Date ranges.");
+      return;
+    }
+
+    if (start > end) {
+      toast.error("Folder Scan validation: From Date can not exceed To Date.");
+      return;
+    }
+
+    setIsProcessingFolderScan(true);
+    setFolderScanLogs(["Initiating folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
+
+    try {
+      // Call endpoint. It will read DataMMDDYY.txt files in sequence
+      const res = await apiService.processIodataRange(ioFolderFromDate, ioFolderToDate);
+      const returnedLogs = res.data?.logs || res.data || [];
+      
+      const formattedLogs = Array.isArray(returnedLogs) 
+        ? returnedLogs 
+        : ["No files found or parsed.", "Ensure folder C:\\iodata has structural DataMMDDYY.txt files."];
+
+      setFolderScanLogs([
+        "Folder connection succeeded!",
+        `Processed files for range: ${ioFolderFromDate} to ${ioFolderToDate}`,
+        `Server raw response received.`,
+        ...formattedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+      ]);
+      toast.success("RFID local folder range scan complete!");
+      fetchIodataLogs();
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err?.response?.data || err.message || "Disk IO/SQL Procedure Error";
+      setFolderScanLogs(prev => [...prev, `[FAIL] Error occurred: ${errMsg}`, "Check if C:\\iodata directory contains matches with naming criteria: DataMMDDYY.txt"]);
+      toast.error("Folder file upload process failed - See execution debugger for details");
+    } finally {
+      setIsProcessingFolderScan(false);
+    }
+  };
+
+  // Fetch real-time paginated Audit trail of modifications
+  const fetchAuditTrail = async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await apiService.getAuditLogs({
+        page: auditPage,
+        pageSize: 15
+      });
+      const data = res.data?.data || res.data || [];
+      const items = Array.isArray(data) ? data : (data.items || data.$values || []);
+      setAuditLogs(items);
+      const paginationObj = res.data?.pagination || {};
+      setAuditTotalPages(paginationObj.totalPages || Math.ceil((paginationObj.totalCount || items.length) / 15) || 1);
+    } catch (err) {
+      console.warn("Failed to load audit trail list from db/API:", err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "report") {
+      fetchAuditTrail();
+    }
+  }, [activeTab, auditPage]);
 
   const handleIodataDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -652,47 +814,76 @@ export default function Attendance({ user }: { user: any }) {
                 </div>
               </div>
 
-              {/* Standards Code */}
+              {/* Attendee Type Toggle */}
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Standard</label>
-                <Select value={selectedStandard} onValueChange={(val) => setSelectedStandard(val || "")}>
-                  <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
-                    <SelectValue placeholder="Select Standard">
-                      {selectedStandard === "all" 
-                        ? "All Standards" 
-                        : (standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
-                    <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Standard</SelectItem>
-                    <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Standards</SelectItem>
-                    {Array.isArray(standardsMaster) && standardsMaster.map(std => (
-                      <SelectItem key={std.id} value={std.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">{std.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Attendee Class</label>
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button
+                    onClick={() => { setRecordType("student"); setPage(1); }}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-black rounded-lg transition-all uppercase tracking-wider",
+                      recordType === "student" ? "bg-white text-slate-900 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-700"
+                    )}
+                  >
+                    Students
+                  </button>
+                  <button
+                    onClick={() => { setRecordType("staff"); setPage(1); }}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-black rounded-lg transition-all uppercase tracking-wider",
+                      recordType === "staff" ? "bg-white text-slate-900 shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-700"
+                    )}
+                  >
+                    Staff
+                  </button>
+                </div>
               </div>
 
+              {/* Standards Code */}
+              {recordType === "student" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Standard</label>
+                  <Select value={selectedStandard} onValueChange={(val) => { setSelectedStandard(val || ""); setPage(1); }}>
+                    <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
+                      <SelectValue placeholder="Select Standard">
+                        {selectedStandard === "all" 
+                          ? "All Standards" 
+                          : (standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined)}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
+                      <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Standard</SelectItem>
+                      <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Standards</SelectItem>
+                      {Array.isArray(standardsMaster) && standardsMaster.map(std => (
+                        <SelectItem key={std.id} value={std.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">{std.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Divisions Code */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Division</label>
-                <Select value={selectedSection} onValueChange={(val) => setSelectedSection(val || "")}>
-                  <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
-                    <SelectValue placeholder="Select Division">
-                      {selectedSection === "all" 
-                        ? "All Divisions" 
-                        : (selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
-                    <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Division</SelectItem>
-                    <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Divisions</SelectItem>
-                    {Array.isArray(sectionsMaster) && sectionsMaster.map(sec => (
-                      <SelectItem key={sec.id} value={sec.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">Division {sec.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {recordType === "student" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Division</label>
+                  <Select value={selectedSection} onValueChange={(val) => { setSelectedSection(val || ""); setPage(1); }}>
+                    <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
+                      <SelectValue placeholder="Select Division">
+                        {selectedSection === "all" 
+                          ? "All Divisions" 
+                          : (selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined)}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
+                      <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Division</SelectItem>
+                      <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-850 font-extrabold cursor-pointer">All Divisions</SelectItem>
+                      {Array.isArray(sectionsMaster) && sectionsMaster.map(sec => (
+                        <SelectItem key={sec.id} value={sec.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">Division {sec.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Presence Summary */}
               <div className="pt-4 space-y-3">
@@ -717,12 +908,19 @@ export default function Attendance({ user }: { user: any }) {
             {/* If Roll Call tab is active */}
             {activeTab === "daily" && (
               <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white">
-                <CardHeader className="pb-6 border-b border-slate-100 bg-white px-8 pt-8 flex flex-row items-center justify-between">
+                <CardHeader className="pb-6 border-b border-slate-100 bg-white px-8 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <CardTitle className="text-2xl font-black text-slate-900">Attendance Sheet</CardTitle>
-                    <CardDescription className="text-slate-500 font-medium tracking-tight">Daily Roll Call Registry for students</CardDescription>
+                    <CardDescription className="text-slate-500 font-medium tracking-tight">Daily Roll Call Registry for {recordType === "student" ? "Students" : "Staff & Faculty"}</CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="text"
+                      placeholder={`Search ${recordType === "student" ? "student name, roll..." : "staff name..."}`}
+                      value={search}
+                      onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                      className="h-9 w-60 rounded-xl text-xs font-semibold border-slate-200 bg-slate-50/50"
+                    />
                     <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({...x, status: 'present'})))}>Mark All Present</Button>
                     {canManage && (
                       <Button 
@@ -742,74 +940,126 @@ export default function Attendance({ user }: { user: any }) {
                       <Loader2 size={32} className="animate-spin text-emerald-600" />
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                          <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
-                            <TableHead className="w-[120px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Digital ID</TableHead>
-                            <TableHead className="w-16 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Roll</TableHead>
-                            <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Student Identity</TableHead>
-                            <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
-                            {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
-                          </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.isArray(students) && students.map((student) => (
-                          <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-50/50 h-20">
-                            <TableCell className="pl-8 font-mono text-xs font-black text-blue-600 rounded-lg">{student.grno || `GR-${student.id}`}</TableCell>
-                            <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
-                            <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
-                            <TableCell>
-                              <Badge 
-                                className={cn(
-                                  "capitalize font-bold text-[10px] px-3",
-                                  student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
-                                  student.status === 'absent' ? "bg-red-100 text-red-700" :
-                                  "bg-amber-100 text-amber-700"
-                                )}
-                                variant="secondary"
-                              >
-                                {student.status}
-                              </Badge>
-                            </TableCell>
-                            {canManage && (
-                              <TableCell className="text-right pr-8">
-                                <div className="flex justify-end gap-1.5 font-bold">
-                                  <Button 
-                                    size="icon" 
-                                    variant={student.status === 'present' ? "default" : "outline"} 
-                                    className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
-                                    onClick={() => updateStatus(student.id, 'present')}
-                                  >
-                                    <Check size={14} />
-                                  </Button>
-                                  <Button 
-                                    size="icon" 
-                                    variant={student.status === 'absent' ? "default" : "outline"}
-                                    className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
-                                    onClick={() => updateStatus(student.id, 'absent')}
-                                  >
-                                    <X size={14} />
-                                  </Button>
-                                  <Button 
-                                    size="icon" 
-                                    variant={student.status === 'late' ? "default" : "outline"}
-                                    className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
-                                    onClick={() => updateStatus(student.id, 'late')}
-                                  >
-                                    <Clock size={14} />
-                                  </Button>
-                                </div>
+                    <>
+                      <Table>
+                        <TableHeader>
+                            <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
+                              <TableHead className="w-[120px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{recordType === "student" ? "GR No" : "Emp Code"}</TableHead>
+                              <TableHead className="w-16 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{recordType === "student" ? "Roll" : "Dept/Sub"}</TableHead>
+                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Full Identity</TableHead>
+                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
+                              {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Array.isArray(students) && students.map((student) => (
+                            <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-50/50 h-20">
+                              <TableCell className="pl-8 font-mono text-xs font-black text-blue-600 rounded-lg">{student.grno || `ID-${student.id}`}</TableCell>
+                              <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
+                              <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  className={cn(
+                                    "capitalize font-bold text-[10px] px-3",
+                                    student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
+                                    student.status === 'absent' ? "bg-red-100 text-red-700" :
+                                    "bg-amber-100 text-amber-700"
+                                  )}
+                                  variant="secondary"
+                                >
+                                  {student.status}
+                                </Badge>
                               </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
-                        {students.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-12 text-slate-400 font-bold">No student records found. Select an active scholastic branch or academic class standard.</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                              {canManage && (
+                                <TableCell className="text-right pr-8">
+                                  <div className="flex justify-end gap-1.5 font-bold">
+                                    <Button 
+                                      size="icon" 
+                                      variant={student.status === 'present' ? "default" : "outline"} 
+                                      className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
+                                      onClick={() => updateStatus(student.id, 'present')}
+                                    >
+                                      <Check size={14} />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant={student.status === 'absent' ? "default" : "outline"}
+                                      className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
+                                      onClick={() => updateStatus(student.id, 'absent')}
+                                    >
+                                      <X size={14} />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant={student.status === 'late' ? "default" : "outline"}
+                                      className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
+                                      onClick={() => updateStatus(student.id, 'late')}
+                                    >
+                                      <Clock size={14} />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                          {students.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-12 text-slate-400 font-bold">No {recordType === "student" ? "student" : "staff"} records found matching active filter configurations.</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+
+                      {/* Pagination Control Bar */}
+                      {totalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            Showing page {page} of {totalPages} ({totalCount} total rows)
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-semibold"
+                              disabled={page === 1}
+                              onClick={() => setPage(1)}
+                            >
+                              First
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-semibold"
+                              disabled={page === 1}
+                              onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                            >
+                              Prev
+                            </Button>
+                            <span className="px-3 py-1 bg-white text-xs font-extrabold border rounded-lg text-slate-800">
+                              {page}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-semibold"
+                              disabled={page >= totalPages}
+                              onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                            >
+                              Next
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-semibold"
+                              disabled={page >= totalPages}
+                              onClick={() => setPage(totalPages)}
+                            >
+                              Last
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -950,6 +1200,127 @@ export default function Attendance({ user }: { user: any }) {
                   </Card>
 
                 </div>
+
+                {/* Database Actions Audit Trail list rendering dynamically from sp_ManageAttendance logs */}
+                <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden mt-8 w-full p-0">
+                  <CardHeader className="border-b border-slate-50 px-8 py-6 pt-8 bg-white flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Database Audit Trail Logs</CardTitle>
+                      <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Transaction audit logs capturing actions, updates, and user ids</CardDescription>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchAuditTrail} 
+                      className="h-8 rounded-lg font-bold hover:bg-slate-50 border-slate-200"
+                    >
+                      <RefreshCw size={12} className="mr-1.5" />
+                      Refresh
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {loadingAudit ? (
+                      <div className="flex items-center justify-center py-20 text-slate-400 font-bold gap-2">
+                        <Loader2 size={18} className="animate-spin text-emerald-600" />
+                        Loading transaction logs...
+                      </div>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader className="bg-slate-50/50 border-b border-slate-100">
+                              <TableRow>
+                                <TableHead className="pl-8 font-black text-[10px] uppercase text-slate-400 py-3">Timestamp / Created</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Event Action</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Roster Affected</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Authorized UID</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Description / Remarks</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {auditLogs.map((log: any, idx: number) => {
+                                const parseDate = log.timestamp || log.Timestamp || log.createdAt || log.CreatedAt || new Date().toISOString();
+                                const evType = log.type || log.Type || log.action || log.Action || "UPDATE";
+                                const entity = log.tableName || log.TableName || "Attendance";
+                                const who = log.userId || log.UserId || log.markedByUserId || log.MarkedByUserId || "1";
+                                const details = log.newValues || log.NewValues || log.details || log.Details || log.remarks || log.Remarks || "Modified record status successfully.";
+                                
+                                return (
+                                  <TableRow key={log.id || idx} className="h-14 hover:bg-slate-50/50 border-b border-slate-100">
+                                    <TableCell className="pl-8 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                                      {format(parseISO(parseDate), "yyyy-MM-dd HH:mm:ss")}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge 
+                                        className={cn(
+                                          "text-[9px] font-black uppercase tracking-wider px-2 py-0.5",
+                                          evType.toLowerCase().includes("insert") || evType.toLowerCase().includes("create") ? "bg-emerald-50 text-emerald-700 border-emerald-100 border" :
+                                          evType.toLowerCase().includes("delete") ? "bg-red-50 text-red-700 border-red-100 border" :
+                                          "bg-blue-50 text-blue-700 border-blue-100 border"
+                                        )}
+                                      >
+                                        {evType}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-semibold text-slate-700 text-xs">
+                                      {entity}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-xs text-blue-600 font-extrabold">
+                                      UID: #{who}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-slate-400 max-w-sm truncate font-medium">
+                                      {details}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              {auditLogs.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="py-16 text-center text-slate-400 font-bold">
+                                    No audit transactional history logs found in SQL Server db.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Audit pagination footer controls */}
+                        {auditTotalPages > 1 && (
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              Page {auditPage} of {auditTotalPages}
+                            </p>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={auditPage === 1}
+                                onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                                className="h-8 text-xs font-semibold"
+                              >
+                                Prev
+                              </Button>
+                              <span className="px-3 py-1 bg-white border text-xs font-extrabold text-slate-700 rounded-lg">
+                                {auditPage}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={auditPage >= auditTotalPages}
+                                onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))}
+                                className="h-8 text-xs font-semibold"
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
               </div>
             )}
 
@@ -1311,6 +1682,75 @@ export default function Attendance({ user }: { user: any }) {
                     Processing Scans...
                   </>
                 ) : "Upload and Parse Scans"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Historical Date Range Folder Scanner for Local Directory Storage (\iodata) */}
+          <Card className="border-none shadow-sm rounded-[2rem] bg-white h-fit mt-6">
+            <CardHeader className="border-b border-slate-50 px-8 py-6">
+              <CardTitle className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <Play size={16} className="text-emerald-500 animate-pulse" />
+                Local Folder Scanner (C:\iodata)
+              </CardTitle>
+              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Scan & Import stored RFID files across period</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
+                  <Input 
+                    type="date"
+                    value={ioFolderFromDate}
+                    onChange={(e) => setIoFolderFromDate(e.target.value)}
+                    className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
+                  <Input 
+                    type="date"
+                    value={ioFolderToDate}
+                    onChange={(e) => setIoFolderToDate(e.target.value)}
+                    className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
+                <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
+                Looks for files matched: <span className="text-blue-600 font-black font-sans">DataMMDDYY.txt</span><br />
+                Example: <span className="text-emerald-600 font-black font-sans">Data010126.txt</span> represents Jan 1st, 2026.
+              </div>
+
+              {/* Console log outputs for folder scans */}
+              {folderScanLogs.length > 0 && (
+                <div className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] tracking-tight leading-relaxed max-h-36 overflow-y-auto space-y-1 border border-slate-800">
+                  <p className="text-emerald-400 font-black uppercase tracking-widest border-b border-emerald-950 pb-1 mb-1 font-sans">Scanner Log Debugger:</p>
+                  {folderScanLogs.map((logLine, logIdx) => (
+                    <p key={logIdx} className={cn(logLine.startsWith("[FAIL]") ? "text-red-400" : logLine.startsWith("Folder") ? "text-blue-300" : "text-emerald-400")}>
+                      &gt; {logLine}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                onClick={handleIoFolderScan}
+                disabled={isProcessingFolderScan}
+                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                {isProcessingFolderScan ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    Scanning Folder Disk...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={12} />
+                    Run Batch Folder Scan
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

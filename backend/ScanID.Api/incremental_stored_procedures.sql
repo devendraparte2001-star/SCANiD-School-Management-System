@@ -175,11 +175,13 @@ GO
 
 IF OBJECT_ID('dbo.sp_ManageStudent', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageStudent;
 GO
-CREATE PROCEDURE dbo.sp_ManageStudent
-    @Action NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE', 'PHOTO'
-    @Id INT = NULL,
-    @RegistrationNumber NVARCHAR(100) = NULL,
-    @Name NVARCHAR(100) = NULL,
+CREATE PROCEDURE [dbo].[sp_ManageStudent]
+    @Action NVARCHAR(50),
+    @Id INT = NULL,    
+    @Name NVARCHAR(255) = NULL,
+    @FirstName NVARCHAR(100) = NULL,
+    @MiddleName NVARCHAR(100) = NULL,
+    @LastName NVARCHAR(100) = NULL,
     @SchoolId INT = NULL,
     @StandardId INT = NULL,
     @SectionId INT = NULL,
@@ -191,6 +193,7 @@ CREATE PROCEDURE dbo.sp_ManageStudent
     @CategoryId INT = NULL,
     @ReligionId INT = NULL,
     @CasteId INT = NULL,
+    @SubCasteId INT = NULL,
     @Status NVARCHAR(50) = NULL,
     @FatherContactNo NVARCHAR(200) = NULL,
     @Address NVARCHAR(500) = NULL,
@@ -200,6 +203,7 @@ CREATE PROCEDURE dbo.sp_ManageStudent
     @ShiftId INT = NULL,
     @BloodGroupId INT = NULL,
     @HouseId INT = NULL,
+    @AdmissionTypeId INT = NULL,
     @Sms BIT = 0,
     @UniformId NVARCHAR(500) = NULL,
     @MotherContactNo NVARCHAR(200) = NULL,
@@ -211,7 +215,10 @@ CREATE PROCEDURE dbo.sp_ManageStudent
     @StateId INT = NULL,
     @IsStateBoard BIT = 0,
     @DigitalUniform BIT = 0,
-    @DigitalNotebook BIT = 0
+    @DigitalNotebook BIT = 0,
+    @OptedForBus BIT = 0,
+    @CreatedBy NVARCHAR(MAX) = NULL,
+    @ModifiedBy NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -222,71 +229,293 @@ BEGIN
 
         IF @Action = 'INSERT'
         BEGIN
-            IF @RegistrationNumber IS NULL
-            BEGIN
-                SET @RegistrationNumber = 'REG-' + UPPER(LEFT(REPLACE(CAST(NEWID() as NVARCHAR(36)), '-', ''), 8));
-            END
-
             INSERT INTO [dbo].[Students] (
-                RegistrationNumber, Name, SchoolId, StandardId, SectionId, AcademicYearId, RollNumber, 
-                GrNo, Gender, DateOfBirth, CategoryId, ReligionId, CasteId, Status, FatherContactNo, Address, 
-                MotherName, AadharCard, Rfid, ShiftId, BloodGroupId, HouseId, Sms, UniformId,
-                MotherContactNo, ProfilePhotoPath, SchoolSectionId, AdmissionDate, Email, CityId, StateId, IsStateBoard, DigitalUniform, DigitalNotebook, IsActive, IsDeleted, CreatedOn, ModifiedOn
+                Name, FirstName, MiddleName, LastName, SchoolId, StandardId, SectionId, AcademicYearId, RollNumber, 
+                GrNo, Gender, DateOfBirth, CategoryId, ReligionId, CasteId, SubCasteId, Status, FatherContactNo, Address, 
+                MotherName, AadharCard, Rfid, ShiftId, BloodGroupId, HouseId, AdmissionTypeId, Sms, UniformId,
+                MotherContactNo, ProfilePhotoPath, SchoolSectionId, AdmissionDate, Email, CityId, StateId, IsStateBoard, DigitalUniform, DigitalNotebook, OptedForBus, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
             ) VALUES (
-                @RegistrationNumber, @Name, @SchoolId, @StandardId, @SectionId, @AcademicYearId, @RollNumber,
-                @GrNo, @Gender, @DateOfBirth, @CategoryId, @ReligionId, @CasteId, @Status, @FatherContactNo, @Address,
-                @MotherName, @AadharCard, @Rfid, @ShiftId, @BloodGroupId, @HouseId, @Sms, @UniformId,
-                @MotherContactNo, @ProfilePhotoPath, @SchoolSectionId, @AdmissionDate, @Email, @CityId, @StateId, @IsStateBoard, @DigitalUniform, @DigitalNotebook, 1, 0, GETUTCDATE(), GETUTCDATE()
+                @Name, @FirstName, @MiddleName, @LastName, @SchoolId, @StandardId, @SectionId, @AcademicYearId, @RollNumber,
+                @GrNo, @Gender, @DateOfBirth, @CategoryId, @ReligionId, @CasteId, @SubCasteId, @Status, @FatherContactNo, @Address,
+                @MotherName, @AadharCard, @Rfid, @ShiftId, @BloodGroupId, @HouseId, @AdmissionTypeId, @Sms, @UniformId,
+                @MotherContactNo, @ProfilePhotoPath, @SchoolSectionId, @AdmissionDate, @Email, @CityId, @StateId, @IsStateBoard, @DigitalUniform, @DigitalNotebook, @OptedForBus, 1, 0, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@CreatedBy, 'System')
             );
             SELECT SCOPE_IDENTITY();
         END
         ELSE IF @Action = 'UPDATE'
         BEGIN
             UPDATE [dbo].[Students] SET
-                RegistrationNumber = ISNULL(@RegistrationNumber, RegistrationNumber),
                 Name = ISNULL(@Name, Name),
-                SchoolId = ISNULL(@SchoolId, SchoolId),
-                StandardId = ISNULL(@StandardId, StandardId),
-                SectionId = ISNULL(@SectionId, SectionId),
-                AcademicYearId = ISNULL(@AcademicYearId, AcademicYearId),
+                FirstName = ISNULL(@FirstName, FirstName),
+                MiddleName = ISNULL(@MiddleName, MiddleName),
+                LastName = ISNULL(@LastName, LastName),
+                SchoolId = @SchoolId,
+                StandardId = @StandardId,
+                SectionId = @SectionId,
+                AcademicYearId = @AcademicYearId,
                 RollNumber = ISNULL(@RollNumber, RollNumber),
                 GrNo = ISNULL(@GrNo, GrNo),
                 Gender = ISNULL(@Gender, Gender),
                 DateOfBirth = ISNULL(@DateOfBirth, DateOfBirth),
-                CategoryId = ISNULL(@CategoryId, CategoryId),
-                ReligionId = ISNULL(@ReligionId, ReligionId),
-                CasteId = ISNULL(@CasteId, CasteId),
+                CategoryId = @CategoryId,
+                ReligionId = @ReligionId,
+                CasteId = @CasteId,
+                SubCasteId = @SubCasteId,                
                 Status = ISNULL(@Status, Status),
                 FatherContactNo = ISNULL(@FatherContactNo, FatherContactNo),
                 Address = ISNULL(@Address, Address),
                 MotherName = ISNULL(@MotherName, MotherName),
                 AadharCard = ISNULL(@AadharCard, AadharCard),
                 Rfid = ISNULL(@Rfid, Rfid),
-                ShiftId = ISNULL(@ShiftId, ShiftId),
-                BloodGroupId = ISNULL(@BloodGroupId, BloodGroupId),
-                HouseId = ISNULL(@HouseId, HouseId),
+                ShiftId = @ShiftId,
+                BloodGroupId = @BloodGroupId,
+                HouseId = @HouseId,
+                AdmissionTypeId = @AdmissionTypeId,
                 Sms = ISNULL(@Sms, Sms),
                 UniformId = ISNULL(@UniformId, UniformId),
                 MotherContactNo = ISNULL(@MotherContactNo, MotherContactNo),
                 ProfilePhotoPath = ISNULL(@ProfilePhotoPath, ProfilePhotoPath),
-                SchoolSectionId = ISNULL(@SchoolSectionId, SchoolSectionId),
+                SchoolSectionId = @SchoolSectionId,
                 AdmissionDate = ISNULL(@AdmissionDate, AdmissionDate),
                 Email = ISNULL(@Email, Email),
-                CityId = ISNULL(@CityId, CityId),
-                StateId = ISNULL(@StateId, StateId),
+                CityId = @CityId,
+                StateId = @StateId,
                 IsStateBoard = ISNULL(@IsStateBoard, IsStateBoard),
                 DigitalUniform = ISNULL(@DigitalUniform, DigitalUniform),
                 DigitalNotebook = ISNULL(@DigitalNotebook, DigitalNotebook),
+                OptedForBus = ISNULL(@OptedForBus, OptedForBus),
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy)
+            WHERE Id = @Id;
+        END
+        ELSE IF @Action = 'DELETE'
+        BEGIN
+            SET NOCOUNT OFF; -- Temporarily allow row count to be returned
+            UPDATE [dbo].[Students] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE(), ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy) WHERE Id = @Id;
+            SET NOCOUNT ON; -- Restore NOCOUNT
+        END
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+        BEGIN
+            ROLLBACK TRANSACTION;
+        END
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END
+
+-- 3. Staff Management Procedures
+IF OBJECT_ID('dbo.sp_GetStaff', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetStaff;
+GO
+CREATE PROCEDURE dbo.sp_GetStaff
+    @SchoolId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT s.*, u.Name AS UserName, u.Email AS UserEmail, u.RoleId AS RoleId,
+           bg.Name AS BloodGroupName, r.Name AS ReligionName, c.Name AS CasteName,
+           sc.Name AS SubCasteName, cat.Name AS CategoryName, ct.Name AS CityName,
+           st.Name AS StateName, sh.Name AS ShiftName, std.Name AS StandardName, sec.Name AS SectionName
+    FROM [dbo].[Staff] s
+    LEFT JOIN [dbo].[Users] u ON s.UserId = u.Id
+    LEFT JOIN [dbo].[BloodGroups] bg ON s.BloodGroupId = bg.Id
+    LEFT JOIN [dbo].[Religions] r ON s.ReligionId = r.Id
+    LEFT JOIN [dbo].[Castes] c ON s.CasteId = c.Id
+    LEFT JOIN [dbo].[SubCastes] sc ON s.SubCasteId = sc.Id
+    LEFT JOIN [dbo].[Categories] cat ON s.CategoryId = cat.Id
+    LEFT JOIN [dbo].[Cities] ct ON s.CityId = ct.Id
+    LEFT JOIN [dbo].[States] st ON s.StateId = st.Id
+    LEFT JOIN [dbo].[Shifts] sh ON s.ShiftId = sh.Id
+    LEFT JOIN [dbo].[Standards] std ON s.StandardId = std.Id
+    LEFT JOIN [dbo].[Sections] sec ON s.SectionId = sec.Id
+    WHERE s.IsDeleted = 0
+      AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId);
+END;
+GO
+
+IF OBJECT_ID('dbo.sp_GetStaffPaged', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetStaffPaged;
+GO
+CREATE PROCEDURE dbo.sp_GetStaffPaged
+    @SchoolId INT = NULL,
+    @AcademicYearId INT = NULL,
+    @Page INT = 1,
+    @PageSize INT = 10,
+    @SortBy NVARCHAR(50) = NULL,
+    @SortOrder NVARCHAR(10) = 'ASC',
+    @Search NVARCHAR(255) = NULL,
+    @Status NVARCHAR(50) = NULL,
+    @Subject NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    WITH FilteredStaff AS (
+        SELECT s.*, u.Name AS UserName, u.Email AS UserEmail, u.RoleId AS RoleId,
+               bg.Name AS BloodGroupName, r.Name AS ReligionName, c.Name AS CasteName,
+               sc.Name AS SubCasteName, cat.Name AS CategoryName, ct.Name AS CityName,
+               st.Name AS StateName, sh.Name AS ShiftName, std.Name AS StandardName, sec.Name AS SectionName
+        FROM [dbo].[Staff] s
+        LEFT JOIN [dbo].[Users] u ON s.UserId = u.Id
+        LEFT JOIN [dbo].[BloodGroups] bg ON s.BloodGroupId = bg.Id
+        LEFT JOIN [dbo].[Religions] r ON s.ReligionId = r.Id
+        LEFT JOIN [dbo].[Castes] c ON s.CasteId = c.Id
+        LEFT JOIN [dbo].[SubCastes] sc ON s.SubCasteId = sc.Id
+        LEFT JOIN [dbo].[Categories] cat ON s.CategoryId = cat.Id
+        LEFT JOIN [dbo].[Cities] ct ON s.CityId = ct.Id
+        LEFT JOIN [dbo].[States] st ON s.StateId = st.Id
+        LEFT JOIN [dbo].[Shifts] sh ON s.ShiftId = sh.Id
+        LEFT JOIN [dbo].[Standards] std ON s.StandardId = std.Id
+        LEFT JOIN [dbo].[Sections] sec ON s.SectionId = sec.Id
+        WHERE s.IsDeleted = 0
+          AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId)
+          AND (@Status IS NULL OR @Status = '' OR @Status = 'all' OR s.Status = @Status)
+          AND (@Subject IS NULL OR @Subject = '' OR @Subject = 'all' OR s.Subject = @Subject)
+          AND (@Search IS NULL OR @Search = '' OR 
+               u.Name LIKE '%' + @Search + '%' OR 
+               u.Email LIKE '%' + @Search + '%' OR 
+               s.ContactNumber LIKE '%' + @Search + '%' OR 
+               s.Qualification LIKE '%' + @Search + '%' OR 
+               s.Department LIKE '%' + @Search + '%' OR 
+               s.Subject LIKE '%' + @Search + '%' OR 
+               s.EmployeeId LIKE '%' + @Search + '%')
+    ),
+    Total AS (
+        SELECT COUNT_BIG(*) AS TotalCount FROM FilteredStaff
+    )
+    SELECT fs.*, tot.TotalCount
+    FROM FilteredStaff fs
+    CROSS JOIN Total tot
+    ORDER BY
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'name' THEN fs.UserName END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'name' THEN fs.UserName END DESC,
+
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'email' THEN fs.UserEmail END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'email' THEN fs.UserEmail END DESC,
+
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'phone' THEN fs.ContactNumber END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'phone' THEN fs.ContactNumber END DESC,
+
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'employeeid' THEN fs.EmployeeId END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'employeeid' THEN fs.EmployeeId END DESC,
+
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND (@SortBy IS NULL OR @SortBy = '') THEN fs.UserName END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND (@SortBy IS NULL OR @SortBy = '') THEN fs.UserName END DESC
+    OFFSET (@Page - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+IF OBJECT_ID('dbo.sp_ManageStaff', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageStaff;
+GO
+CREATE PROCEDURE dbo.sp_ManageStaff
+    @Action NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE'
+    @Id INT = NULL,
+    @UserId INT = NULL,
+    @SchoolId INT = NULL,
+    @EmployeeId NVARCHAR(255) = NULL,
+    @Initials NVARCHAR(50) = NULL,
+    @Department NVARCHAR(100) = NULL,
+    @Qualification NVARCHAR(100) = NULL,
+    @ContactNumber NVARCHAR(50) = NULL,
+    @Contact2 NVARCHAR(100) = NULL,
+    @Status NVARCHAR(50) = NULL,
+    @ProfilePhotoPath NVARCHAR(255) = NULL,
+    @Experience NVARCHAR(100) = NULL,
+    @Subject NVARCHAR(200) = NULL,
+    @StandardId INT = NULL,
+    @SectionId INT = NULL,
+    @IsClassTeacher BIT = 0,
+    @Gender NVARCHAR(50) = NULL,
+    @DateOfBirth DATETIME2(7) = NULL,
+    @BloodGroupId INT = NULL,
+    @RetirementDate DATETIME2(7) = NULL,
+    @ReligionId INT = NULL,
+    @CasteId INT = NULL,
+    @SubCasteId INT = NULL,
+    @CategoryId INT = NULL,
+    @DateOfJoining DATETIME2(7) = NULL,
+    @Address NVARCHAR(MAX) = NULL,
+    @CityId INT = NULL,
+    @StateId INT = NULL,
+    @BioId NVARCHAR(100) = NULL,
+    @Rfid NVARCHAR(100) = NULL,
+    @ShiftId INT = NULL,
+    @CreatedBy NVARCHAR(255) = NULL,
+    @ModifiedBy NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        IF @Action = 'INSERT'
+        BEGIN
+            INSERT INTO [dbo].[Staff] (
+                UserId, SchoolId, EmployeeId, Initials, Department, Qualification, ContactNumber, Contact2, Status, ProfilePhotoPath, 
+                Experience, Subject, StandardId, SectionId, IsClassTeacher, Gender, DateOfBirth, BloodGroupId, RetirementDate, 
+                ReligionId, CasteId, SubCasteId, CategoryId, DateOfJoining, Address, CityId, StateId, BioId, Rfid, ShiftId,
+                IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn
+            ) VALUES (
+                @UserId, ISNULL(@SchoolId, 1), ISNULL(@EmployeeId, ''), @Initials, @Department, @Qualification, @ContactNumber, @Contact2, ISNULL(@Status, 'Active'), @ProfilePhotoPath,
+                @Experience, @Subject, @StandardId, @SectionId, ISNULL(@IsClassTeacher, 0), @Gender, @DateOfBirth, @BloodGroupId, @RetirementDate,
+                @ReligionId, @CasteId, @SubCasteId, @CategoryId, @DateOfJoining, @Address, @CityId, @StateId, @BioId, @Rfid, @ShiftId,
+                1, 0, @CreatedBy, GETUTCDATE(), @CreatedBy, GETUTCDATE()
+            );
+            SELECT SCOPE_IDENTITY();
+        END
+        ELSE IF @Action = 'UPDATE'
+        BEGIN
+            UPDATE [dbo].[Staff] SET
+                UserId = CASE WHEN @UserId IS NULL OR @UserId <= 0 THEN UserId ELSE @UserId END,
+                SchoolId = ISNULL(@SchoolId, SchoolId),
+                EmployeeId = ISNULL(@EmployeeId, EmployeeId),
+                Initials = ISNULL(@Initials, Initials),
+                Department = ISNULL(@Department, Department),
+                Qualification = ISNULL(@Qualification, Qualification),
+                ContactNumber = ISNULL(@ContactNumber, ContactNumber),
+                Contact2 = ISNULL(@Contact2, Contact2),
+                Status = ISNULL(@Status, Status),
+                ProfilePhotoPath = ISNULL(@ProfilePhotoPath, ProfilePhotoPath),
+                Experience = ISNULL(@Experience, Experience),
+                Subject = ISNULL(@Subject, Subject),
+                StandardId = ISNULL(@StandardId, StandardId),
+                SectionId = ISNULL(@SectionId, SectionId),
+                IsClassTeacher = ISNULL(@IsClassTeacher, IsClassTeacher),
+                Gender = ISNULL(@Gender, Gender),
+                DateOfBirth = ISNULL(@DateOfBirth, DateOfBirth),
+                BloodGroupId = ISNULL(@BloodGroupId, BloodGroupId),
+                RetirementDate = ISNULL(@RetirementDate, RetirementDate),
+                ReligionId = ISNULL(@ReligionId, ReligionId),
+                CasteId = ISNULL(@CasteId, CasteId),
+                SubCasteId = ISNULL(@SubCasteId, SubCasteId),
+                CategoryId = ISNULL(@CategoryId, CategoryId),
+                DateOfJoining = ISNULL(@DateOfJoining, DateOfJoining),
+                Address = ISNULL(@Address, Address),
+                CityId = ISNULL(@CityId, CityId),
+                StateId = ISNULL(@StateId, StateId),
+                BioId = ISNULL(@BioId, BioId),
+                Rfid = ISNULL(@Rfid, Rfid),
+                ShiftId = ISNULL(@ShiftId, ShiftId),
+                ModifiedBy = @ModifiedBy,
                 ModifiedOn = GETUTCDATE()
             WHERE Id = @Id;
         END
         ELSE IF @Action = 'DELETE'
         BEGIN
-            UPDATE [dbo].[Students] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
-        END
-        ELSE IF @Action = 'PHOTO'
-        BEGIN
-            UPDATE [dbo].[Students] SET ProfilePhotoPath = @ProfilePhotoPath, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
+            UPDATE [dbo].[Staff] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
+            DECLARE @LinkedUserId INT;
+            SELECT @LinkedUserId = UserId FROM [dbo].[Staff] WHERE Id = @Id;
+            IF @LinkedUserId IS NOT NULL
+            BEGIN
+                UPDATE [dbo].[Users] SET IsDeleted = 1, ModifiedOn = GETUTCDATE() WHERE Id = @LinkedUserId;
+            END
         END
 
         COMMIT TRANSACTION;
@@ -296,81 +525,8 @@ BEGIN
         BEGIN
             ROLLBACK TRANSACTION;
         END;
-
-        -- Reraise database errors back safely to EF Core logic
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrorState INT = ERROR_STATE();
-        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+        THROW;
     END CATCH
-END;
-GO
-
--- 3. Teacher Management Procedures
-IF OBJECT_ID('dbo.sp_GetTeachers', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetTeachers;
-GO
-CREATE PROCEDURE dbo.sp_GetTeachers
-    @SchoolId INT = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT t.*, u.Name AS UserName, u.Email AS UserEmail
-    FROM [dbo].[Teachers] t
-    LEFT JOIN [dbo].[Users] u ON t.UserId = u.Id
-    WHERE t.IsDeleted = 0
-      AND (@SchoolId IS NULL OR t.SchoolId = @SchoolId);
-END;
-GO
-
-IF OBJECT_ID('dbo.sp_ManageTeacher', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageTeacher;
-GO
-CREATE PROCEDURE dbo.sp_ManageTeacher
-    @Action NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE'
-    @Id INT = NULL,
-    @UserId INT = NULL,
-    @ContactNumber NVARCHAR(50) = NULL,
-    @Department NVARCHAR(100) = NULL,
-    @Qualification NVARCHAR(100) = NULL,
-    @Status NVARCHAR(50) = NULL,
-    @SchoolId INT = NULL,
-    @ProfilePhotoPath NVARCHAR(255) = NULL,
-    @EmployeeId NVARCHAR(255) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF @Action = 'INSERT'
-    BEGIN
-        INSERT INTO [dbo].[Teachers] (
-            UserId, SchoolId, EmployeeId, ContactNumber, Department, Qualification, Status, ProfilePhotoPath, IsActive, IsDeleted, CreatedOn, ModifiedOn
-        ) VALUES (
-            @UserId, ISNULL(@SchoolId, 1), ISNULL(@EmployeeId, ''), @ContactNumber, @Department, @Qualification, @Status, @ProfilePhotoPath, 1, 0, GETUTCDATE(), GETUTCDATE()
-        );
-        SELECT SCOPE_IDENTITY();
-    END
-    ELSE IF @Action = 'UPDATE'
-    BEGIN
-        UPDATE [dbo].[Teachers] SET
-            UserId = CASE WHEN @UserId IS NULL OR @UserId = 0 THEN UserId ELSE @UserId END,
-            ContactNumber = ISNULL(@ContactNumber, ContactNumber),
-            Department = ISNULL(@Department, Department),
-            Qualification = ISNULL(@Qualification, Qualification),
-            Status = ISNULL(@Status, Status),
-            SchoolId = ISNULL(@SchoolId, SchoolId),
-            ProfilePhotoPath = ISNULL(@ProfilePhotoPath, ProfilePhotoPath),
-            EmployeeId = ISNULL(@EmployeeId, EmployeeId),
-            ModifiedOn = GETUTCDATE()
-        WHERE Id = @Id;
-    END
-    ELSE IF @Action = 'DELETE'
-    BEGIN
-        UPDATE [dbo].[Teachers] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
-        DECLARE @LinkedUserId INT;
-        SELECT @LinkedUserId = UserId FROM [dbo].[Teachers] WHERE Id = @Id;
-        IF @LinkedUserId IS NOT NULL
-        BEGIN
-            UPDATE [dbo].[Users] SET IsDeleted = 1, ModifiedOn = GETUTCDATE() WHERE Id = @LinkedUserId;
-        END
-    END
 END;
 GO
 
@@ -396,22 +552,114 @@ GO
 IF OBJECT_ID('dbo.sp_ManageAttendance', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageAttendance;
 GO
 CREATE PROCEDURE dbo.sp_ManageAttendance
-    @StudentId INT,
+    @StudentId INT = NULL,
     @Date DATETIME,
     @Status NVARCHAR(50),
     @Remarks NVARCHAR(255) = NULL,
-    @CreatedBy NVARCHAR(100) = NULL
+    @CreatedBy NVARCHAR(100) = NULL,
+    @StaffId INT = NULL,
+    @MarkedByUserId INT = 1,
+    @UploadSource NVARCHAR(100) = 'Manual'
 AS
 BEGIN
     SET NOCOUNT ON;
-    MERGE [dbo].[Attendance] AS target
-    USING (SELECT @StudentId AS StudentId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
-    ON (target.StudentId = source.StudentId AND CONVERT(DATE, target.Date) = source.AttendanceDate)
-    WHEN MATCHED THEN
-        UPDATE SET Status = @Status, ModifiedOn = GETUTCDATE()
-    WHEN NOT MATCHED THEN
-        INSERT (StudentId, Date, Status, CreatedOn, ModifiedOn, CreatedBy)
-        VALUES (@StudentId, @Date, @Status, GETUTCDATE(), GETUTCDATE(), @CreatedBy);
+    
+    -- Safety validation fallback
+    IF @MarkedByUserId IS NULL SET @MarkedByUserId = 1;
+    IF @UploadSource IS NULL SET @UploadSource = 'Manual';
+
+    DECLARE @NewValues NVARCHAR(MAX);
+    DECLARE @OldValues NVARCHAR(MAX);
+    DECLARE @AttendanceId INT;
+    DECLARE @IsUpdate BIT = 0;
+
+    -- CASE 1: Student Attendance
+    IF @StudentId IS NOT NULL
+    BEGIN
+        -- Capture old state if exists
+        SELECT TOP 1 
+            @OldValues = '{ "StudentId": ' + CAST(StudentId AS VARCHAR(10)) + ', "Status": "' + ISNULL(Status, 'None') + '", "Source": "' + ISNULL(UploadSource, 'Unknown') + '" }',
+            @AttendanceId = Id,
+            @IsUpdate = 1
+        FROM [dbo].[Attendance]
+        WHERE StudentId = @StudentId AND CONVERT(DATE, Date) = CONVERT(DATE, @Date) AND IsDeleted = 0;
+
+        MERGE [dbo].[Attendance] AS target
+        USING (SELECT @StudentId AS StudentId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
+        ON (target.StudentId = source.StudentId AND CONVERT(DATE, target.Date) = source.AttendanceDate AND target.IsDeleted = 0)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                Status = @Status, 
+                Remarks = @Remarks,
+                UploadSource = @UploadSource,
+                MarkedByUserId = @MarkedByUserId,
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@CreatedBy, 'System')
+        WHEN NOT MATCHED THEN
+            INSERT (StudentId, StaffId, Date, Status, Remarks, UploadSource, MarkedByUserId, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy, IsActive, IsDeleted)
+            VALUES (@StudentId, NULL, @Date, @Status, @Remarks, @UploadSource, @MarkedByUserId, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@CreatedBy, 'System'), 1, 0);
+
+        IF @IsUpdate = 0
+            SET @AttendanceId = SCOPE_IDENTITY();
+
+        -- Audit trail logging
+        SET @NewValues = '{ "StudentId": ' + CAST(@StudentId AS VARCHAR(10)) + ', "Status": "' + @Status + '", "Date": "' + CONVERT(VARCHAR(19), @Date, 120) + '", "Source": "' + @UploadSource + '" }';
+        
+        INSERT INTO [dbo].[AuditLogs] (UserId, Type, TableName, DateTime, OldValues, NewValues, PrimaryKey)
+        VALUES (
+            CAST(@MarkedByUserId AS NVARCHAR(100)), 
+            CASE WHEN @IsUpdate = 1 THEN 'Attendance Update' ELSE 'Attendance Create' END, 
+            'Attendance', 
+            GETUTCDATE(), 
+            @OldValues, 
+            @NewValues, 
+            CAST(@AttendanceId AS NVARCHAR(100))
+        );
+    END
+
+    -- CASE 2: Staff Attendance
+    ELSE IF @StaffId IS NOT NULL
+    BEGIN
+        -- Capture old state if exists
+        SELECT TOP 1 
+            @OldValues = '{ "StaffId": ' + CAST(StaffId AS VARCHAR(10)) + ', "Status": "' + ISNULL(Status, 'None') + '", "Source": "' + ISNULL(UploadSource, 'Unknown') + '" }',
+            @AttendanceId = Id,
+            @IsUpdate = 1
+        FROM [dbo].[Attendance]
+        WHERE StaffId = @StaffId AND CONVERT(DATE, Date) = CONVERT(DATE, @Date) AND IsDeleted = 0;
+
+        MERGE [dbo].[Attendance] AS target
+        USING (SELECT @StaffId AS StaffId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
+        ON (target.StaffId = source.StaffId AND CONVERT(DATE, target.Date) = source.AttendanceDate AND target.IsDeleted = 0)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                Status = @Status, 
+                Remarks = @Remarks,
+                UploadSource = @UploadSource,
+                MarkedByUserId = @MarkedByUserId,
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@CreatedBy, 'System')
+        WHEN NOT MATCHED THEN
+            INSERT (StudentId, StaffId, Date, Status, Remarks, UploadSource, MarkedByUserId, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy, IsActive, IsDeleted)
+            VALUES (NULL, @StaffId, @Date, @Status, @Remarks, @UploadSource, @MarkedByUserId, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@CreatedBy, 'System'), 1, 0);
+
+        IF @IsUpdate = 0
+            SET @AttendanceId = SCOPE_IDENTITY();
+
+        -- Audit trail logging
+        SET @NewValues = '{ "StaffId": ' + CAST(@StaffId AS VARCHAR(10)) + ', "Status": "' + @Status + '", "Date": "' + CONVERT(VARCHAR(19), @Date, 120) + '", "Source": "' + @UploadSource + '" }';
+        
+        INSERT INTO [dbo].[AuditLogs] (UserId, Type, TableName, DateTime, OldValues, NewValues, PrimaryKey)
+        VALUES (
+            CAST(@MarkedByUserId AS NVARCHAR(100)), 
+            CASE WHEN @IsUpdate = 1 THEN 'Attendance Update' ELSE 'Attendance Create' END, 
+            'Attendance', 
+            GETUTCDATE(), 
+            @OldValues, 
+            @NewValues, 
+            CAST(@AttendanceId AS NVARCHAR(100))
+        );
+    END
 END;
 GO
 
@@ -594,13 +842,13 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @TotalStudents INT;
-    DECLARE @TotalTeachers INT;
+    DECLARE @TotalStaff INT;
     DECLARE @FeeCollection NVARCHAR(50);
     DECLARE @AttendanceRate NVARCHAR(50);
     DECLARE @PerformanceTrend NVARCHAR(50);
 
     SELECT @TotalStudents = COUNT(*) FROM [dbo].[Students] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId) AND (@AcademicYearId IS NULL OR AcademicYearId = @AcademicYearId);
-    SELECT @TotalTeachers = COUNT(*) FROM [dbo].[Teachers] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId);
+    SELECT @TotalStaff = COUNT(*) FROM [dbo].[Staff] WHERE IsDeleted = 0 AND (@SchoolId IS NULL OR SchoolId = @SchoolId);
 
     DECLARE @TotalFees DECIMAL(18,2);
     SELECT @TotalFees = SUM(Amount) FROM [dbo].[Fees] f INNER JOIN [dbo].[Students] s ON f.StudentId = s.Id WHERE f.IsDeleted = 0 AND s.IsDeleted = 0 AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId) AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId);
@@ -619,7 +867,7 @@ BEGIN
 
     SET @PerformanceTrend = '+2.4%';
 
-    SELECT @TotalStudents AS TotalStudents, @TotalTeachers AS TotalTeachers, @FeeCollection AS FeeCollection, @AttendanceRate AS AttendanceRate, @PerformanceTrend AS PerformanceTrend;
+    SELECT @TotalStudents AS TotalStudents, @TotalStaff AS TotalStaff, @FeeCollection AS FeeCollection, @AttendanceRate AS AttendanceRate, @PerformanceTrend AS PerformanceTrend;
 END;
 GO
 

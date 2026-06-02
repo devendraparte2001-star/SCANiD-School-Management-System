@@ -80,11 +80,10 @@ namespace ScanID.Api.Services
             {
                 try
                 {
-                    // Core optimization: Execute the MERGE stored procedure to insert or update attendance.
-                    // Since SET NOCOUNT ON; is defined in the stored procedure, EF Core will return -1 rows affected,
-                    // which represents success. We evaluate rowsAffected >= -1 to handle this correctly.
+                    // Core optimization: Execute the MERGE stored procedure to insert or update student/staff attendance.
+                    // Utilizing named parameters ensures outstanding database compatibility and zero position mismatch failures.
                     var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
-                        $"EXEC dbo.sp_ManageAttendance {attendance.StudentId}, {attendance.Date}, {attendance.Status}, NULL, NULL"
+                        $"EXEC dbo.sp_ManageAttendance @StudentId={attendance.StudentId}, @StaffId={attendance.StaffId}, @Date={attendance.Date}, @Status={attendance.Status}, @Remarks=NULL, @CreatedBy={attendance.CreatedBy}, @MarkedByUserId={attendance.MarkedByUserId}, @UploadSource={attendance.UploadSource}"
                     );
                     return rowsAffected >= -1;
                 }
@@ -95,7 +94,7 @@ namespace ScanID.Api.Services
                         ex.Message,
                         "Error",
                         ex.ToString(),
-                        $"AttendanceService.SubmitAttendanceAsync - StudentId: {attendance.StudentId}, Date: {attendance.Date}"
+                        $"AttendanceService.SubmitAttendanceAsync - StudentId: {attendance.StudentId}, StaffId: {attendance.StaffId}, Date: {attendance.Date}, Source: {attendance.UploadSource}"
                     );
 
                     // Return false if a primary database error or query failure is encountered.
@@ -116,7 +115,7 @@ namespace ScanID.Api.Services
                     foreach (var attendance in records)
                     {
                         await _context.Database.ExecuteSqlInterpolatedAsync(
-                            $"EXEC dbo.sp_ManageAttendance {attendance.StudentId}, {attendance.Date}, {attendance.Status}, NULL, NULL"
+                            $"EXEC dbo.sp_ManageAttendance @StudentId={attendance.StudentId}, @StaffId={attendance.StaffId}, @Date={attendance.Date}, @Status={attendance.Status}, @Remarks=NULL, @CreatedBy={attendance.CreatedBy}, @MarkedByUserId={attendance.MarkedByUserId}, @UploadSource={attendance.UploadSource}"
                         );
                     }
                     await transaction.CommitAsync();
@@ -226,6 +225,79 @@ namespace ScanID.Api.Services
         {
             if (lines == null || lines.Count == 0) return;
             _queueService.EnqueueRange(lines);
+        }
+
+        public async Task<List<string>> ProcessIodataDateRangeAsync(DateTime fromDate, DateTime toDate)
+        {
+            var logs = new List<string>();
+            try
+            {
+                var watchDir = @"C:\iodata";
+                if (!Directory.Exists(watchDir))
+                {
+                    Directory.CreateDirectory(watchDir);
+                }
+
+                logs.Add($"[INFO] Initiating date range scan between {fromDate:yyyy-MM-dd} and {toDate:yyyy-MM-dd} inside directory: {watchDir}");
+
+                int filesFound = 0;
+                int totalLinesProcessed = 0;
+
+                for (var d = fromDate.Date; d <= toDate.Date; d = d.AddDays(1))
+                {
+                    // Naming structure MMDDYY -> MMDDYY format
+                    string filePrefix = $"Data{d:MMddyy}";
+                    string fileNamePattern = $"{filePrefix}.txt";
+                    
+                    string filePath = Path.Combine(watchDir, fileNamePattern);
+                    string archivePath = Path.Combine(watchDir, "processed", fileNamePattern);
+
+                    string targetPath = null;
+                    if (File.Exists(filePath))
+                    {
+                        targetPath = filePath;
+                    }
+                    else if (File.Exists(archivePath))
+                    {
+                        targetPath = archivePath;
+                    }
+
+                    if (targetPath != null)
+                    {
+                        logs.Add($"[MATCH] Found scanner file: {fileNamePattern}");
+                        filesFound++;
+
+                        var lines = await File.ReadAllLinesAsync(targetPath);
+                        logs.Add($"[READ] Read {lines.Length} scan records from {fileNamePattern}");
+
+                        foreach (var line in lines)
+                        {
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            try
+                            {
+                                await ProcessSingleIodataLineAsync(line);
+                                totalLinesProcessed++;
+                            }
+                            catch (Exception ex)
+                            {
+                                logs.Add($"[LINE_ERROR] Failed parsing queue row in {fileNamePattern}: '{line}' - {ex.Message}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        logs.Add($"[MISSING] No log found for date range chunk: {fileNamePattern}");
+                    }
+                }
+
+                logs.Add($"[DONE] Scan finished. Successfully synced {filesFound} logs and ran {totalLinesProcessed} raw entries into Core registers.");
+            }
+            catch (Exception ex)
+            {
+                logs.Add($"[FATAL] Error running batch execution: {ex.Message}");
+            }
+
+            return logs;
         }
     }
 }

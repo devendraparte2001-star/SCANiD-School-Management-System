@@ -20,5 +20,6 @@ namespace ScanID.Api.Interfaces
         Task<IodataRecord?> ProcessSingleIodataLineAsync(string line);
         Task<bool> ReprocessIodataRecordAsync(int recordId);
         void EnqueueIodataLines(List<string> lines);
+        Task<List<string>> ProcessIodataDateRangeAsync(DateTime fromDate, DateTime toDate);
     }
 }
