@@ -16,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @SQL NVARCHAR(MAX);
-    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations')
+    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations', 'StaffInitials')
     BEGIN
         SET @SQL = N'SELECT * FROM [dbo].[' + @TableName + N'] WHERE [IsDeleted] = 0';
         EXEC sp_executesql @SQL;
@@ -44,7 +44,7 @@ BEGIN
     DECLARE @SQL NVARCHAR(MAX);
     DECLARE @Params NVARCHAR(MAX);
 
-    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations')
+    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations', 'StaffInitials')
     BEGIN
         IF @Action = 'INSERT'
         BEGIN
@@ -310,7 +310,8 @@ BEGIN
 END
 
 -- 3. Staff Management Procedures
-IF OBJECT_ID('dbo.sp_GetStaff', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetStaff;
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetStaff]') AND type in (N'P', N'PC'))
+    DROP PROCEDURE [dbo].[sp_GetStaff];
 GO
 CREATE PROCEDURE dbo.sp_GetStaff
     @SchoolId INT = NULL
@@ -338,7 +339,8 @@ BEGIN
 END;
 GO
 
-IF OBJECT_ID('dbo.sp_GetStaffPaged', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetStaffPaged;
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetStaffPaged]') AND type in (N'P', N'PC'))
+    DROP PROCEDURE [dbo].[sp_GetStaffPaged];
 GO
 CREATE PROCEDURE dbo.sp_GetStaffPaged
     @SchoolId INT = NULL,
@@ -378,7 +380,7 @@ BEGIN
           AND (@Search IS NULL OR @Search = '' OR 
                u.Name LIKE '%' + @Search + '%' OR 
                u.Email LIKE '%' + @Search + '%' OR 
-               s.ContactNumber LIKE '%' + @Search + '%' OR 
+               s.PersonalContact LIKE '%' + @Search + '%' OR 
                s.Qualification LIKE '%' + @Search + '%' OR 
                s.Department LIKE '%' + @Search + '%' OR 
                s.Subject LIKE '%' + @Search + '%' OR 
@@ -397,8 +399,8 @@ BEGIN
         CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'email' THEN fs.UserEmail END ASC,
         CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'email' THEN fs.UserEmail END DESC,
 
-        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'phone' THEN fs.ContactNumber END ASC,
-        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'phone' THEN fs.ContactNumber END DESC,
+        CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'phone' THEN fs.PersonalContact END ASC,
+        CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'phone' THEN fs.PersonalContact END DESC,
 
         CASE WHEN UPPER(@SortOrder) = 'ASC' AND LOWER(@SortBy) = 'employeeid' THEN fs.EmployeeId END ASC,
         CASE WHEN UPPER(@SortOrder) = 'DESC' AND LOWER(@SortBy) = 'employeeid' THEN fs.EmployeeId END DESC,
@@ -410,7 +412,8 @@ BEGIN
 END;
 GO
 
-IF OBJECT_ID('dbo.sp_ManageStaff', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageStaff;
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sp_ManageStaff]') AND type in (N'P', N'PC'))
+    DROP PROCEDURE [dbo].[sp_ManageStaff];
 GO
 CREATE PROCEDURE dbo.sp_ManageStaff
     @Action NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE'
@@ -421,8 +424,8 @@ CREATE PROCEDURE dbo.sp_ManageStaff
     @Initials NVARCHAR(50) = NULL,
     @Department NVARCHAR(100) = NULL,
     @Qualification NVARCHAR(100) = NULL,
-    @ContactNumber NVARCHAR(50) = NULL,
-    @Contact2 NVARCHAR(100) = NULL,
+    @PersonalContact NVARCHAR(50) = NULL,
+    @EmergencyContact NVARCHAR(100) = NULL,
     @Status NVARCHAR(50) = NULL,
     @ProfilePhotoPath NVARCHAR(255) = NULL,
     @Experience NVARCHAR(100) = NULL,
@@ -458,12 +461,12 @@ BEGIN
         IF @Action = 'INSERT'
         BEGIN
             INSERT INTO [dbo].[Staff] (
-                UserId, SchoolId, EmployeeId, Initials, Department, Qualification, ContactNumber, Contact2, Status, ProfilePhotoPath, 
+                UserId, SchoolId, EmployeeId, Initials, Department, Qualification, PersonalContact, EmergencyContact, Status, ProfilePhotoPath, 
                 Experience, Subject, StandardId, SectionId, IsClassTeacher, Gender, DateOfBirth, BloodGroupId, RetirementDate, 
                 ReligionId, CasteId, SubCasteId, CategoryId, DateOfJoining, Address, CityId, StateId, BioId, Rfid, ShiftId,
                 IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn
             ) VALUES (
-                @UserId, ISNULL(@SchoolId, 1), ISNULL(@EmployeeId, ''), @Initials, @Department, @Qualification, @ContactNumber, @Contact2, ISNULL(@Status, 'Active'), @ProfilePhotoPath,
+                @UserId, ISNULL(@SchoolId, 1), ISNULL(@EmployeeId, ''), @Initials, @Department, @Qualification, @PersonalContact, @EmergencyContact, ISNULL(@Status, 'Active'), @ProfilePhotoPath,
                 @Experience, @Subject, @StandardId, @SectionId, ISNULL(@IsClassTeacher, 0), @Gender, @DateOfBirth, @BloodGroupId, @RetirementDate,
                 @ReligionId, @CasteId, @SubCasteId, @CategoryId, @DateOfJoining, @Address, @CityId, @StateId, @BioId, @Rfid, @ShiftId,
                 1, 0, @CreatedBy, GETUTCDATE(), @CreatedBy, GETUTCDATE()
@@ -479,8 +482,8 @@ BEGIN
                 Initials = ISNULL(@Initials, Initials),
                 Department = ISNULL(@Department, Department),
                 Qualification = ISNULL(@Qualification, Qualification),
-                ContactNumber = ISNULL(@ContactNumber, ContactNumber),
-                Contact2 = ISNULL(@Contact2, Contact2),
+                PersonalContact = ISNULL(@PersonalContact, PersonalContact),
+                EmergencyContact = ISNULL(@EmergencyContact, EmergencyContact),
                 Status = ISNULL(@Status, Status),
                 ProfilePhotoPath = ISNULL(@ProfilePhotoPath, ProfilePhotoPath),
                 Experience = ISNULL(@Experience, Experience),

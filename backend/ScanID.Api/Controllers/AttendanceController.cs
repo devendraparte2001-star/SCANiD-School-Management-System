@@ -160,6 +160,14 @@ namespace ScanID.Api.Controllers
             {
                 return BadRequest("The 'From Date' can not be later than the 'To Date'. Please adjust parameters.");
             }
+            if (fromDate > DateTime.UtcNow.AddDays(1))
+            {
+                return BadRequest("The date parameters cannot be in the future.");
+            }
+            if ((toDate - fromDate).TotalDays > 31)
+            {
+                return BadRequest("Folder Scan range cannot exceed 31 days to prevent server bottlenecks.");
+            }
             var logs = await _attendanceService.ProcessIodataDateRangeAsync(fromDate, toDate);
             return Ok(new { logs });
         }

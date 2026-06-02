@@ -383,3 +383,55 @@ This document records the exact changes, the root causes identified, and the fix
 - `/incremental_shifts_schema.sql`: Extensively rewritten to utilize dynamic constraint dropping and data staging to guarantee proper physical column order with audit trail fields at the end.
 - `/database.sql`: Verified that the master definition of `dbo.Shifts` has the correct sequence with audit fields at the bottom of the table.
 - `/CHANGES_DOCUMENTATION.md`: Documented the realignment process and schema standards.
+
+
+---
+
+## 40. Issue: Background Services Toggle, Scan Date Validation, and RFID & Grade Division Realignment (Batch 5)
+- **Root Cause & Requirements**:
+  1. **Background Service Suspension**: To test manual attendance upload functionality, developers needed a direct and safe way to stop the automated background services (`IodataFolderWatcherService` and `IodataBackgroundWorker`) without breaking application startup or requiring code re-compilation.
+  2. **Scan Period Date Range Validation**: The local folder files parsing scan lacked boundaries, potentially leading to future date scanning requests or excessively large ranges (e.g., years) that causes server bottlenecking or timeouts.
+  3. **Staff RFID validation length**: Staff RFID validation previously checked for 11 or 24 characters, which needed to be updated to 10 or 24 characters.
+  4. **Staff Form default Campus Selection**: On clicking "Add Staff", the Campus Branch dropdown defaulted to the current user's school ID instead of starting on the default placeholder value `'Select Campus.'`.
+  5. **Grade Division Dropdown Enablement**: The Section/Grade Division dropdown on the Staff page was conditionally disabled unless academic grade/standard was already selected. It was requested to be always enabled.
+  6. **Student RFID Validation bypass on Edit**: Students page returned a length or presence validation error on submitting updates because RFID is disabled on Edit mode.
+
+- **Remediation**:
+  1. **Conditional Background Workers**: Swapped static `AddHostedService` registration in `Program.cs` for dynamic configuration-driven registers. Introduced `"BackgroundServices:EnableIodataWorker"` and `"BackgroundServices:EnableIodataFolderWatcher"` boolean flags inside `appsettings.json`. If set to `false`, the respective background service is completely suspended, allowing manual uploads.
+  2. **Defense-In-Depth Date Range Boundaries**: Implemented date validations on both client-side (`Attendance.tsx`) and server backend (`AttendanceController.cs`). Prevents scanning dates from being in the future, and restricts any individual range scan request to a maximum duration of 31 days.
+  3. **Staff RFID Validation Update**: Updated all frontend and bulk import RFID checks in `Staff.tsx` from 11/24 characters to 10/24 characters, updating placeholders and error alerts.
+  4. **Campus Branch Reset Form Defaults**: Standardized `resetForm` in `Staff.tsx` to set `schoolId: ""` instead of user.schoolId on ADD mode.
+  5. **Grade Division Enabled**: Removed `disabled={!formData.standardId}` from the Grade Division selector in `Staff.tsx` to make it always active.
+  6. **Student RFID Bypass**: Ensured student form validation is fully bypassed on Edit mode since the field is visually disabled. This guarantees robust, hassle-free profile updates.
+
+---
+
+## 41. Modified/Synchronized Files List (Batch 5)
+
+- `/backend/ScanID.Api/appsettings.json`: Included `"BackgroundServices"` toggle options.
+- `/backend/ScanID.Api/Program.cs`: Wired dynamic configuration logic to launch or hold background hosted services.
+- `/backend/ScanID.Api/Controllers/AttendanceController.cs`: Added future-date and 31-day range limit validates to `ProcessIodataDateRange` API endpoint.
+- `/src/pages/Attendance.tsx`: Synchronized matching client-side dates validations on raw folder scan triggers.
+- `/src/pages/Staff.tsx`: Modified RFID validation length checks to 10 or 24 characters, enabled Grade Division dropdown, and set default school selection to blank placeholder on Add.
+- `/CHANGES_DOCUMENTATION.md`: Appended details for this final verification batch.
+
+
+---
+
+## 42. Issue: Stored Procedures Error in incremental_stored_procedures.sql (Batch 6)
+- **Root Cause & Requirements**:
+  1. **sp_GetStaff Exists Conflict**: Running the migration returned `Msg 2714` stating that the procedure already existed, indicating that standard table type check constraints like `IF OBJECT_ID('dbo.sp_GetStaff', 'P')` might evaluate to null or fail in various execution contexts depending on schema configurations.
+  2. **Invalid Column Name 'ContactNumber' / 'Contact2'**: Both `sp_GetStaffPaged` and `sp_ManageStaff` procedures threw `Msg 207` compile errors because they still referenced old column names `ContactNumber` and `Contact2` that were previously renamed to `PersonalContact` and `EmergencyContact` during sequential schema migrations.
+
+- **Remediation**:
+  1. **Robust Drop Statements**: Upgraded stored procedure existence drop checks to the SQL Server standard `IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(...) AND type in ('P', 'PC')) DROP PROCEDURE ...;` which catches procedures reliably across all schema variations.
+  2. **Harmonized Contact Column References**: Synchronized parameter and query identifiers across the database routines inside `backend/ScanID.Api/incremental_stored_procedures.sql` to cleanly map `@PersonalContact` / `@EmergencyContact` input parameters onto active schema columns `PersonalContact` / `EmergencyContact`.
+
+---
+
+## 43. Modified/Synchronized Files List (Batch 6)
+
+- `/backend/ScanID.Api/incremental_stored_procedures.sql`: Aligned staff stored procedures to reference `PersonalContact` and `EmergencyContact` columns, and improved the reliability of DROP SP statements.
+- `/CHANGES_DOCUMENTATION.md`: Appended details for the Batch 6 Stored Procedures release.
+
+

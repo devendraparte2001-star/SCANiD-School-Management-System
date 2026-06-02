@@ -55,8 +55,18 @@ builder.Services.AddScoped<IMarkService, MarkService>();
 
 // Register Singleton queue service and hosted background worker for raw card scan (iodata) processing
 builder.Services.AddSingleton<IIodataQueueService, IodataQueueService>();
-builder.Services.AddHostedService<IodataBackgroundWorker>();
-builder.Services.AddHostedService<IodataFolderWatcherService>();
+
+bool enableIodataWorker = builder.Configuration.GetValue<bool>("BackgroundServices:EnableIodataWorker", true);
+bool enableIodataFolderWatcher = builder.Configuration.GetValue<bool>("BackgroundServices:EnableIodataFolderWatcher", true);
+
+if (enableIodataWorker)
+{
+    builder.Services.AddHostedService<IodataBackgroundWorker>();
+}
+if (enableIodataFolderWatcher)
+{
+    builder.Services.AddHostedService<IodataFolderWatcherService>();
+}
 
 // Configure CORS for React Frontend from appsettings/env instead of hard-coded origins.
 builder.Services.AddCors(options =>

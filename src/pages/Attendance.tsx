@@ -530,6 +530,20 @@ export default function Attendance({ user }: { user: any }) {
       return;
     }
 
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (start > today || end > today) {
+      toast.error("Folder Scan validation: Dates cannot be in the future.");
+      return;
+    }
+
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 31) {
+      toast.error("Folder Scan validation: Date range cannot exceed 31 days to avert server bottlenecks.");
+      return;
+    }
+
     setIsProcessingFolderScan(true);
     setFolderScanLogs(["Initiating folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
 

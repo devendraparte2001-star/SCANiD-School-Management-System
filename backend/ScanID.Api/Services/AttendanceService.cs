@@ -252,7 +252,7 @@ namespace ScanID.Api.Services
                     string filePath = Path.Combine(watchDir, fileNamePattern);
                     string archivePath = Path.Combine(watchDir, "processed", fileNamePattern);
 
-                    string targetPath = null;
+                    string? targetPath = null;
                     if (File.Exists(filePath))
                     {
                         targetPath = filePath;

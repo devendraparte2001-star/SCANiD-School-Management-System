@@ -461,6 +461,11 @@ export const apiService = {
   updateSchoolSection: (id: number, data: MasterWriteRequest) => api.put(`/masters/school-sections/${id}`, data),
   deleteSchoolSection: (id: number) => api.delete(`/masters/school-sections/${id}`),
 
+  getStaffInitials: (params?: PaginatedParams) => api.get("/masters/staff-initials", { params }),
+  createStaffInitial: (data: MasterWriteRequest) => api.post("/masters/staff-initials", data),
+  updateStaffInitial: (id: number, data: MasterWriteRequest) => api.put(`/masters/staff-initials/${id}`, data),
+  deleteStaffInitial: (id: number) => api.delete(`/masters/staff-initials/${id}`),
+
   getStates: (params?: PaginatedParams) => api.get("/masters/states", { params }),
   createState: (data: MasterWriteRequest) => api.post("/masters/states", data),
   updateState: (id: number, data: MasterWriteRequest) => api.put(`/masters/states/${id}`, data),

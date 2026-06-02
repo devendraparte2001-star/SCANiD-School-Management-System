@@ -167,6 +167,8 @@ export default function Staff({ user }: { user: any }) {
   const [shifts, setShifts] = useState<any[]>([]);
   const [standards, setStandards] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [staffInitials, setStaffInitials] = useState<any[]>([]);
+  const [systemRoles, setSystemRoles] = useState<any[]>([]);
 
   const inputRefs = useRef<Record<string, any>>({});
 
@@ -209,7 +211,7 @@ export default function Staff({ user }: { user: any }) {
   const fetchMasters = async () => {
     try {
       const [
-        schRes, relRes, bgRes, casRes, subRes, catRes, stRes, ctRes, shRes, stdRes, secRes
+        schRes, relRes, bgRes, casRes, subRes, catRes, stRes, ctRes, shRes, stdRes, secRes, iniRes, rolRes
       ] = await Promise.all([
         apiService.getSchools(),
         apiService.getReligions(),
@@ -221,7 +223,9 @@ export default function Staff({ user }: { user: any }) {
         apiService.getCities(),
         apiService.getShifts(),
         apiService.getStandards(),
-        apiService.getSections()
+        apiService.getSections(),
+        apiService.getStaffInitials(),
+        apiService.getRoles()
       ]);
 
       setSchools(schRes.data?.data || schRes.data || []);
@@ -235,6 +239,8 @@ export default function Staff({ user }: { user: any }) {
       setShifts(shRes.data?.data || shRes.data || []);
       setStandards(stdRes.data?.data || stdRes.data || []);
       setSections(secRes.data?.data || secRes.data || []);
+      setStaffInitials(iniRes.data?.data || iniRes.data || []);
+      setSystemRoles(rolRes.data?.data || rolRes.data || []);
     } catch (error) {
       console.error("Failed to load schema master listings", error);
     }
@@ -639,12 +645,12 @@ export default function Staff({ user }: { user: any }) {
               return;
             }
 
-            // RFID alphanumeric length (11 or 24)
+            // RFID alphanumeric length (10 or 24)
             const rfVal = staffRecord.rfid?.trim() || "";
-            const isRfidValid = rfVal !== "" && (rfVal.length === 11 || rfVal.length === 24) && /^[a-zA-Z0-9]+$/.test(rfVal);
+            const isRfidValid = rfVal !== "" && (rfVal.length === 10 || rfVal.length === 24) && /^[a-zA-Z0-9]+$/.test(rfVal);
             if (!isRfidValid) {
               setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'RFID Tag is a mandatory field and must be alphanumeric with exactly 11 or 24 characters' } : res
+                res.id === actualIndex ? { ...res, status: 'error', error: 'RFID Tag is a mandatory field and must be alphanumeric with exactly 10 or 24 characters' } : res
               ));
               failCount++;
               return;
@@ -749,7 +755,7 @@ export default function Staff({ user }: { user: any }) {
       sectionId: "",
       isClassTeacher: false,
       status: "Active",
-      schoolId: user.schoolId || "",
+      schoolId: "",
       initials: "",
       gender: "",
       dateOfBirth: "",
@@ -786,7 +792,7 @@ export default function Staff({ user }: { user: any }) {
     };
 
     const rf = formData.rfid?.trim() || "";
-    const isRfidValid = rf !== "" && (rf.length === 11 || rf.length === 24) && /^[a-zA-Z0-9]+$/.test(rf);
+    const isRfidValid = rf !== "" && (rf.length === 10 || rf.length === 24) && /^[a-zA-Z0-9]+$/.test(rf);
 
     checkField("schoolId", !formData.schoolId);
     checkField("firstName", !formData.firstName?.trim());
@@ -804,7 +810,7 @@ export default function Staff({ user }: { user: any }) {
 
     if (firstErrorField) {
       if (firstErrorField === "rfid" && !isRfidValid) {
-        toast.error("RFID Tag Number must be alphanumeric and exactly 11 or 24 characters.");
+        toast.error("RFID Tag Number must be alphanumeric and exactly 10 or 24 characters.");
       } else {
         toast.error("Please enter correct and complete fields before submitting.");
       }
@@ -857,6 +863,7 @@ export default function Staff({ user }: { user: any }) {
            passwordHash: "DefaultPass123!",
            email: formData.email,
            role: formData.role || "teacher",
+           roleId: systemRoles.find(r => r.name.toLowerCase() === (formData.role || "teacher").toLowerCase())?.id || null,
            schoolId: parseSafeInt(formData.schoolId) || 1
         },
         CreatedBy: isEditing ? undefined : (user.name || user.email),
@@ -1064,7 +1071,26 @@ export default function Staff({ user }: { user: any }) {
 
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Staff Initials</Label>
-                          <Input value={formData.initials} onChange={e => setFormData({...formData, initials: e.target.value})} placeholder="Mr. / Ms. / Dr." className="h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all" />
+                          <Select 
+                            value={formData.initials || ""} 
+                            onValueChange={v => setFormData({...formData, initials: v})}
+                          >
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Select Initials">
+                                {formData.initials || "Select Initials"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
+                              <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">
+                                Select Initials
+                              </SelectItem>
+                              {staffInitials.map(ini => (
+                                <SelectItem key={ini.id} value={ini.name} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                  <span className="text-sm uppercase tracking-tight">{ini.name}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div className="space-y-2">
@@ -1109,7 +1135,7 @@ export default function Staff({ user }: { user: any }) {
                               setFormData({...formData, rfid: cleaned});
                               if (formErrors.rfid) setFormErrors(prev => ({ ...prev, rfid: false }));
                             }} 
-                            placeholder="Alphanumeric (exactly 11 or 24 characters)" 
+                            placeholder="Alphanumeric (exactly 10 or 24 characters)" 
                             className={cn(
                               "h-12 border-slate-100 bg-slate-50/50 font-black rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
                               formErrors.rfid && "border-red-500 ring-2 ring-red-500/10"
@@ -1141,16 +1167,28 @@ export default function Staff({ user }: { user: any }) {
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assign User Role *</Label>
                           <Select value={formData.role || "teacher"} onValueChange={(v: any) => setFormData({...formData, role: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue placeholder="Assign Staff Role" />
+                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                              <SelectValue placeholder="Assign Staff Role">
+                                {formData.role ? (formData.role.charAt(0).toUpperCase() + formData.role.slice(1)) : "Assign Staff Role"}
+                              </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-100 p-2 shadow-xl">
-                              <SelectItem value="teacher" className="font-black text-xs uppercase tracking-widest">Teacher</SelectItem>
-                              <SelectItem value="peon" className="font-black text-xs uppercase tracking-widest">Peon</SelectItem>
-                              <SelectItem value="accountant" className="font-black text-xs uppercase tracking-widest">Accountant</SelectItem>
-                              <SelectItem value="headmaster" className="font-black text-xs uppercase tracking-widest">Headmaster</SelectItem>
-                              <SelectItem value="principal" className="font-black text-xs uppercase tracking-widest">Principal</SelectItem>
-                              <SelectItem value="admin" className="font-black text-xs uppercase tracking-widest">Admin</SelectItem>
+                            <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
+                              {systemRoles.length > 0 ? (
+                                systemRoles.map(role => (
+                                  <SelectItem key={role.id} value={role.name.toLowerCase()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                    <span className="text-sm uppercase tracking-tight">{role.name}</span>
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <>
+                                  <SelectItem value="teacher" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Teacher</span></SelectItem>
+                                  <SelectItem value="peon" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Peon</span></SelectItem>
+                                  <SelectItem value="accountant" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Accountant</span></SelectItem>
+                                  <SelectItem value="headmaster" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Headmaster</span></SelectItem>
+                                  <SelectItem value="principal" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Principal</span></SelectItem>
+                                  <SelectItem value="admin" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer"><span className="text-sm uppercase tracking-tight">Admin</span></SelectItem>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1514,7 +1552,6 @@ export default function Staff({ user }: { user: any }) {
                               setFormData({...formData, sectionId: v});
                               if (formErrors.sectionId) setFormErrors(prev => ({ ...prev, sectionId: false }));
                             }} 
-                            disabled={!formData.standardId}
                           >
                             <SelectTrigger 
                               ref={el => { inputRefs.current["sectionId"] = el; }}

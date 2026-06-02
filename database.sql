@@ -806,6 +806,28 @@ CREATE TABLE [dbo].[IodataRecords](
 END
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StaffInitials]') AND type in (N'U'))
+BEGIN
+CREATE TABLE [dbo].[StaffInitials](
+    [Id] [int] IDENTITY(1,1) NOT NULL,
+    [Name] [nvarchar](50) NOT NULL,
+    [IsActive] [bit] NOT NULL DEFAULT (1),
+    [IsDeleted] [bit] NOT NULL DEFAULT (0),
+    [CreatedBy] [nvarchar](max) NULL,
+    [CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [ModifiedBy] [nvarchar](max) NULL,
+    [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+ CONSTRAINT [PK_StaffInitials] PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Mr.', 1, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Mrs.', 1, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Ms.', 1, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Dr.', 1, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Prof.', 1, GETUTCDATE(), GETUTCDATE());
+END
+GO
+
 -- 9. Sample Infrastructure Data
 IF NOT EXISTS (SELECT * FROM [dbo].[ErrorLogs] WHERE [Id] = 1)
 BEGIN

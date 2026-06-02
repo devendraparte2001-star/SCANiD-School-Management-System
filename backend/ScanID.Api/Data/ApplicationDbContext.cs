@@ -51,6 +51,7 @@ namespace ScanID.Api.Data
         public DbSet<Occupation> Occupations { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<SchoolSection> SchoolSections { get; set; }
+        public DbSet<StaffInitial> StaffInitials { get; set; }
 
         /// <summary>
         /// Configures the model, including global query filters for soft deletion.

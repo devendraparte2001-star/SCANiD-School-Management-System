@@ -613,5 +613,13 @@ namespace ScanID.Api.Models
         public string? MachineId { get; set; }
         public string? TransactionId { get; set; }
     }
+
+    /// <summary> Master data for staff initials. </summary>
+    public class StaffInitial : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Name { get; set; } = string.Empty;
+    }
 }
 
