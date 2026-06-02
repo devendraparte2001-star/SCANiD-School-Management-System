@@ -473,5 +473,36 @@ This document records the exact changes, the root causes identified, and the fix
 - `/backend/ScanID.Api/Services/AttendanceService.cs`: Implemented transaction scopes, DELETE pre-import wipes, and clean rollbacks for date range scans.
 - `/CHANGES_DOCUMENTATION.md`: Appended documentation for Batch 8 release.
 
+---
+
+## 48. Enhancement: Server-Side Pagination for Scanner Processing Logs (Batch 9)
+- **Root Cause & Requirements**:
+  1. **Page Slowness and Memory Overload**: The "Scanner Processing Logs" card table in the Attendance module historically loaded all raw, processed, or fail-state RFID log records in a single payload. Over time, as hundreds of transactions accumulate, this causes severe browser rendering slowness, slow loading states, and Chrome rendering lag.
+  2. **Unified UI Consistency**: Requirements call for modern server-side pagination layout matched to the Student and Staff list tables, with custom page selector, rows per page, and total records calculation.
+
+- **Remediation**:
+  1. **New Paginated Stored Procedure**: Created `dbo.sp_GetIodataRecordsPaged` utilizing standard SQL `OFFSET` / `FETCH NEXT` constructs and `COUNT_BIG(*) OVER()` cross-joining for fast, scalable window queries.
+  2. **Server-Side Repository and API Endpoint mapping**:
+     - Implemented `GetIodataRecordsPagedAsync` in the `AttendanceService` executing the new stored procedure and mapping the dynamic rows and `TotalCount`.
+     - Augmented the `/api/attendance/iodata` endpoint to accept `page`, `pageSize`, and `paged` parameter configurations, preserving full backward compatibility.
+  3. **React UI Integration**:
+     - Upgraded `/src/lib/api.ts` to support optional query parameters (`page`, `pageSize`, `paged`) for the `getIodataRecords` endpoint helper.
+     - Implemented standard paginator controls within `/src/pages/Attendance.tsx` detailing Rows Per Page drops (10/25/50/100/etc.) and fluid page transitions, aligning with standard typography and layout grids.
+     - Programmed automatic page state resets back to page 1 whenever search filters are updated or files are processed/uploaded.
+
+---
+
+## 49. Modified/Synchronized Files List (Batch 9)
+
+- `/backend/ScanID.Api/Interfaces/IAttendanceService.cs`: Added `GetIodataRecordsPagedAsync` method definition.
+- `/backend/ScanID.Api/Services/AttendanceService.cs`: Implemented paginated database mapping executing stored procedure.
+- `/backend/ScanID.Api/Controllers/AttendanceController.cs`: Updated `GetIodataRecords` endpoint with parameters and structured paging envelope responses.
+- `/backend/ScanID.Api/incremental_iodata_support.sql`: Created `dbo.sp_GetIodataRecordsPaged` stored procedure SQL.
+- `/database.sql`: Integrated the full `sp_GetIodataRecords` and `sp_GetIodataRecordsPaged` definitions at the end of schema.
+- `/src/lib/api.ts`: Configured pagination options inside frontend API service.
+- `/src/pages/Attendance.tsx`: Added pagination componentry, states, and load configurations.
+- `/CHANGES_DOCUMENTATION.md`: Appended Batch 9 documentation.
+
+
 
 

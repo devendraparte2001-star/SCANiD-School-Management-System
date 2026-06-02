@@ -39,7 +39,11 @@ import {
   Cpu,
   Sliders,
   RefreshCw,
-  Play
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -500,20 +504,46 @@ export default function Attendance({ user }: { user: any }) {
   const [iodataFilterDate, setIodataFilterDate] = useState<string>("");
   const [iodataDragActive, setIodataDragActive] = useState(false);
 
+  // Server-side pagination states for Scanner Processing Logs
+  const [iodataPage, setIodataPage] = useState(1);
+  const [iodataPageSize, setIodataPageSize] = useState(10);
+  const [iodataTotalCount, setIodataTotalCount] = useState(0);
+  const [iodataTotalPages, setIodataTotalPages] = useState(1);
+
   const fetchIodataLogs = async () => {
     try {
-      const res = await apiService.getIodataRecords(iodataFilterDate || undefined);
-      setIodataLogs(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+      const res = await apiService.getIodataRecords(
+        iodataFilterDate || undefined,
+        iodataPage,
+        iodataPageSize,
+        true
+      );
+      if (res.data && res.data.data) {
+        setIodataLogs(res.data.data);
+        if (res.data.pagination) {
+          setIodataTotalCount(res.data.pagination.totalCount || 0);
+          setIodataTotalPages(res.data.pagination.totalPages || 1);
+        }
+      } else {
+        setIodataLogs(Array.isArray(res.data) ? res.data : []);
+        setIodataTotalCount(Array.isArray(res.data) ? res.data.length : 0);
+        setIodataTotalPages(1);
+      }
     } catch (err) {
       console.error("Failed to fetch Iodata logs", err);
     }
   };
 
+  // Reset page to 1 when search filter date changes
+  useEffect(() => {
+    setIodataPage(1);
+  }, [iodataFilterDate]);
+
   useEffect(() => {
     if (activeTab === "manual" && manualSubTab === "iodata") {
       fetchIodataLogs();
     }
-  }, [activeTab, manualSubTab, iodataFilterDate]);
+  }, [activeTab, manualSubTab, iodataFilterDate, iodataPage, iodataPageSize]);
 
   // Execute processing of the raw background text scan files in local directory (C:\iodata) based on naming conventions
   const handleIoFolderScan = async () => {
@@ -1869,6 +1899,75 @@ export default function Attendance({ user }: { user: any }) {
                 </TableBody>
               </Table>
             </CardContent>
+
+            {/* Pagination Footer */}
+            {iodataLogs.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 bg-slate-50/50 border-t border-slate-100 gap-4">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Showing <span className="text-slate-900 font-black">{(iodataPage - 1) * iodataPageSize + 1}</span> to <span className="text-slate-900 font-black">{Math.min(iodataPage * iodataPageSize, iodataTotalCount)}</span> of <span className="text-slate-900 font-black">{iodataTotalCount}</span> entries
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 mr-4">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rows per page</span>
+                    <Select value={iodataPageSize.toString()} onValueChange={(v) => { if (v) { setIodataPageSize(parseInt(v)); setIodataPage(1); } }}>
+                      <SelectTrigger className="w-[70px] h-8 bg-white border-slate-200 rounded-lg text-xs font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        {[10, 25, 50, 100].map(size => (
+                          <SelectItem key={size} value={size.toString()} className="text-xs font-bold">{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                      onClick={() => setIodataPage(1)}
+                      disabled={iodataPage === 1}
+                    >
+                      <ChevronsLeft size={14} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                      onClick={() => setIodataPage(prev => Math.max(1, prev - 1))}
+                      disabled={iodataPage === 1}
+                    >
+                      <ChevronLeft size={14} />
+                    </Button>
+
+                    <div className="flex items-center px-3 h-8 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900 mx-1">
+                      Page {iodataPage} of {iodataTotalPages || 1}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                      onClick={() => setIodataPage(prev => Math.min(iodataTotalPages, prev + 1))}
+                      disabled={iodataPage >= iodataTotalPages}
+                    >
+                      <ChevronRight size={14} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                      onClick={() => setIodataPage(iodataTotalPages)}
+                      disabled={iodataPage >= iodataTotalPages}
+                    >
+                      <ChevronsRight size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       )}

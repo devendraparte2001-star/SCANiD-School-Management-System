@@ -6,6 +6,9 @@ using ScanID.Api.Models;
 using ScanID.Api.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace ScanID.Api.Services
@@ -143,6 +146,86 @@ namespace ScanID.Api.Services
                 "dbo.sp_GetIodataRecords",
                 ("Date", date)
             );
+        }
+
+        public async Task<(IEnumerable<IodataRecord> Data, int TotalCount)> GetIodataRecordsPagedAsync(DateTime? date, int page, int pageSize)
+        {
+            // Execute the stored procedure sp_GetIodataRecordsPaged to pull server-side paginated logs
+            var list = new List<IodataRecord>();
+            int totalCount = 0;
+
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State == ConnectionState.Closed)
+            {
+                await _context.Database.OpenConnectionAsync();
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "dbo.sp_GetIodataRecordsPaged";
+            command.CommandType = CommandType.StoredProcedure;
+
+            void AddParam(string name, object? val)
+            {
+                var param = command.CreateParameter();
+                param.ParameterName = name.StartsWith("@") ? name : "@" + name;
+                param.Value = val ?? DBNull.Value;
+                command.Parameters.Add(param);
+            }
+
+            AddParam("Date", date);
+            AddParam("Page", page);
+            AddParam("PageSize", pageSize);
+
+            using var reader = await command.ExecuteReaderAsync();
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(reader.GetName(i));
+            }
+
+            var props = typeof(IodataRecord).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                            .Where(p => p.CanWrite && (
+                                                p.PropertyType.IsPrimitive || 
+                                                p.PropertyType == typeof(string) || 
+                                                p.PropertyType == typeof(decimal) || 
+                                                p.PropertyType == typeof(DateTime) || 
+                                                p.PropertyType == typeof(Guid) || 
+                                                p.PropertyType.IsEnum ||
+                                                (Nullable.GetUnderlyingType(p.PropertyType) != null && (
+                                                    Nullable.GetUnderlyingType(p.PropertyType)!.IsPrimitive ||
+                                                    Nullable.GetUnderlyingType(p.PropertyType) == typeof(decimal) ||
+                                                    Nullable.GetUnderlyingType(p.PropertyType) == typeof(DateTime) ||
+                                                    Nullable.GetUnderlyingType(p.PropertyType) == typeof(Guid) ||
+                                                    Nullable.GetUnderlyingType(p.PropertyType)!.IsEnum
+                                                ))
+                                            ))
+                                            .ToArray();
+
+            while (await reader.ReadAsync())
+            {
+                var item = new IodataRecord();
+                foreach (var prop in props)
+                {
+                    if (columns.Contains(prop.Name))
+                    {
+                        var val = reader[prop.Name];
+                        if (val != DBNull.Value)
+                        {
+                            var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                            prop.SetValue(item, Convert.ChangeType(val, underlyingType));
+                        }
+                    }
+                }
+
+                if (columns.Contains("TotalCount") && reader["TotalCount"] != DBNull.Value)
+                {
+                    totalCount = Convert.ToInt32(reader["TotalCount"]);
+                }
+
+                list.Add(item);
+            }
+
+            return (list, totalCount);
         }
 
         public async Task<IodataRecord?> ProcessSingleIodataLineAsync(string line)

@@ -2157,3 +2157,53 @@ BEGIN
     FETCH NEXT @PageSize ROWS ONLY;
 END;
 GO
+
+-- ==========================================================
+-- IODATA RECORDS STORAGE AND RETRIEVAL STORED PROCEDURES
+-- ==========================================================
+
+IF OBJECT_ID('dbo.sp_GetIodataRecords', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetIodataRecords;
+GO
+CREATE PROCEDURE dbo.sp_GetIodataRecords
+    @Date DATETIME = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT * 
+    FROM [dbo].[IodataRecords]
+    WHERE (@Date IS NULL OR CONVERT(DATE, [Date]) = CONVERT(DATE, @Date))
+    ORDER BY [Date] DESC, InTime DESC;
+END;
+GO
+
+IF OBJECT_ID('dbo.sp_GetIodataRecordsPaged', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetIodataRecordsPaged;
+GO
+CREATE PROCEDURE dbo.sp_GetIodataRecordsPaged
+    @Date DATETIME = NULL,
+    @Page INT = 1,
+    @PageSize INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @Page < 1 SET @Page = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+
+    DECLARE @Offset INT = (@Page - 1) * @PageSize;
+
+    WITH FilteredRecords AS (
+        SELECT *
+        FROM [dbo].[IodataRecords]
+        WHERE (@Date IS NULL OR CONVERT(DATE, [Date]) = CONVERT(DATE, @Date))
+    ),
+    Total AS (
+        SELECT COUNT_BIG(*) AS TotalCount FROM FilteredRecords
+    )
+    SELECT r.*, t.TotalCount
+    FROM FilteredRecords r
+    CROSS JOIN Total t
+    ORDER BY r.[Date] DESC, r.[InTime] DESC, r.[Id] DESC
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO

@@ -108,13 +108,38 @@ namespace ScanID.Api.Controllers
         }
 
         /// <summary>
-        /// Retrieves iodata parsed logs.
+        /// Retrieves iodata parsed logs with optional server-side pagination.
         /// </summary>
         [HttpGet("iodata")]
-        public async Task<ActionResult<IEnumerable<IodataRecord>>> GetIodataRecords(DateTime? date)
+        public async Task<IActionResult> GetIodataRecords(
+            [FromQuery] DateTime? date,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] bool paged = false)
         {
-            var records = await _attendanceService.GetIodataRecordsAsync(date);
-            return Ok(records);
+            if (paged)
+            {
+                var (dataList, totalCount) = await _attendanceService.GetIodataRecordsPagedAsync(date, page, pageSize);
+                var totalPages = (int)Math.Max(1, Math.Ceiling((double)totalCount / pageSize));
+                var currentPage = Math.Max(1, page);
+
+                return Ok(new
+                {
+                    data = dataList,
+                    pagination = new
+                    {
+                        totalCount,
+                        totalPages,
+                        page = currentPage,
+                        pageSize
+                    }
+                });
+            }
+            else
+            {
+                var records = await _attendanceService.GetIodataRecordsAsync(date);
+                return Ok(records);
+            }
         }
 
         /// <summary>

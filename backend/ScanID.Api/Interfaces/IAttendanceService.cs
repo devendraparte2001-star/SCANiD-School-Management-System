@@ -17,6 +17,7 @@ namespace ScanID.Api.Interfaces
         
         // Iodata Raw scanner logging endpoints
         Task<IEnumerable<IodataRecord>> GetIodataRecordsAsync(DateTime? date);
+        Task<(IEnumerable<IodataRecord> Data, int TotalCount)> GetIodataRecordsPagedAsync(DateTime? date, int page, int pageSize);
         Task<IodataRecord?> ProcessSingleIodataLineAsync(string line);
         Task<bool> ReprocessIodataRecordAsync(int recordId);
         void EnqueueIodataLines(List<string> lines);
