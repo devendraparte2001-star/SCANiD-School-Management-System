@@ -435,3 +435,24 @@ This document records the exact changes, the root causes identified, and the fix
 - `/CHANGES_DOCUMENTATION.md`: Appended details for the Batch 6 Stored Procedures release.
 
 
+---
+
+## 44. Issue: Local Folder Scanner Timeout in attendance Module (Batch 7)
+- **Root Cause & Requirements**:
+  1. **HTTP/Axios Timeout Constraints**: The client application features a generic axios configuration that uses a default timeout limit of 30,000ms (30 seconds).
+  2. **Heavy Synced file I/O and SQL Procedure Execution**: Triggering a multi-day local folder parser scan requires the server to find, open, and scan offline text files (e.g. `DataMMDDYY.txt`), split raw punch lines, and run sequential `EXEC dbo.sp_ProcessIodataRecord ...` queries. If several logs or large files are parsed, this synchronous database load frequently exceeds the client-side 30-second constraint, triggering an abort exception.
+
+- **Remediation**:
+  1. **Targeted Timeout Extension**: Refined the `processIodataRange` API function inside `src/lib/api.ts` to supply an overrides object setting custom timeout to `600000` (10 minutes). This gives the backend environment ample time to successfully complete intensive disk storage scans and persist records within core database registers.
+  2. **Axios Catch block diagnostics**: Enhanced the exception filter in `src/pages/Attendance.tsx` folder scanner handler to query first for response-level error messages (`err?.response?.data?.message` or string logs) dynamically, rendering accurate troubleshooting tips instead of generalized errors.
+
+---
+
+## 45. Modified/Synchronized Files List (Batch 7)
+
+- `/src/lib/api.ts`: Configured a dedicated 10-minute timeout for `processIodataRange` POST queries.
+- `/src/pages/Attendance.tsx`: Refined folder scanner logic catch block to gracefully parse and present deep server-side exceptions.
+- `/CHANGES_DOCUMENTATION.md`: Appended details for this final timeout performance patch.
+
+
+

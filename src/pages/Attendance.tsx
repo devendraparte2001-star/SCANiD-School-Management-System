@@ -566,7 +566,8 @@ export default function Attendance({ user }: { user: any }) {
       fetchIodataLogs();
     } catch (err: any) {
       console.error(err);
-      const errMsg = err?.response?.data || err.message || "Disk IO/SQL Procedure Error";
+      // Clean parsing of nested axios response error structures
+      const errMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || "Disk IO/SQL Procedure Error";
       setFolderScanLogs(prev => [...prev, `[FAIL] Error occurred: ${errMsg}`, "Check if C:\\iodata directory contains matches with naming criteria: DataMMDDYY.txt"]);
       toast.error("Folder file upload process failed - See execution debugger for details");
     } finally {
