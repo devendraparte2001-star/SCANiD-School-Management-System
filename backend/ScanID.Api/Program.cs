@@ -256,6 +256,25 @@ try
                 END
             END
         ");
+
+        // 4. Drop redundant Temp_ columns from Staff table if they exist
+        _ = await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
+            BEGIN
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_IsActive')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsActive];
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_IsDeleted')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsDeleted];
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_CreatedBy')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedBy];
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_CreatedOn')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedOn];
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_ModifiedBy')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedBy];
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_ModifiedOn')
+                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedOn];
+            END
+        ");
     }
 }
 catch (Exception ex)

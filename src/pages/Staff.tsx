@@ -185,7 +185,7 @@ export default function Staff({ user }: { user: any }) {
     standardId: "",
     sectionId: "",
     isClassTeacher: false,
-    status: "Active",
+    status: "",
     schoolId: user.schoolId || "",
     initials: "",
     gender: "",
@@ -204,7 +204,7 @@ export default function Staff({ user }: { user: any }) {
     rfid: "",
     shiftId: "",
     photo: "",
-    role: "teacher"
+    role: ""
   });
 
   // Load all system masters
@@ -517,6 +517,9 @@ export default function Staff({ user }: { user: any }) {
             const email = getFieldCleanVal(["Email", "email", "mail"]);
             const phone = getFieldCleanVal(["Phone", "phone", "contact", "personal_contact"]);
             const initials = getFieldCleanVal(["Initials", "initials"]);
+            const parsedInitials = initials 
+              ? (staffInitials.find(x => x.name.toLowerCase().trim() === initials.toLowerCase().trim())?.id.toString() || initials)
+              : "";
             const gender = getFieldCleanVal(["Gender", "gender"]) || "Male";
             const qualification = getFieldCleanVal(["Qualification", "qualification", "degree"]);
             const experience = getFieldCleanVal(["Experience", "experience"]);
@@ -549,7 +552,7 @@ export default function Staff({ user }: { user: any }) {
               middleName: mName,
               schoolId: parseSafeInt(schoolId) || 1,
               employeeId: `EMP-${Date.now()}-${index}`,
-              initials: initials || "",
+              initials: parsedInitials || "",
               department: subject || "Faculty",
               qualification: qualification || "",
               personalContact: phone || "",
@@ -713,7 +716,7 @@ export default function Staff({ user }: { user: any }) {
     try {
       const exportData = staffList.map((t: any) => ({
         "Employee ID": t.employeeId || "",
-        "Initials": t.initials || "",
+        "Initials": getInitialsText(t.initials) || "",
         "Name": t.name || "",
         "Email": t.email || "",
         "Core Expertise": t.subject || "",
@@ -740,6 +743,12 @@ export default function Staff({ user }: { user: any }) {
     }
   };
 
+  const getInitialsText = (initialsValue: string | null | undefined) => {
+    if (!initialsValue) return "";
+    const match = staffInitials.find(x => x.id.toString() === initialsValue.toString() || x.name === initialsValue);
+    return match ? match.name : initialsValue;
+  };
+
   const resetForm = () => {
     setFormData({
       firstName: "",
@@ -754,7 +763,7 @@ export default function Staff({ user }: { user: any }) {
       standardId: "",
       sectionId: "",
       isClassTeacher: false,
-      status: "Active",
+      status: "",
       schoolId: "",
       initials: "",
       gender: "",
@@ -773,7 +782,7 @@ export default function Staff({ user }: { user: any }) {
       rfid: "",
       shiftId: "",
       photo: "",
-      role: "teacher"
+      role: ""
     });
     setSelectedStaff(null);
     setIsEditing(false);
@@ -805,6 +814,8 @@ export default function Staff({ user }: { user: any }) {
     checkField("standardId", !formData.standardId);
     checkField("sectionId", !formData.sectionId);
     checkField("rfid", !isRfidValid);
+    checkField("status", !formData.status);
+    checkField("role", !formData.role);
 
     setFormErrors(newErrors);
 
@@ -1077,7 +1088,7 @@ export default function Staff({ user }: { user: any }) {
                           >
                             <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
                               <SelectValue placeholder="Select Initials">
-                                {formData.initials || "Select Initials"}
+                                {staffInitials.find(ini => ini.id.toString() === formData.initials)?.name || formData.initials || "Select Initials"}
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
@@ -1085,7 +1096,7 @@ export default function Staff({ user }: { user: any }) {
                                 Select Initials
                               </SelectItem>
                               {staffInitials.map(ini => (
-                                <SelectItem key={ini.id} value={ini.name} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                <SelectItem key={ini.id} value={ini.id.toString()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
                                   <span className="text-sm uppercase tracking-tight">{ini.name}</span>
                                 </SelectItem>
                               ))}
@@ -1151,28 +1162,62 @@ export default function Staff({ user }: { user: any }) {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Status</Label>
-                          <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm">
-                              <SelectValue />
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.status ? "text-red-500" : "text-slate-400")}>Status *</Label>
+                          <Select 
+                            value={formData.status || ""} 
+                            onValueChange={(v: any) => {
+                              setFormData({...formData, status: v});
+                              if (formErrors.status) setFormErrors(prev => ({ ...prev, status: false }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["status"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
+                                formErrors.status && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
+                              <SelectValue placeholder="Select Status">
+                                {formData.status || "Select Status"}
+                              </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-100 p-2 shadow-xl">
-                              <SelectItem value="Active" className="font-black text-xs uppercase tracking-widest">Active</SelectItem>
-                              <SelectItem value="On Leave" className="font-black text-xs uppercase tracking-widest">On Leave</SelectItem>
-                              <SelectItem value="Resigned" className="font-black text-xs uppercase tracking-widest">Resigned</SelectItem>
+                            <SelectContent className="rounded-[2rem] border-slate-100 p-3 shadow-2xl">
+                              <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Status</SelectItem>
+                              <SelectItem value="Active" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                <span className="text-sm uppercase tracking-tight">Active</span>
+                              </SelectItem>
+                              <SelectItem value="On Leave" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                <span className="text-sm uppercase tracking-tight">On Leave</span>
+                              </SelectItem>
+                              <SelectItem value="Resigned" className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                <span className="text-sm uppercase tracking-tight">Resigned</span>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assign User Role *</Label>
-                          <Select value={formData.role || "teacher"} onValueChange={(v: any) => setFormData({...formData, role: v})}>
-                            <SelectTrigger className="h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all">
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.role ? "text-red-500" : "text-slate-400")}>Assign User Role *</Label>
+                          <Select 
+                            value={formData.role || ""} 
+                            onValueChange={(v: any) => {
+                              setFormData({...formData, role: v});
+                              if (formErrors.role) setFormErrors(prev => ({ ...prev, role: false }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["role"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all",
+                                formErrors.role && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
                               <SelectValue placeholder="Assign Staff Role">
                                 {formData.role ? (formData.role.charAt(0).toUpperCase() + formData.role.slice(1)) : "Assign Staff Role"}
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
+                              <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">Select Role</SelectItem>
                               {systemRoles.length > 0 ? (
                                 systemRoles.map(role => (
                                   <SelectItem key={role.id} value={role.name.toLowerCase()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
@@ -1866,7 +1911,7 @@ export default function Staff({ user }: { user: any }) {
                           <Avatar className="h-11 w-11 ring-4 ring-white shadow-lg shadow-slate-200 transition-transform group-hover:scale-105">
                             <AvatarImage src={resolvePhotoUrl(staffObj.photo)} />
                             <AvatarFallback className="bg-indigo-600 text-white font-black uppercase text-sm">
-                              {staffObj.initials || (staffObj.name || "S")[0]}
+                              {getInitialsText(staffObj.initials) || (staffObj.name || "S")[0]}
                             </AvatarFallback>
                           </Avatar>
                           <SimpleTooltip content="Update Photo" side="top">
@@ -1937,9 +1982,9 @@ export default function Staff({ user }: { user: any }) {
                                 standardId: staffObj.standardId || "",
                                 sectionId: staffObj.sectionId || "",
                                 isClassTeacher: staffObj.isClassTeacher,
-                                status: staffObj.status,
+                                status: staffObj.status || "",
                                 schoolId: staffObj.schoolId || user.schoolId || "",
-                                initials: staffObj.initials,
+                                initials: staffObj.initials || "",
                                 gender: staffObj.gender,
                                 dateOfBirth: staffObj.dateOfBirth,
                                 bloodGroupId: staffObj.bloodGroupId,
@@ -1956,7 +2001,7 @@ export default function Staff({ user }: { user: any }) {
                                 rfid: staffObj.rfid,
                                 shiftId: staffObj.shiftId,
                                 photo: staffObj.photo || "",
-                                role: staffObj.role || "teacher"
+                                role: staffObj.role || ""
                               });
                               setIsAddDialogOpen(true);
                             }}>

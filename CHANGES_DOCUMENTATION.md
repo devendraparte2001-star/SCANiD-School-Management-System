@@ -531,5 +531,35 @@ This document records the exact changes, the root causes identified, and the fix
 - `/CHANGES_DOCUMENTATION.md`: Documented the Batch 10 database changes.
 
 
+---
+
+## 52. Issue: Staff Initials ID Mapping, Temp Columns Pruning, and Dropdowns Initialization (Batch 11)
+- **Root Cause & Requirements**:
+  1. **Initials Storing Text Instead of ID**: The "Staff Initials" lookup dropdown originally stored and transmitted the raw text name of initials (e.g. "Mr.", "Mrs.") in the `Initials` column of the `Staff` table, rather than the relational `Id` key from the `StaffInitials` master lookup table.
+  2. **Legacy Temp_ Columns in Staff Table**: Redundant development columns (`Temp_IsActive`, `Temp_IsDeleted`, `Temp_CreatedBy`, `Temp_CreatedOn`, `Temp_ModifiedBy`, `Temp_ModifiedOn`) were left in the physical SQL Server schema of the `Staff` table.
+  3. **Neutral Dropdowns Defaults on Add and Pre-populating on Edit**: Dropdowns like Assign User Role and Status defaulted to preset values ("teacher" and "Active") during initialization, bypassing manual selections and leading to erroneous form submissions. These needed to default to neutral empty (`""`) and validate as mandatory fields. On Edit, present values need to pre-populate exactly, or fallback to default values gracefully.
+- **Remediation**:
+  1. **Relational ID Lookup for Staff Initials**:
+     - Modernized `Select` component for "Staff Initials" inside `/src/pages/Staff.tsx` to bind directly to the numeric ID (`ini.id.toString()`) instead of raw names.
+     - Implemented `getInitialsText` helper on the frontend to dynamically map initials IDs back to their human-friendly labels for list viewing, Excel export, and bulk import uploads.
+  2. **Cleanup of Redundant Temp Columns**:
+     - Embedded a conditional column dropping segment inside the self-healing DB startup blocks in `Program.cs`. At application startup, the system automatically checks if these redundant columns exist on the `dbo.Staff` table and drops them cleanly.
+     - Appended the corresponding DDL ALTER script to `/incremental_database_updates.sql`.
+  3. **Default dropdown Values & Mandatory Validation**:
+     - Reset initial form state values for status (`status: ""`) and user role (`role: ""`) to neutral, unselected parameters, ensuring the default option is always unselected ("Select Status" / "Select Role").
+     - Refactored `handleSubmit` validation checks to treat both `status` and `role` as mandatory fields, triggering visual error boundaries and focusing inputs if submitted blank.
+     - Aligned Edit mode deserialization inside `/src/pages/Staff.tsx` to safely populate database fields if present, defaulting cleanly to empty string boundaries otherwise.
+
+---
+
+## 53. Modified/Synchronized Files List (Batch 11)
+
+- `/src/pages/Staff.tsx`: Migrated initials selection to ID mappings, implemented text-to-ID Excel and bulk mappers, set default unselected statuses/roles, and enforced mandatory dropdown validation.
+- `/backend/ScanID.Api/Program.cs`: Setup programmatic startup purging of legacy `Temp_` columns from the `Staff` table.
+- `/incremental_database_updates.sql`: Pre-declared manual database migration schemas dropping redundant temp columns.
+- `/CHANGES_DOCUMENTATION.md`: Documented the Batch 11 changes.
+
+
+
 
 
