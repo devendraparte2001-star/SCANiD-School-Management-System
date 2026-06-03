@@ -181,7 +181,7 @@ BEGIN
             CASE WHEN @IsUpdate = 1 THEN 'Attendance Update' ELSE 'Attendance Create' END, 
             'Attendance', 
             GETUTCDATE(), 
- OldValues, 
+            @OldValues, 
             @NewValues, 
             CAST(@AttendanceId AS NVARCHAR(100))
         );

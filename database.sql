@@ -1498,25 +1498,124 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Attendance]') AND type in (N'U'))
+BEGIN
+    -- Attendance table is created earlier in the script, this is just a reminder slot for its SP recreate
+    PRINT 'Attendance table exists';
+END;
+GO
+
 IF OBJECT_ID('dbo.sp_ManageAttendance', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageAttendance;
 GO
 CREATE PROCEDURE dbo.sp_ManageAttendance
-    @StudentId INT,
+    @StudentId INT = NULL,
     @Date DATETIME,
     @Status NVARCHAR(50),
     @Remarks NVARCHAR(255) = NULL,
-    @CreatedBy NVARCHAR(100) = NULL
+    @CreatedBy NVARCHAR(100) = NULL,
+    @StaffId INT = NULL,
+    @MarkedByUserId INT = 1,
+    @UploadSource NVARCHAR(100) = 'Manual'
 AS
 BEGIN
     SET NOCOUNT ON;
-    MERGE [dbo].[Attendance] AS target
-    USING (SELECT @StudentId AS StudentId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
-    ON (target.StudentId = source.StudentId AND CONVERT(DATE, target.Date) = source.AttendanceDate)
-    WHEN MATCHED THEN
-        UPDATE SET Status = @Status, ModifiedOn = GETUTCDATE()
-    WHEN NOT MATCHED THEN
-        INSERT (StudentId, Date, Status, CreatedOn, ModifiedOn, CreatedBy)
-        VALUES (@StudentId, @Date, @Status, GETUTCDATE(), GETUTCDATE(), @CreatedBy);
+    
+    -- Safety validation fallback
+    IF @MarkedByUserId IS NULL SET @MarkedByUserId = 1;
+    IF @UploadSource IS NULL SET @UploadSource = 'Manual';
+
+    DECLARE @NewValues NVARCHAR(MAX);
+    DECLARE @OldValues NVARCHAR(MAX);
+    DECLARE @AttendanceId INT;
+    DECLARE @IsUpdate BIT = 0;
+
+    -- CASE 1: Student Attendance
+    IF @StudentId IS NOT NULL
+    BEGIN
+        -- Capture old state if exists
+        SELECT TOP 1 
+            @OldValues = '{ "StudentId": ' + CAST(StudentId AS VARCHAR(10)) + ', "Status": "' + ISNULL(Status, 'None') + '", "Source": "' + ISNULL(UploadSource, 'Unknown') + '" }',
+            @AttendanceId = Id,
+            @IsUpdate = 1
+        FROM [dbo].[Attendance]
+        WHERE StudentId = @StudentId AND CONVERT(DATE, Date) = CONVERT(DATE, @Date) AND IsDeleted = 0;
+
+        MERGE [dbo].[Attendance] AS target
+        USING (SELECT @StudentId AS StudentId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
+        ON (target.StudentId = source.StudentId AND CONVERT(DATE, target.Date) = source.AttendanceDate AND target.IsDeleted = 0)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                Status = @Status, 
+                Remarks = @Remarks,
+                UploadSource = @UploadSource,
+                MarkedByUserId = @MarkedByUserId,
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@CreatedBy, 'System')
+        WHEN NOT MATCHED THEN
+            INSERT (StudentId, StaffId, Date, Status, Remarks, UploadSource, MarkedByUserId, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy, IsActive, IsDeleted)
+            VALUES (@StudentId, NULL, @Date, @Status, @Remarks, @UploadSource, @MarkedByUserId, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@CreatedBy, 'System'), 1, 0);
+
+        IF @IsUpdate = 0
+            SET @AttendanceId = SCOPE_IDENTITY();
+
+        -- Audit trail logging
+        SET @NewValues = '{ "StudentId": ' + CAST(@StudentId AS VARCHAR(10)) + ', "Status": "' + @Status + '", "Date": "' + CONVERT(VARCHAR(19), @Date, 120) + '", "Source": "' + @UploadSource + '" }';
+        
+        INSERT INTO [dbo].[AuditLogs] (UserId, Type, TableName, DateTime, OldValues, NewValues, PrimaryKey)
+        VALUES (
+            CAST(@MarkedByUserId AS NVARCHAR(100)), 
+            CASE WHEN @IsUpdate = 1 THEN 'Attendance Update' ELSE 'Attendance Create' END, 
+            'Attendance', 
+            GETUTCDATE(), 
+            @OldValues, 
+            @NewValues, 
+            CAST(@AttendanceId AS NVARCHAR(100))
+        );
+    END
+
+    -- CASE 2: Staff Attendance
+    ELSE IF @StaffId IS NOT NULL
+    BEGIN
+        -- Capture old state if exists
+        SELECT TOP 1 
+            @OldValues = '{ "StaffId": ' + CAST(StaffId AS VARCHAR(10)) + ', "Status": "' + ISNULL(Status, 'None') + '", "Source": "' + ISNULL(UploadSource, 'Unknown') + '" }',
+            @AttendanceId = Id,
+            @IsUpdate = 1
+        FROM [dbo].[Attendance]
+        WHERE StaffId = @StaffId AND CONVERT(DATE, Date) = CONVERT(DATE, @Date) AND IsDeleted = 0;
+
+        MERGE [dbo].[Attendance] AS target
+        USING (SELECT @StaffId AS StaffId, CONVERT(DATE, @Date) AS AttendanceDate) AS source
+        ON (target.StaffId = source.StaffId AND CONVERT(DATE, target.Date) = source.AttendanceDate AND target.IsDeleted = 0)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                Status = @Status, 
+                Remarks = @Remarks,
+                UploadSource = @UploadSource,
+                MarkedByUserId = @MarkedByUserId,
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@CreatedBy, 'System')
+        WHEN NOT MATCHED THEN
+            INSERT (StudentId, StaffId, Date, Status, Remarks, UploadSource, MarkedByUserId, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy, IsActive, IsDeleted)
+            VALUES (NULL, @StaffId, @Date, @Status, @Remarks, @UploadSource, @MarkedByUserId, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@CreatedBy, 'System'), 1, 0);
+
+        IF @IsUpdate = 0
+            SET @AttendanceId = SCOPE_IDENTITY();
+
+        -- Audit trail logging
+        SET @NewValues = '{ "StaffId": ' + CAST(@StaffId AS VARCHAR(10)) + ', "Status": "' + @Status + '", "Date": "' + CONVERT(VARCHAR(19), @Date, 120) + '", "Source": "' + @UploadSource + '" }';
+        
+        INSERT INTO [dbo].[AuditLogs] (UserId, Type, TableName, DateTime, OldValues, NewValues, PrimaryKey)
+        VALUES (
+            CAST(@MarkedByUserId AS NVARCHAR(100)), 
+            CASE WHEN @IsUpdate = 1 THEN 'Attendance Update' ELSE 'Attendance Create' END, 
+            'Attendance', 
+            GETUTCDATE(), 
+            @OldValues, 
+            @NewValues, 
+            CAST(@AttendanceId AS NVARCHAR(100))
+        );
+    END
 END;
 GO
 

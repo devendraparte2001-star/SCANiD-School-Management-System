@@ -284,6 +284,7 @@ async function startServer() {
   let designations = dbData.designations || [{ id: 1, name: "Principal" }, { id: 2, name: "Teacher" }];
   let occupations = dbData.occupations || [{ id: 1, name: "Service" }, { id: 2, name: "Business" }];
   let schoolSections = dbData.schoolSections || [{ id: 1, name: "Primary" }, { id: 2, name: "Secondary" }, { id: 3, name: "Higher Secondary" }];
+  let staffInitials = dbData.staffInitials || [{ id: 1, name: "Mr." }, { id: 2, name: "Mrs." }, { id: 3, name: "Dr." }, { id: 4, name: "Ms." }];
   let roles = dbData.roles || [{ id: 1, name: "superadmin" }, { id: 2, name: "admin" }, { id: 3, name: "teacher" }];
 
   let attendance = dbData.attendance || [
@@ -380,6 +381,9 @@ async function startServer() {
     "school-sections": schoolSections,
     "schoolSections": schoolSections,
     "schoolsections": schoolSections,
+    "staff-initials": staffInitials,
+    "staffinitials": staffInitials,
+    "staffInitials": staffInitials,
     "roles": roles,
     "standards": standards,
     "sections": sections,
@@ -430,6 +434,7 @@ async function startServer() {
         designations,
         occupations,
         schoolSections,
+        staffInitials,
         roles
       };
       fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
@@ -813,6 +818,30 @@ async function startServer() {
         attendance.push({ id: attendance.length + 1, ...record });
       }
     });
+    saveDb();
+    res.json({ success: true });
+  });
+
+  app.post("/api/attendance/bulk", (req, res) => {
+    const records = Array.isArray(req.body) ? req.body : [req.body];
+    records.forEach(record => {
+      const existingIdx = attendance.findIndex((a: any) => {
+        if (record.studentId) {
+          const rStudentId = a.studentId ?? a.StudentId;
+          return Number(rStudentId) === Number(record.studentId) && a.date === record.date;
+        } else if (record.staffId) {
+          const rStaffId = a.staffId ?? a.StaffId;
+          return Number(rStaffId) === Number(record.staffId) && a.date === record.date;
+        }
+        return false;
+      });
+      if (existingIdx !== -1) {
+        attendance[existingIdx] = { ...attendance[existingIdx], ...record };
+      } else {
+        attendance.push({ id: attendance.length + 1, ...record });
+      }
+    });
+    saveDb();
     res.json({ success: true });
   });
 

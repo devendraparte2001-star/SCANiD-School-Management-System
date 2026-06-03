@@ -82,8 +82,16 @@ namespace ScanID.Api.Controllers
             // Set modified timestamp
             item.ModifiedOn = DateTime.UtcNow;
 
+            // Preserve the original auditing fields to prevent them from being reset to defaults (e.g. 0001-01-01)
+            var originalCreatedBy = existing.CreatedBy;
+            var originalCreatedOn = existing.CreatedOn;
+
             // Safe incremental update via EF Core entry current values mapping
             _context.Entry(existing).CurrentValues.SetValues(item);
+
+            // Restore the original auditing fields
+            existing.CreatedBy = originalCreatedBy;
+            existing.CreatedOn = originalCreatedOn;
 
             try
             {
