@@ -503,6 +503,33 @@ This document records the exact changes, the root causes identified, and the fix
 - `/src/pages/Attendance.tsx`: Added pagination componentry, states, and load configurations.
 - `/CHANGES_DOCUMENTATION.md`: Appended Batch 9 documentation.
 
+---
+
+## 50. Issue: Database and Schema Discrepancies in Users, Staff, and Master Modules (Batch 10)
+- **Root Cause & Requirements**:
+  1. **Invalid object name 'StaffInitials'**: The master lookup table `dbo.StaffInitials` was declared in the SQL setup script but might not exist or be fully deployed in the active database instance, causing API route errors on `/api/masters/staff-initials`.
+  2. **FOREIGN KEY Constraint Conflict on `UserId`**: When registering new staff entries, if the user account had not been previously initialized, or was mapped to a stale user structure, SQL Server threw a reference conflict on `FK_Teachers_Users_UserId` (or equivalent `Staff` constraints).
+  3. **Procedure `sp_ManageUser` has too many arguments specified**: The API's `UserService.cs` invoked the user update stored procedure passing 11 arguments (including `@ModifiedBy`), but the definition of `sp_ManageUser` in `database.sql` and the active database only accepted 10 arguments (excluding `@ModifiedBy`).
+  4. **Orphan `Teachers` references**: Legacy schema definitions left an outdated `Teachers` table pointing to the same resource domain, which interfered with constraints.
+
+- **Remediation**:
+  1. **Self-Healing Database Initializer**:
+     - Integrated a program-level self-healing startup runner in `Program.cs` that verifies, creates, and seeds the `dbo.StaffInitials` master lookup table automatically on boot.
+     - Implemented dynamic database checks to drop legacy foreign key relations on the outdated `dbo.Teachers` table and drop the table cleanly to avoid parent-child reference collisions with `dbo.Staff`.
+     - Recompiled and patched the parameter footprint of `dbo.sp_ManageUser` in `Program.cs`, `database.sql`, and `incremental_stored_procedures.sql` to cleanly support the `@ModifiedBy` argument (11 overall params) alongside safe INSERT and UPDATE actions.
+  2. **Nested Identity Fault-Tolerant Checks**: 
+     - Replaced non-guarded raw ID insertions in `StaffService.cs` with dynamic user profile verification. If the provided `staff.UserId` does not exist in the live `Users` register, a nested user profile creation sequence is triggered programmatically in a dedicated atomic transaction scope, preventing FK conflicts entirely.
+
+---
+
+## 51. Modified/Synchronized Files List (Batch 10)
+
+- `/backend/ScanID.Api/Program.cs`: Setup self-healing startup blocks for the `StaffInitials` table, legacy tables clean-up, and updated the `sp_ManageUser` procedure.
+- `/backend/ScanID.Api/Services/StaffService.cs`: Guarded staff registration against foreign key conflicts with user accounts.
+- `/backend/ScanID.Api/incremental_stored_procedures.sql`: Added the `@ModifiedBy` parameter to `sp_ManageUser` procedure definition.
+- `/database.sql`: Synchronized master `sp_ManageUser` schema definition and appended the updated block parameters.
+- `/CHANGES_DOCUMENTATION.md`: Documented the Batch 10 database changes.
+
 
 
 

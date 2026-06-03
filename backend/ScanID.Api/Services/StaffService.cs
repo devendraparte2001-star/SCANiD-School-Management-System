@@ -234,8 +234,15 @@ namespace ScanID.Api.Services
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // If no UserId represents a valid link, and a new nested User is available, register it first
-                    if (staff.UserId <= 0 && staff.User != null)
+                    // Guard and verify if the UserId actually exists in dbo.Users table. 
+                    // If it does not exist, or is <= 0, and nested User details are provided, we must create a new User.
+                    bool userExists = false;
+                    if (staff.UserId > 0)
+                    {
+                        userExists = await _context.Users.AnyAsync(u => u.Id == staff.UserId);
+                    }
+
+                    if (!userExists && staff.User != null)
                     {
                         staff.User.PasswordHash = string.IsNullOrEmpty(staff.User.PasswordHash) ? "password123" : staff.User.PasswordHash;
                         staff.User.Id = await DbMapper.ExecuteScalarStoredProcedureAsync(

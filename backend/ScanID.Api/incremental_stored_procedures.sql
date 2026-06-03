@@ -1071,7 +1071,8 @@ CREATE PROCEDURE dbo.sp_ManageUser
     @Role NVARCHAR(50) = NULL,
     @RoleId INT = NULL,
     @SchoolId INT = NULL,
-    @CreatedBy NVARCHAR(100) = NULL
+    @CreatedBy NVARCHAR(100) = NULL,
+    @ModifiedBy NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1083,9 +1084,9 @@ BEGIN
         END
 
         INSERT INTO [dbo].[Users] (
-            Username, PasswordHash, Name, Email, Role, RoleId, SchoolId, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy
+            Username, PasswordHash, Name, Email, Role, RoleId, SchoolId, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
         ) VALUES (
-            @Username, @PasswordHash, @Name, @Email, @Role, @RoleId, @SchoolId, 1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy
+            @Username, @PasswordHash, @Name, @Email, @Role, @RoleId, @SchoolId, 1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy, @ModifiedBy
         );
         SELECT SCOPE_IDENTITY();
     END
@@ -1099,6 +1100,7 @@ BEGIN
             Role = ISNULL(@Role, Role),
             RoleId = ISNULL(@RoleId, RoleId),
             SchoolId = ISNULL(@SchoolId, SchoolId),
+            ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy),
             ModifiedOn = GETUTCDATE()
         WHERE Id = @Id;
     END
