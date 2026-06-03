@@ -133,6 +133,13 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 33, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 25, sortOrder: 8, roleIds: adminRoles },
             { id: 34, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 25, sortOrder: 9, roleIds: adminRoles },
             { id: 35, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 25, sortOrder: 10, roleIds: adminRoles },
+            { id: 36, title: "Category Master", icon: "LayoutGrid", path: "/configuration/categories", parentId: 25, sortOrder: 11, roleIds: adminRoles },
+            { id: 37, title: "Session Master", icon: "Clock", path: "/configuration/sessions", parentId: 25, sortOrder: 12, roleIds: adminRoles },
+            { id: 38, title: "Batch Master", icon: "Users", path: "/configuration/batches", parentId: 25, sortOrder: 13, roleIds: adminRoles },
+            { id: 39, title: "Exam Type Master", icon: "Award", path: "/configuration/exam-types", parentId: 25, sortOrder: 14, roleIds: adminRoles },
+            { id: 40, title: "Designation Master", icon: "Briefcase", path: "/configuration/designations", parentId: 25, sortOrder: 15, roleIds: adminRoles },
+            { id: 41, title: "Occupation Master", icon: "Hammer", path: "/configuration/occupations", parentId: 25, sortOrder: 16, roleIds: adminRoles },
+            { id: 42, title: "Staff Initials", icon: "UserRound", path: "/configuration/staff-initials", parentId: 25, sortOrder: 17, roleIds: adminRoles },
 
             { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
           ];
@@ -245,6 +252,125 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             if (shiftsNavItem && Number(shiftsNavItem.parentId) !== generalMastersId) {
               shiftsNavItem.parentId = generalMastersId;
             }
+          }
+
+          // 5. Ensure Category Master (ID 36) is present under General Masters
+          const hasCategories = rawData.some((item: any) => 
+            item.title === "Category Master" || 
+            (item.path && item.path.includes("/categories"))
+          );
+          if (!hasCategories) {
+            rawData.push({
+              id: 36,
+              title: "Category Master",
+              icon: "LayoutGrid",
+              path: "/configuration/categories",
+              parentId: generalMastersId,
+              sortOrder: 11,
+              roleIds: adminRoles
+            });
+          }
+
+          // 6. Ensure Session Master (ID 37) is present under General Masters
+          const hasSessions = rawData.some((item: any) => 
+            item.title === "Session Master" || 
+            (item.path && item.path.includes("/sessions"))
+          );
+          if (!hasSessions) {
+            rawData.push({
+              id: 37,
+              title: "Session Master",
+              icon: "Clock",
+              path: "/configuration/sessions",
+              parentId: generalMastersId,
+              sortOrder: 12,
+              roleIds: adminRoles
+            });
+          }
+
+          // 7. Ensure Batch Master (ID 38) is present under General Masters
+          const hasBatches = rawData.some((item: any) => 
+            item.title === "Batch Master" || 
+            (item.path && item.path.includes("/batches"))
+          );
+          if (!hasBatches) {
+            rawData.push({
+              id: 38,
+              title: "Batch Master",
+              icon: "Users",
+              path: "/configuration/batches",
+              parentId: generalMastersId,
+              sortOrder: 13,
+              roleIds: adminRoles
+            });
+          }
+
+          // 8. Ensure Exam Type Master (ID 39) is present under General Masters
+          const hasExamTypes = rawData.some((item: any) => 
+            item.title === "Exam Type Master" || 
+            (item.path && item.path.includes("/exam-types"))
+          );
+          if (!hasExamTypes) {
+            rawData.push({
+              id: 39,
+              title: "Exam Type Master",
+              icon: "Award",
+              path: "/configuration/exam-types",
+              parentId: generalMastersId,
+              sortOrder: 14,
+              roleIds: adminRoles
+            });
+          }
+
+          // 9. Ensure Designation Master (ID 40) is present under General Masters
+          const hasDesignations = rawData.some((item: any) => 
+            item.title === "Designation Master" || 
+            (item.path && item.path.includes("/designations"))
+          );
+          if (!hasDesignations) {
+            rawData.push({
+              id: 40,
+              title: "Designation Master",
+              icon: "Briefcase",
+              path: "/configuration/designations",
+              parentId: generalMastersId,
+              sortOrder: 15,
+              roleIds: adminRoles
+            });
+          }
+
+          // 10. Ensure Occupation Master (ID 41) is present under General Masters
+          const hasOccupations = rawData.some((item: any) => 
+            item.title === "Occupation Master" || 
+            (item.path && item.path.includes("/occupations"))
+          );
+          if (!hasOccupations) {
+            rawData.push({
+              id: 41,
+              title: "Occupation Master",
+              icon: "Hammer",
+              path: "/configuration/occupations",
+              parentId: generalMastersId,
+              sortOrder: 16,
+              roleIds: adminRoles
+            });
+          }
+
+          // 11. Ensure Staff Initials (ID 42) is present under General Masters
+          const hasStaffInitials = rawData.some((item: any) => 
+            item.title === "Staff Initials" || 
+            (item.path && item.path.includes("/staff-initials"))
+          );
+          if (!hasStaffInitials) {
+            rawData.push({
+              id: 42,
+              title: "Staff Initials",
+              icon: "UserRound",
+              path: "/configuration/staff-initials",
+              parentId: generalMastersId,
+              sortOrder: 17,
+              roleIds: adminRoles
+            });
           }
         }
 

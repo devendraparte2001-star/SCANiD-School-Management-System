@@ -242,6 +242,12 @@ const MASTER_TYPES: Record<
     description: "Manage parent occupations",
     apiPrefix: "Occupation",
   },
+  "staff-initials": {
+    label: "Staff Initials",
+    icon: UserRound,
+    description: "Manage staff title prefix initials",
+    apiPrefix: "StaffInitial",
+  },
   navigation: {
     label: "Navigation Master",
     icon: LayoutGrid,

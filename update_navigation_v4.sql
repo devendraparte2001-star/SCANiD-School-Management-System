@@ -91,7 +91,7 @@ INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], 
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
 (25, N'General Masters', N'Database', NULL, 11, 5, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
 
--- IDs 26 to 35 (General Masters Children)
+-- IDs 26 to 42 (General Masters Children)
 INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
 (26, N'Religion Master', N'Heart', N'/configuration/religions', 25, 1, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
 (27, N'Blood Group Master', N'Droplets', N'/configuration/blood-groups', 25, 2, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
@@ -102,7 +102,14 @@ INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], 
 (32, N'States Master', N'Map', N'/configuration/states', 25, 7, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
 (33, N'Cities Master', N'MapPin', N'/configuration/cities', 25, 8, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
 (34, N'School Sections', N'Layers', N'/configuration/school-sections', 25, 9, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
-(35, N'Shift Timetable', N'Clock', N'/configuration/shifts', 25, 10, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+(35, N'Shift Timetable', N'Clock', N'/configuration/shifts', 25, 10, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(36, N'Category Master', N'LayoutGrid', N'/configuration/categories', 25, 11, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(37, N'Session Master', N'Clock', N'/configuration/sessions', 25, 12, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(38, N'Batch Master', N'Users', N'/configuration/batches', 25, 13, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(39, N'Exam Type Master', N'Award', N'/configuration/exam-types', 25, 14, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(40, N'Designation Master', N'Briefcase', N'/configuration/designations', 25, 15, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(41, N'Occupation Master', N'Hammer', N'/configuration/occupations', 25, 16, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(42, N'Staff Initials', N'UserRound', N'/configuration/staff-initials', 25, 17, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
 
 SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
 GO

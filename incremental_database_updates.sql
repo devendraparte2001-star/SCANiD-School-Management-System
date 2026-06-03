@@ -404,4 +404,61 @@ BEGIN
 END;
 GO
 
+-- =========================================================================
+-- 9. Add Categories, Sessions, Batches, Exam Types, Designations, Occupations, Staff Initials to Navigation Master
+-- =========================================================================
+-- First delete them so this is idempotent (to avoid key collisions on reruns)
+DELETE FROM [dbo].[NavigationRoles] WHERE [NavigationItemId] IN (24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42);
+DELETE FROM [dbo].[NavigationItems] WHERE [Id] IN (24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42);
+
+-- Re-enable IDENTITY INSERT on NavigationItems for precise custom sequentials
+SET IDENTITY_INSERT [dbo].[NavigationItems] ON;
+
+-- Re-Insert Standard and New items
+INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
+(24, N'Manage Users', N'UserPlus', N'/configuration/users', 6, 2, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(25, N'General Masters', N'Database', NULL, 11, 5, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(26, N'Religion Master', N'Heart', N'/configuration/religions', 25, 1, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(27, N'Blood Group Master', N'Droplets', N'/configuration/blood-groups', 25, 2, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(28, N'Caste Category', N'Users', N'/configuration/castes', 25, 3, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(29, N'Sub-Caste Master', N'UserCircle', N'/configuration/sub-castes', 25, 4, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(30, N'School House', N'Home', N'/configuration/houses', 25, 5, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(31, N'Admission Types', N'UserCheck', N'/configuration/admission-types', 25, 6, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(32, N'States Master', N'Map', N'/configuration/states', 25, 7, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(33, N'Cities Master', N'MapPin', N'/configuration/cities', 25, 8, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(34, N'School Sections', N'Layers', N'/configuration/school-sections', 25, 9, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(35, N'Shift Timetable', N'Clock', N'/configuration/shifts', 25, 10, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(36, N'Category Master', N'LayoutGrid', N'/configuration/categories', 25, 11, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(37, N'Session Master', N'Clock', N'/configuration/sessions', 25, 12, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(38, N'Batch Master', N'Users', N'/configuration/batches', 25, 13, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(39, N'Exam Type Master', N'Award', N'/configuration/exam-types', 25, 14, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(40, N'Designation Master', N'Briefcase', N'/configuration/designations', 25, 15, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(41, N'Occupation Master', N'Hammer', N'/configuration/occupations', 25, 16, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(42, N'Staff Initials', N'UserRound', N'/configuration/staff-initials', 25, 17, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+
+SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
+
+-- Assign to Roles (1 = Super Admin, 2 = Admin)
+INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES
+(24, 1), (24, 2),
+(25, 1), (25, 2),
+(26, 1), (26, 2),
+(27, 1), (27, 2),
+(28, 1), (28, 2),
+(29, 1), (29, 2),
+(30, 1), (30, 2),
+(31, 1), (31, 2),
+(32, 1), (32, 2),
+(33, 1), (33, 2),
+(34, 1), (34, 2),
+(35, 1), (35, 2),
+(36, 1), (36, 2),
+(37, 1), (37, 2),
+(38, 1), (38, 2),
+(39, 1), (39, 2),
+(40, 1), (40, 2),
+(41, 1), (41, 2),
+(42, 1), (42, 2);
+GO
+
 

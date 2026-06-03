@@ -137,6 +137,7 @@ export default function App() {
                     <Route path="/configuration/exam-types" element={<Configuration user={user} defaultTab="exam-types" />} />
                     <Route path="/configuration/designations" element={<Configuration user={user} defaultTab="designations" />} />
                     <Route path="/configuration/occupations" element={<Configuration user={user} defaultTab="occupations" />} />
+                    <Route path="/configuration/staff-initials" element={<Configuration user={user} defaultTab="staff-initials" />} />
                     <Route path="/configuration/navigation" element={<Configuration user={user} defaultTab="navigation" />} />
                     <Route path="/configuration/users" element={<UsersPage user={user} />} />
                     <Route path="/notifications" element={<Notifications />} />

@@ -167,6 +167,27 @@ namespace ScanID.Api.Controllers
                 new { id = 21, title = "Academic Years", icon = "Calendar", path = "/configuration/academic-years", parentId = 18, sortOrder = 3, roleIds = adminOnly },
                 new { id = 22, title = "Subject Registry", icon = "BookOpen", path = "/configuration/subjects", parentId = 18, sortOrder = 4, roleIds = adminOnly },
                 
+                new { id = 24, title = "Manage Users", icon = "UserPlus", path = "/configuration/users", parentId = 6, sortOrder = 2, roleIds = adminOnly },
+                
+                new { id = 25, title = "General Masters", icon = "Database", path = (string?)null, parentId = 11, sortOrder = 5, roleIds = adminOnly },
+                new { id = 26, title = "Religion Master", icon = "Heart", path = "/configuration/religions", parentId = 25, sortOrder = 1, roleIds = adminOnly },
+                new { id = 27, title = "Blood Group Master", icon = "Droplets", path = "/configuration/blood-groups", parentId = 25, sortOrder = 2, roleIds = adminOnly },
+                new { id = 28, title = "Caste Category", icon = "Users", path = "/configuration/castes", parentId = 25, sortOrder = 3, roleIds = adminOnly },
+                new { id = 29, title = "Sub-Caste Master", icon = "UserCircle", path = "/configuration/sub-castes", parentId = 25, sortOrder = 4, roleIds = adminOnly },
+                new { id = 30, title = "School House", icon = "Home", path = "/configuration/houses", parentId = 25, sortOrder = 5, roleIds = adminOnly },
+                new { id = 31, title = "Admission Types", icon = "UserCheck", path = "/configuration/admission-types", parentId = 25, sortOrder = 6, roleIds = adminOnly },
+                new { id = 32, title = "States Master", icon = "Map", path = "/configuration/states", parentId = 25, sortOrder = 7, roleIds = adminOnly },
+                new { id = 33, title = "Cities Master", icon = "MapPin", path = "/configuration/cities", parentId = 25, sortOrder = 8, roleIds = adminOnly },
+                new { id = 34, title = "School Sections", icon = "Layers", path = "/configuration/school-sections", parentId = 25, sortOrder = 9, roleIds = adminOnly },
+                new { id = 35, title = "Shift Timetable", icon = "Clock", path = "/configuration/shifts", parentId = 25, sortOrder = 10, roleIds = adminOnly },
+                new { id = 36, title = "Category Master", icon = "LayoutGrid", path = "/configuration/categories", parentId = 25, sortOrder = 11, roleIds = adminOnly },
+                new { id = 37, title = "Session Master", icon = "Clock", path = "/configuration/sessions", parentId = 25, sortOrder = 12, roleIds = adminOnly },
+                new { id = 38, title = "Batch Master", icon = "Users", path = "/configuration/batches", parentId = 25, sortOrder = 13, roleIds = adminOnly },
+                new { id = 39, title = "Exam Type Master", icon = "Award", path = "/configuration/exam-types", parentId = 25, sortOrder = 14, roleIds = adminOnly },
+                new { id = 40, title = "Designation Master", icon = "Briefcase", path = "/configuration/designations", parentId = 25, sortOrder = 15, roleIds = adminOnly },
+                new { id = 41, title = "Occupation Master", icon = "Hammer", path = "/configuration/occupations", parentId = 25, sortOrder = 16, roleIds = adminOnly },
+                new { id = 42, title = "Staff Initials", icon = "UserRound", path = "/configuration/staff-initials", parentId = 25, sortOrder = 17, roleIds = adminOnly },
+                
                 // System Audit
                 new { id = 23, title = "System Audit", icon = "Terminal", path = "/system-logs", parentId = (int?)null, sortOrder = 6, roleIds = new[] { 1 } }
             };
