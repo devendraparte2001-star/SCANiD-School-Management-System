@@ -797,7 +797,16 @@ async function startServer() {
   app.post("/api/attendance", (req, res) => {
     const records = Array.isArray(req.body) ? req.body : [req.body];
     records.forEach(record => {
-      const existingIdx = attendance.findIndex((a: any) => a.studentId === record.studentId && a.date === record.date);
+      const existingIdx = attendance.findIndex((a: any) => {
+        if (record.studentId) {
+          const rStudentId = a.studentId ?? a.StudentId;
+          return Number(rStudentId) === Number(record.studentId) && a.date === record.date;
+        } else if (record.staffId) {
+          const rStaffId = a.staffId ?? a.StaffId;
+          return Number(rStaffId) === Number(record.staffId) && a.date === record.date;
+        }
+        return false;
+      });
       if (existingIdx !== -1) {
         attendance[existingIdx] = { ...attendance[existingIdx], ...record };
       } else {

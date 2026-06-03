@@ -461,4 +461,11 @@ INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES
 (42, 1), (42, 2);
 GO
 
+-- =========================================================================
+-- 10. Re-align Attendance Table Audit Trail Columns and Stored Procedures
+-- =========================================================================
+-- Ref: realign_attendance_columns.sql
+-- Drop old constraints, recreate [dbo].[Attendance] with Audit Trail columns (IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn) at the very end, migrate data and restore all FKs and stored procedures.
+GO
+
 

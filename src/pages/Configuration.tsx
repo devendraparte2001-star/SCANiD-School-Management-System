@@ -211,6 +211,7 @@ const MASTER_TYPES: Record<
     icon: Users,
     description: "Manage student batches",
     apiPrefix: "Batch",
+    getMethod: "getBatches",
   },
   shifts: {
     label: "Shifts",
