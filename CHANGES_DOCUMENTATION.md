@@ -559,6 +559,30 @@ This document records the exact changes, the root causes identified, and the fix
 - `/incremental_database_updates.sql`: Pre-declared manual database migration schemas dropping redundant temp columns.
 - `/CHANGES_DOCUMENTATION.md`: Documented the Batch 11 changes.
 
+---
+
+## 54. Issue: Staff Attendance Not Displaying on UI Roster (Batch 12)
+- **Root Cause**:
+  1. **Filtering in Stored Procedure**: The SQL stored procedure `dbo.sp_GetAttendance` was using an `INNER JOIN [dbo].[Students] s ON a.StudentId = s.Id` to query daily records. This implicitly filtered out all staff attendance records (which have `StudentId IS NULL` and `StaffId IS NOT NULL`). Consequently, the API returned zero daily staff attendance records even if they saved correctly in the database.
+  2. **Timestamp vs date-only string matching**: In local mock/Vite development mode, saving attendance stored full ISO timestamps (`2026-06-03T10:30:20.000Z`) while querying passed only the split date (`2026-06-03`). Because of strict triple-equals comparison (`a.date === date`), list updates failed to match and display.
+- **Remediation**:
+  1. **Relational Left Join on Student and Staff**:
+     - Upgraded `sp_GetAttendance` across `/database.sql`, `/backend/ScanID.Api/incremental_stored_procedures.sql` and `/realign_attendance_columns.sql` to carry `LEFT JOIN` on both `Students` and `Staff` tables.
+     - Added robust checks: if `a.StudentId` is not null, Student joins and filters are applied; if `a.StaffId` is not null, Staff joins and filters are applied, preventing any cross-joining or academic year boundary exceptions for faculty.
+  2. **Sub-string Date Splitting on Mock Endpoints**:
+     - Modernized GET, POST and POST bulk attendance mock routes in `/server.ts` to split target timestamps by `'T'` before matching. This aligned local mock behavior perfectly with production SQL date behavior.
+
+---
+
+## 55. Modified/Synchronized Files List (Batch 12)
+
+- `/database.sql`: Updated primary `sp_GetAttendance` definition to left join both student and staff schemas.
+- `/backend/ScanID.Api/incremental_stored_procedures.sql`: Aligned stored procedure declaration inside incremental updates script.
+- `/realign_attendance_columns.sql`: Synchronized `sp_GetAttendance` schema re-alignment script.
+- `/server.ts`: Supported robust date-only split comparison for local/mock attendance tracking.
+- `/CHANGES_DOCUMENTATION.md`: Documented Batch 12 Staff Attendance resolution.
+
+
 
 
 

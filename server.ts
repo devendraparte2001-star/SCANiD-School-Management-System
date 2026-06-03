@@ -794,7 +794,13 @@ async function startServer() {
     const date = req.query.date as string;
     let filtered = attendance;
     if (date) {
-      filtered = attendance.filter((a: any) => a.date === date);
+      filtered = attendance.filter((a: any) => {
+        if (!a.date) return false;
+        // Robust check supporting both YYYY-MM-DD and complete ISO-8601 strings
+        const aDateStr = a.date.includes('T') ? a.date.split('T')[0] : a.date;
+        const qDateStr = date.includes('T') ? date.split('T')[0] : date;
+        return aDateStr === qDateStr;
+      });
     }
     res.json({ data: filtered });
   });
@@ -803,12 +809,19 @@ async function startServer() {
     const records = Array.isArray(req.body) ? req.body : [req.body];
     records.forEach(record => {
       const existingIdx = attendance.findIndex((a: any) => {
+        if (!a.date || !record.date) return false;
+        const aDateStr = a.date.includes('T') ? a.date.split('T')[0] : a.date;
+        const rDateStr = record.date.includes('T') ? record.date.split('T')[0] : record.date;
+        const dateMatches = aDateStr === rDateStr;
+        
+        if (!dateMatches) return false;
+
         if (record.studentId) {
           const rStudentId = a.studentId ?? a.StudentId;
-          return Number(rStudentId) === Number(record.studentId) && a.date === record.date;
+          return Number(rStudentId) === Number(record.studentId);
         } else if (record.staffId) {
           const rStaffId = a.staffId ?? a.StaffId;
-          return Number(rStaffId) === Number(record.staffId) && a.date === record.date;
+          return Number(rStaffId) === Number(record.staffId);
         }
         return false;
       });
@@ -826,12 +839,19 @@ async function startServer() {
     const records = Array.isArray(req.body) ? req.body : [req.body];
     records.forEach(record => {
       const existingIdx = attendance.findIndex((a: any) => {
+        if (!a.date || !record.date) return false;
+        const aDateStr = a.date.includes('T') ? a.date.split('T')[0] : a.date;
+        const rDateStr = record.date.includes('T') ? record.date.split('T')[0] : record.date;
+        const dateMatches = aDateStr === rDateStr;
+        
+        if (!dateMatches) return false;
+
         if (record.studentId) {
           const rStudentId = a.studentId ?? a.StudentId;
-          return Number(rStudentId) === Number(record.studentId) && a.date === record.date;
+          return Number(rStudentId) === Number(record.studentId);
         } else if (record.staffId) {
           const rStaffId = a.staffId ?? a.StaffId;
-          return Number(rStaffId) === Number(record.staffId) && a.date === record.date;
+          return Number(rStaffId) === Number(record.staffId);
         }
         return false;
       });

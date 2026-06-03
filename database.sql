@@ -1491,10 +1491,15 @@ BEGIN
     SET NOCOUNT ON;
     SELECT a.*, s.Name AS StudentName
     FROM [dbo].[Attendance] a
-    INNER JOIN [dbo].[Students] s ON a.StudentId = s.Id
+    LEFT JOIN [dbo].[Students] s ON a.StudentId = s.Id
+    LEFT JOIN [dbo].[Staff] st ON a.StaffId = st.Id
     WHERE CONVERT(DATE, a.Date) = CONVERT(DATE, @Date)
-      AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId)
-      AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId);
+      AND a.IsDeleted = 0
+      AND (
+          (a.StudentId IS NOT NULL AND (s.IsDeleted = 0 OR s.IsDeleted IS NULL) AND (@SchoolId IS NULL OR s.SchoolId = @SchoolId) AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId))
+          OR
+          (a.StaffId IS NOT NULL AND (st.IsDeleted = 0 OR st.IsDeleted IS NULL) AND (@SchoolId IS NULL OR st.SchoolId = @SchoolId))
+      );
 END;
 GO
 
