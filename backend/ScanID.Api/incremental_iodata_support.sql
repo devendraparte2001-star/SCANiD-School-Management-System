@@ -64,13 +64,14 @@ BEGIN
         IF CHARINDEX('/', @CleanDate) > 0 AND LEN(@CleanDate) <= 7 AND CHARINDEX('/', @CleanDate, CHARINDEX('/', @CleanDate) + 1) = 0
         BEGIN
             DECLARE @Len INT = LEN(@CleanDate);
-            SET @CleanDate = SUBSTRING(@CleanDate, 1, @CleanDate - 2) + '/' + SUBSTRING(@CleanDate, @CleanDate - 1, 2);
+            SET @CleanDate = SUBSTRING(@CleanDate, 1, @Len - 2) + '/' + SUBSTRING(@CleanDate, @Len - 1, 2);
         END
-        SET @Date = CONVERT(DATE, @CleanDate, 101);
+        -- Prioritize style 103 (DD/MM/YYYY or DD/MM/YY) according to user DDMMYY requirements
+        SET @Date = CONVERT(DATE, @CleanDate, 103);
     END TRY
     BEGIN CATCH
         BEGIN TRY
-            SET @Date = CONVERT(DATE, @PunchDate, 103);
+            SET @Date = CONVERT(DATE, @PunchDate, 101);
         END TRY
         BEGIN CATCH
             SET @Date = CAST(GETUTCDATE() AS DATE);

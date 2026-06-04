@@ -582,6 +582,35 @@ This document records the exact changes, the root causes identified, and the fix
 - `/server.ts`: Supported robust date-only split comparison for local/mock attendance tracking.
 - `/CHANGES_DOCUMENTATION.md`: Documented Batch 12 Staff Attendance resolution.
 
+---
+
+## 56. Issue: Filename Convention Shift and Code/Procedure Date-parsing Harmonization (Batch 13)
+- **Root Cause & Requirements**:
+  1. **Filename Convention Alignment**: The attendance background service scanner must look for daily text documents in `C:\iodata` folder with naming convention `DataDDMMYY.txt` instead of `DataMMDDYY.txt`.
+  2. **SQL Procedure Conversion Syntax Bug**: Inside `dbo.sp_ProcessIodataRecord` stored procedure, there was a string subtraction syntax bug (using `@CleanDate - 2` instead of variable math variables `@Len - 2`), which would cause implicit type casting failures on certain dates.
+  3. **Date parsing swapping priority**: To fully support DDMMYY format parsing, we need to try DD/MM/YY format (style 103) before falling back to MM/DD/YY format (style 101). Failing to do so causes days and months to get swapped for any dates where day is <= 12.
+- **Remediation**:
+  1. **Reformed Background Scan prefix**: Updated the custom scanner inside `backend/ScanID.Api/Services/AttendanceService.cs` to use `Data{d:ddMMyy}.txt` structure.
+  2. **Corrected SQL indexing and Try order**: Edited `dbo.sp_ProcessIodataRecord` inside `/backend/ScanID.Api/incremental_iodata_support.sql` to carry correct `@Len` math conversions and parse style `103` (DD/MM/YY) first, falling back to style `101` (MM/DD/YY).
+  3. **Updated UI conventions list**: Changed all front-end instructions and logs in `/src/pages/Attendance.tsx` from `DataMMDDYY.txt` to `DataDDMMYY.txt` (and modified example to standard `Data150526.txt` representing May 15th, 2026).
+
+## 57. Issue: Bullet-proof SqlDateTime Overflow Prevention for Manual Uploads (Batch 13)
+- **Root Cause**:
+  1. **DateTime.MinValue parameter mapping**: In C# Web API, when uninitialized, default-valued, or empty value dates are bound to `Attendance.Date`, they correspond to `0001-01-01` (`DateTime.MinValue`).
+  2. **SQL Server DATETIME limitation exception**: When passing `DateTime.MinValue` through `ExecuteSqlInterpolatedAsync` parameters into SQL Server, ADO.NET maps the C# object to SQL `DATETIME` format (which only supports date values >= `1753-01-01`), triggering the fatal `SqlDateTime overflow` exception.
+- **Remediation**:
+  1. **Defensive Date bounds guarding**: Injected protective validation checks in both `SubmitAttendanceAsync` and `SubmitBulkAttendanceAsync` inside `/backend/ScanID.Api/Services/AttendanceService.cs`. If `attendance.Date` corresponds to the uninitialized default or is earlier than `1753-01-01`, it is automatically corrected to `DateTime.Now` inside safe ranges.
+
+---
+
+## 58. Modified/Synchronized Files List (Batch 13)
+
+- `/backend/ScanID.Api/Services/AttendanceService.cs`: Adopted `Data{d:ddMMyy}` filename generation and defensive date bounds guarding to prevent SqlDateTime overflows.
+- `/backend/ScanID.Api/incremental_iodata_support.sql`: Fixed SQL subtraction bug and prioritized DD/MM/YY (style 103) parsing over MM/DD/YY (style 101).
+- `/src/pages/Attendance.tsx`: Refined all manual upload and folder watcher text examples to `DataDDMMYY.txt` format.
+- `/CHANGES_DOCUMENTATION.md`: Documented Batch 13 corrections.
+
+
 
 
 

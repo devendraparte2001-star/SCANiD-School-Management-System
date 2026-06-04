@@ -578,13 +578,13 @@ export default function Attendance({ user }: { user: any }) {
     setFolderScanLogs(["Initiating folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
 
     try {
-      // Call endpoint. It will read DataMMDDYY.txt files in sequence
+      // Call endpoint. It will read DataDDMMYY.txt files in sequence
       const res = await apiService.processIodataRange(ioFolderFromDate, ioFolderToDate);
       const returnedLogs = res.data?.logs || res.data || [];
       
       const formattedLogs = Array.isArray(returnedLogs) 
         ? returnedLogs 
-        : ["No files found or parsed.", "Ensure folder C:\\iodata has structural DataMMDDYY.txt files."];
+        : ["No files found or parsed.", "Ensure folder C:\\iodata has structural DataDDMMYY.txt files."];
 
       setFolderScanLogs([
         "Folder connection succeeded!",
@@ -598,7 +598,7 @@ export default function Attendance({ user }: { user: any }) {
       console.error(err);
       // Clean parsing of nested axios response error structures
       const errMsg = err?.response?.data?.message || (typeof err?.response?.data === 'string' ? err.response.data : null) || err.message || "Disk IO/SQL Procedure Error";
-      setFolderScanLogs(prev => [...prev, `[FAIL] Error occurred: ${errMsg}`, "Check if C:\\iodata directory contains matches with naming criteria: DataMMDDYY.txt"]);
+      setFolderScanLogs(prev => [...prev, `[FAIL] Error occurred: ${errMsg}`, "Check if C:\\iodata directory contains matches with naming criteria: DataDDMMYY.txt"]);
       toast.error("Folder file upload process failed - See execution debugger for details");
     } finally {
       setIsProcessingFolderScan(false);
@@ -1764,8 +1764,8 @@ export default function Attendance({ user }: { user: any }) {
 
               <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
                 <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
-                Looks for files matched: <span className="text-blue-600 font-black font-sans">DataMMDDYY.txt</span><br />
-                Example: <span className="text-emerald-600 font-black font-sans">Data010126.txt</span> represents Jan 1st, 2026.
+                Looks for files matched: <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span><br />
+                Example: <span className="text-emerald-600 font-black font-sans">Data150526.txt</span> represents May 15th, 2026.
               </div>
 
               {/* Console log outputs for folder scans */}

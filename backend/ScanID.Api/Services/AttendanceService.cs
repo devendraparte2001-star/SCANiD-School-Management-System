@@ -79,6 +79,12 @@ namespace ScanID.Api.Services
 
         public async Task<bool> SubmitAttendanceAsync(Attendance attendance)
         {
+            // Defensive sanitation to protect against SQL Server SqlDateTime overflow (min date: 1753-01-01)
+            if (attendance.Date == default(DateTime) || attendance.Date < new DateTime(1753, 1, 1))
+            {
+                attendance.Date = DateTime.Now;
+            }
+
             return await ExecuteWithRetryAsync(async () =>
             {
                 try
@@ -117,6 +123,12 @@ namespace ScanID.Api.Services
                 {
                     foreach (var attendance in records)
                     {
+                        // Defensive sanitation to protect against SQL Server SqlDateTime overflow (min date: 1753-01-01)
+                        if (attendance.Date == default(DateTime) || attendance.Date < new DateTime(1753, 1, 1))
+                        {
+                            attendance.Date = DateTime.Now;
+                        }
+
                         await _context.Database.ExecuteSqlInterpolatedAsync(
                             $"EXEC dbo.sp_ManageAttendance @StudentId={attendance.StudentId}, @StaffId={attendance.StaffId}, @Date={attendance.Date}, @Status={attendance.Status}, @Remarks=NULL, @CreatedBy={attendance.CreatedBy}, @MarkedByUserId={attendance.MarkedByUserId}, @UploadSource={attendance.UploadSource}"
                         );
@@ -328,8 +340,8 @@ namespace ScanID.Api.Services
 
                 for (var d = fromDate.Date; d <= toDate.Date; d = d.AddDays(1))
                 {
-                    // Naming structure MMDDYY -> MMDDYY format
-                    string filePrefix = $"Data{d:MMddyy}";
+                    // Naming structure updated from MMDDYY -> DDMMYY format according to specification
+                    string filePrefix = $"Data{d:ddMMyy}";
                     string fileNamePattern = $"{filePrefix}.txt";
                     
                     string filePath = Path.Combine(watchDir, fileNamePattern);
