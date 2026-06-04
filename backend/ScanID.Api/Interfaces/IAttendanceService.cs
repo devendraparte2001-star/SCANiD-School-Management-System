@@ -22,5 +22,11 @@ namespace ScanID.Api.Interfaces
         Task<bool> ReprocessIodataRecordAsync(int recordId);
         void EnqueueIodataLines(List<string> lines);
         Task<List<string>> ProcessIodataDateRangeAsync(DateTime fromDate, DateTime toDate);
+        
+        /// <summary>
+        /// Processes a list of raw scanner line strings immediately for a specific date in an atomic transaction (User Local System support).
+        /// Re-processes cleanly by doing a target wipe first to protect against duplicates (Replace-On-Read / Truncate-and-Reload).
+        /// </summary>
+        Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines);
     }
 }

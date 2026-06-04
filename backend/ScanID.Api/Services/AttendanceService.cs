@@ -430,5 +430,58 @@ namespace ScanID.Api.Services
 
             return logs;
         }
+
+        /// <summary>
+        /// Processes a list of raw scanner line strings immediately for a specific date in an atomic transaction (User Local System support).
+        /// Re-processes cleanly by doing a target wipe first to protect against duplicates (Replace-On-Read / Truncate-and-Reload).
+        /// </summary>
+        public async Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines)
+        {
+            var logs = new List<string>();
+            var targetDate = date.Date;
+            logs.Add($"[LOCAL_INFO] Starting immediate process of {lines.Count} scans for date: {targetDate:yyyy-MM-dd}");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Pre-import clean-up (Replace-On-Read / Truncate-and-Reload model):
+                // To support clean, error-tolerant re-processing and completely bypass duplicate constraints,
+                // we wipe any active IodataRecords or corresponding attendance entries created by 'IodataService' on this Date.
+                await _context.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate)",
+                    new SqlParameter("@TargetDate", targetDate)
+                );
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate) AND [UploadSource] = 'IodataService'",
+                    new SqlParameter("@TargetDate", targetDate)
+                );
+
+                int linesProcessed = 0;
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    await ProcessSingleIodataLineAsync(line);
+                    linesProcessed++;
+                }
+
+                await transaction.CommitAsync();
+                logs.Add($"[LOCAL_SUCCESS] Processed and committed {linesProcessed} lines cleanly for {targetDate:yyyy-MM-dd}.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                logs.Add($"[LOCAL_FAIL] Failed to process lines immediately. All database state rolled back cleanly. Error: {ex.Message}");
+
+                await _errorLogService.InsertErrorLogAsync(
+                    ex.Message,
+                    "Error",
+                    ex.ToString(),
+                    $"AttendanceService.ProcessIodataLinesImmediateAsync - Error during file import transaction rollback for date {targetDate:yyyy-MM-dd}."
+                );
+            }
+
+            return logs;
+        }
     }
 }

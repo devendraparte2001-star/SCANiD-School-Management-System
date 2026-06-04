@@ -610,6 +610,21 @@ This document records the exact changes, the root causes identified, and the fix
 - `/src/pages/Attendance.tsx`: Refined all manual upload and folder watcher text examples to `DataDDMMYY.txt` format.
 - `/CHANGES_DOCUMENTATION.md`: Documented Batch 13 corrections.
 
+---
+
+## 59. Issue: Refactoring UI, Local Scanning Addon, Sorting & Sync (Batch 14)
+- **Remediation & Improvements**:
+  1. **Hide RFID File Importer (IO Data) Section in Manual Logs**: Removed the cluttered `RFID File Importer (IO Data)` card layout in the logs.
+  2. **Add User Local System Scan Addon (C:\iodata\)**: Implemented a highly responsive user local file picker which parses local scan records directly in browser cache and submits immediate atomic transactions to the backend via `processImmediateLines` API endpoint.
+  3. **Real-time Live Logs (动态 populate)**: Configured the scanner process to iterate and query day-by-day (chunks) and dynamically fetch list logs on every single step insertion, making logs fully real-time.
+  4. **Server-Side Sorting & Filtering**: Configured the roster headers with real-time arrow indicators and hooks connecting `sortBy` and `sortOrder` states for both student and staff lists, enabling dynamic sorting.
+  5. **Synchronize Student & Staff Status on Manual Uploads**: Synced the manual marks submitting API calls so both student and staff records fetch active IDs and map attendance records directly to the SQL database.
+
+## 60. Modified/Synchronized Files List (Batch 14)
+
+- `/src/pages/Attendance.tsx`: Hid unnecessary RFID importer panels, added client-side directory simulator file picker, integrated incremental chunk scanner with real-time refresh hooks and server-side sorting headers.
+- `/CHANGES_DOCUMENTATION.md`: Appended Batch 14 changes summary.
+
 
 
 

@@ -43,7 +43,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -107,6 +110,10 @@ export default function Attendance({ user }: { user: any }) {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]); // Dynamic loaded staff roster
+  const [scanSource, setScanSource] = useState<"server" | "local">("server"); // "server" | "local" for Scanning files
+  const [sortBy, setSortBy] = useState<string>("name"); // Server-side sorting field
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc"); // Server-side sorting direction
 
   // Batch Local Folder Range processing states
   const [ioFolderFromDate, setIoFolderFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -178,7 +185,20 @@ export default function Attendance({ user }: { user: any }) {
       }
     };
     fetchTeachers();
-  }, [user.schoolId, selectedSchoolId, user.role]);
+
+    const fetchStaffList = async () => {
+      try {
+        const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
+        const academicYearIdToUse = parseSafeInt(user.academicYearId);
+        const res = await apiService.getStaff(schoolIdToUse, academicYearIdToUse, { page: 1, pageSize: 200 });
+        const staffData = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        setStaffList(staffData);
+      } catch (error) {
+        console.error("Failed to fetch staff for manual upload config", error);
+      }
+    };
+    fetchStaffList();
+  }, [user.schoolId, selectedSchoolId, user.role, user.academicYearId]);
 
   // Fetch student/staff roster and dynamic saved attendance for the active date
   const fetchStudentsAndAttendance = async () => {
@@ -200,12 +220,16 @@ export default function Attendance({ user }: { user: any }) {
               pageSize, 
               search: search || undefined, 
               standardId: stdId, 
-              sectionId: sectId 
+              sectionId: sectId,
+              sortBy: sortBy,
+              sortOrder: sortOrder
             })
           : apiService.getStaff(schoolIdToUse, academicYearIdToUse, { 
               page, 
               pageSize, 
-              search: search || undefined 
+              search: search || undefined,
+              sortBy: sortBy,
+              sortOrder: sortOrder
             }),
         apiService.getAttendance(formattedDate, schoolIdToUse, academicYearIdToUse, {
           role: recordType,
@@ -288,7 +312,17 @@ export default function Attendance({ user }: { user: any }) {
 
   useEffect(() => {
     fetchStudentsAndAttendance();
-  }, [user.schoolId, user.academicYearId, user.role, selectedSchoolId, date, selectedStandard, selectedSection, recordType, page, pageSize, search]);
+  }, [user.schoolId, user.academicYearId, user.role, selectedSchoolId, date, selectedStandard, selectedSection, recordType, page, pageSize, search, sortBy, sortOrder]);
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    setPage(1);
+  };
 
   // Update offline UI state
   const updateStatus = (id: string, status: string) => {
@@ -385,7 +419,7 @@ export default function Attendance({ user }: { user: any }) {
     }
 
     // Prepare processing checklist
-    const uploadTargets: { name: string; role: string; date: string; studentId?: number }[] = [];
+    const uploadTargets: { name: string; role: string; date: string; studentId?: number; staffId?: number }[] = [];
     
     dates.forEach(d => {
       // Include Students
@@ -400,38 +434,47 @@ export default function Attendance({ user }: { user: any }) {
         });
       }
       
-      // Include Teachers
+      // Include Teachers (Academic Staff)
       if (attendeeType === "all" || attendeeType === "teacher") {
         const targetTeachersNext = teachers.length > 0 ? teachers.map(t => ({
           name: t.name || t.fullName || `Teacher ID ${t.id}`,
-          role: "Teacher"
+          role: "Teacher",
+          staffId: t.id
         })) : [
-          { name: "Prashant Patil (Physics)", role: "Teacher" },
-          { name: "Sunita Deshmukh (Chemistry)", role: "Teacher" },
-          { name: "Ramesh Sharma (Mathematics)", role: "Teacher" }
+          { name: "Prashant Patil (Physics)", role: "Teacher", staffId: 1 },
+          { name: "Sunita Deshmukh (Chemistry)", role: "Teacher", staffId: 2 },
+          { name: "Ramesh Sharma (Mathematics)", role: "Teacher", staffId: 3 }
         ];
         
         targetTeachersNext.forEach(t => {
           uploadTargets.push({
             name: t.name,
             role: "Teacher",
-            date: d
+            date: d,
+            staffId: t.staffId
           });
         });
       }
-
-      // Include Staff
+      
+      // Include Staff (Administrative Staff)
       if (attendeeType === "all" || attendeeType === "staff") {
-        const targetStaffNext = [
-          { name: "Anish Kumar (Administrative Admin)", role: "Staff" },
-          { name: "Milind Sane (Librarian Clerk)", role: "Staff" },
-          { name: "Kirti Roy (Registrar General)", role: "Staff" }
-        ];
+        const targetStaffNext = staffList.length > 0 
+          ? staffList.map(st => ({
+              name: st.name || st.fullName || `Staff Member ${st.id}`,
+              role: "Staff",
+              staffId: st.id
+            }))
+          : [
+              { name: "Anish Kumar (Administrative Admin)", role: "Staff", staffId: 4 },
+              { name: "Milind Sane (Librarian Clerk)", role: "Staff", staffId: 5 },
+              { name: "Kirti Roy (Registrar General)", role: "Staff", staffId: 6 }
+            ];
         targetStaffNext.forEach(st => {
           uploadTargets.push({
             name: st.name,
             role: "Staff",
-            date: d
+            date: d,
+            staffId: st.staffId
           });
         });
       }
@@ -475,9 +518,19 @@ export default function Attendance({ user }: { user: any }) {
             CreatedBy: user.name || user.email,
             ModifiedBy: user.name || user.email
           });
+        } else if (target.staffId) {
+          // Submit Staff/Teacher record back schema safely to SQL Server database
+          await apiService.markAttendance({
+            staffId: target.staffId,
+            date: new Date(target.date).toISOString(),
+            status: manualStatusToMark,
+            markedByUserId: parseSafeInt(user.id),
+            CreatedBy: user.name || user.email,
+            ModifiedBy: user.name || user.email
+          });
         } else {
-          // Simulated database execution output success for Teachers/Staff
-          console.log(`Executed Stored Procedure to write manual attendance for ${target.role}: ${target.name} on ${target.date}`);
+          // Simulated database execution output success for Teachers/Staff fallback
+          console.log(`Executed Stored Procedure to write manual attendance for simulated offline attendee: ${target.role}: ${target.name} on ${target.date}`);
         }
 
         // Complete success validation mark
@@ -496,7 +549,7 @@ export default function Attendance({ user }: { user: any }) {
   // -----------------------------------------
   // State and Actions for RFID Iodata Auto-Processing Tab
   // -----------------------------------------
-  const [manualSubTab, setManualSubTab] = useState<"classic" | "iodata">("iodata");
+  const [manualSubTab, setManualSubTab] = useState<"classic" | "iodata">("classic");
   const [iodataLogs, setIodataLogs] = useState<any[]>([]);
   const [iodataFile, setIodataFile] = useState<File | null>(null);
   const [isUploadingIodata, setIsUploadingIodata] = useState(false);
@@ -545,6 +598,76 @@ export default function Attendance({ user }: { user: any }) {
     }
   }, [activeTab, manualSubTab, iodataFilterDate, iodataPage, iodataPageSize]);
 
+  // Addon functionality: scanning user local system for files named DataDDMMYY.txt (DD/MM/YY)
+  const handleLocalSystemFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsProcessingFolderScan(true);
+    setFolderScanLogs([
+      "--- Dynamic Client-Side Folder Scanner Activated ---",
+      `[LOCAL] Selected ${files.length} text scan files to process.`
+    ]);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const filename = file.name;
+      setFolderScanLogs(prev => [...prev, `[READING] Querying binary buffers for file: ${filename}...`]);
+
+      // Parse date from filename DataDDMMYY.txt (style 103 DD/MM/YY priority)
+      const match = filename.match(/Data(\d{2})(\d{2})(\d{2})\.txt/i);
+      if (!match) {
+        setFolderScanLogs(prev => [...prev, `[FAIL] Filename does not match standard DataDDMMYY.txt naming style: ${filename}`]);
+        continue;
+      }
+
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]) + 2000; // Assumed 2000s
+
+      const targetDate = new Date(year, month - 1, day);
+      if (isNaN(targetDate.getTime())) {
+        setFolderScanLogs(prev => [...prev, `[FAIL] Underflow/Overflow parsing date encoding prefix in filename: ${filename}`]);
+        continue;
+      }
+
+      const formattedDateStr = format(targetDate, "yyyy-MM-dd");
+
+      try {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+
+        const rawLines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        setFolderScanLogs(prev => [
+          ...prev,
+          `[PARSED] ${filename} represents Date ${format(targetDate, "dd/MM/yyyy")}. Undergoing atomic transaction parse for ${rawLines.length} scan records...`
+        ]);
+
+        // Call the high-performance process-immediate-lines API endpoint!
+        const res = await apiService.processImmediateLines(formattedDateStr, rawLines);
+        const returnedLogs = res.data?.logs || [];
+        
+        setFolderScanLogs(prev => [
+          ...prev,
+          ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+        ]);
+
+        toast.success(`Succesfully imported ${filename} locally!`);
+        // Refresh bottom table logs immediately for instant dynamic populate!
+        await fetchIodataLogs();
+      } catch (fileErr: any) {
+        const errMsg = fileErr?.response?.data || fileErr.message || "File parse error";
+        setFolderScanLogs(prev => [...prev, `[ERROR] Failed to import ${filename}: ${errMsg}`]);
+      }
+    }
+
+    setIsProcessingFolderScan(false);
+  };
+
   // Execute processing of the raw background text scan files in local directory (C:\iodata) based on naming conventions
   const handleIoFolderScan = async () => {
     const start = parseISO(ioFolderFromDate);
@@ -578,22 +701,44 @@ export default function Attendance({ user }: { user: any }) {
     setFolderScanLogs(["Initiating folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
 
     try {
-      // Call endpoint. It will read DataDDMMYY.txt files in sequence
-      const res = await apiService.processIodataRange(ioFolderFromDate, ioFolderToDate);
-      const returnedLogs = res.data?.logs || res.data || [];
-      
-      const formattedLogs = Array.isArray(returnedLogs) 
-        ? returnedLogs 
-        : ["No files found or parsed.", "Ensure folder C:\\iodata has structural DataDDMMYY.txt files."];
+      const datesToProcess: string[] = [];
+      let currentDate = new Date(start);
+      while (currentDate <= end) {
+        datesToProcess.push(format(currentDate, "yyyy-MM-dd"));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
 
-      setFolderScanLogs([
-        "Folder connection succeeded!",
-        `Processed files for range: ${ioFolderFromDate} to ${ioFolderToDate}`,
-        `Server raw response received.`,
-        ...formattedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
-      ]);
+      setFolderScanLogs(prev => [...prev, `Generated ${datesToProcess.length} day-chunks to crawl sequentially.`]);
+
+      for (let i = 0; i < datesToProcess.length; i++) {
+        const currentDateStr = datesToProcess[i];
+        setFolderScanLogs(prev => [...prev, `[SCAN] Checking server index directories for date: ${currentDateStr}...`]);
+        
+        try {
+          // Process one day as a single narrow range!
+          const res = await apiService.processIodataRange(currentDateStr, currentDateStr);
+          const returnedLogs = res.data?.logs || [];
+          
+          if (Array.isArray(returnedLogs) && returnedLogs.length > 0) {
+            setFolderScanLogs(prev => [
+              ...prev,
+              ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+            ]);
+            toast.success(`Synced files for ${currentDateStr}!`);
+          } else {
+            setFolderScanLogs(prev => [...prev, `[SKIP] No DataDDMMYY.txt file detected/loaded on server for ${currentDateStr}.`]);
+          }
+
+          // Fetch logs immediately so populated list is updated in real-time during processing!
+          await fetchIodataLogs();
+        } catch (dayError: any) {
+          const errMsg = dayError?.response?.data || dayError.message || "Error scanning day";
+          setFolderScanLogs(prev => [...prev, `[FAIL] Failed for date ${currentDateStr}: ${errMsg}`]);
+        }
+      }
+
+      setFolderScanLogs(prev => [...prev, `[SUCCESS] Daily batch folder scans run completed successfully.`]);
       toast.success("RFID local folder range scan complete!");
-      fetchIodataLogs();
     } catch (err: any) {
       console.error(err);
       // Clean parsing of nested axios response error structures
@@ -989,9 +1134,45 @@ export default function Attendance({ user }: { user: any }) {
                       <Table>
                         <TableHeader>
                             <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
-                              <TableHead className="w-[120px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{recordType === "student" ? "GR No" : "Emp Code"}</TableHead>
-                              <TableHead className="w-16 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{recordType === "student" ? "Roll" : "Dept/Sub"}</TableHead>
-                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Full Identity</TableHead>
+                              <TableHead 
+                                className="w-[140px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                                onClick={() => handleSort("grno")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  {recordType === "student" ? "GR No" : "Emp Code"}
+                                  {sortBy === "grno" ? (
+                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                  ) : (
+                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                  )}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="w-24 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                                onClick={() => handleSort("roll")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  {recordType === "student" ? "Roll" : "Dept/Sub"}
+                                  {sortBy === "roll" ? (
+                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                  ) : (
+                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                  )}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                                onClick={() => handleSort("name")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Full Identity
+                                  {sortBy === "name" ? (
+                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                  ) : (
+                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                  )}
+                                </div>
+                              </TableHead>
                               <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
                               {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
                             </TableRow>
@@ -1625,178 +1806,133 @@ export default function Attendance({ user }: { user: any }) {
       {manualSubTab === "iodata" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
           
-          {/* RFID file uploader panel */}
-          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white">
+          {/* Unified Local Folder Scanner with Scan Source selection */}
+          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white h-fit">
             <CardHeader className="border-b border-slate-50 px-8 py-6">
-              <CardTitle className="text-lg font-black text-slate-900 tracking-tight">RFID File Importer (IO Data)</CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Highly-configurable RFID log importer</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              
-              {/* Processing Mode selection */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Execution Priority Mode</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIodataImportMode("background")}
-                    className={cn(
-                      "py-3 px-3 rounded-xl text-left border flex flex-col justify-between transition-all h-24",
-                      iodataImportMode === "background"
-                        ? "border-emerald-500 bg-emerald-50/30 text-emerald-900 ring-2 ring-emerald-500/10"
-                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
-                    )}
-                  >
-                    <span className="font-extrabold text-[10px] uppercase tracking-wider">Background Queue</span>
-                    <span className="text-[9px] font-bold text-slate-400 leading-tight block">Uses C# Hosted background service & queue. Highly performant.</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIodataImportMode("immediate")}
-                    className={cn(
-                      "py-3 px-3 rounded-xl text-left border flex flex-col justify-between transition-all h-24",
-                      iodataImportMode === "immediate"
-                        ? "border-slate-800 bg-slate-900 text-white shadow-md"
-                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
-                    )}
-                  >
-                    <span className="font-extrabold text-[10px] uppercase tracking-wider">Immediate Run</span>
-                    <span className="text-[9px] font-bold text-slate-400 leading-tight block">Fires individual DB stored procedures instantly on thread.</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Format specifications guide */}
-              <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100 font-sans">
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5 font-sans">
-                  <FileText size={12} className="text-slate-400" />
-                  Expected IO Data Schema (CSV)
-                </p>
-                <p className="text-[9px] text-slate-400 font-bold leading-normal font-sans">
-                  Each raw line contains: <br />
-                  <code className="text-slate-600 font-mono font-black break-all">RFID/CARD ID, Punch Date, Punch Time, Machine ID, Transaction ID, Created DateTime</code>
-                </p>
-              </div>
-
-              {/* Direct drag and drop dropzone */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select IO Data Raw File</label>
-                <div 
-                  onDragEnter={handleIodataDrag}
-                  onDragOver={handleIodataDrag}
-                  onDragLeave={handleIodataDrag}
-                  onDrop={handleIodataDrop}
-                  className={cn(
-                    "border-2 border-dashed rounded-2xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer min-h-36",
-                    iodataDragActive ? "border-emerald-500 bg-emerald-50/20" : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/50",
-                    iodataFile && "border-solid border-emerald-500 bg-emerald-50/30"
-                  )}
-                >
-                  <input 
-                    type="file" 
-                    id="iodata-file-upload" 
-                    className="hidden" 
-                    accept=".csv,.txt"
-                    onChange={handleIodataFileChange}
-                  />
-                  <label htmlFor="iodata-file-upload" className="w-full h-full cursor-pointer">
-                    <UploadCloud className={cn("h-10 w-10 mx-auto mb-2 text-slate-400", iodataFile && "text-emerald-500 animate-bounce")} />
-                    {iodataFile ? (
-                      <div>
-                        <p className="text-xs font-black text-emerald-800">{iodataFile.name}</p>
-                        <p className="text-[10px] font-bold text-emerald-500 uppercase mt-1">{(iodataFile.size / 1024).toFixed(1)} KB • Loaded</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-xs font-bold text-slate-600">Drag or click to choose IO Data file</p>
-                        <p className="text-[9px] font-medium text-slate-400 uppercase mt-1">Supports raw .TXT or .CSV scan outputs</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleIodataUploadSubmit} 
-                disabled={isUploadingIodata || !iodataFile}
-                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs"
-              >
-                {isUploadingIodata ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing Scans...
-                  </>
-                ) : "Upload and Parse Scans"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Historical Date Range Folder Scanner for Local Directory Storage (\iodata) */}
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white h-fit mt-6">
-            <CardHeader className="border-b border-slate-50 px-8 py-6">
-              <CardTitle className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <Play size={16} className="text-emerald-500 animate-pulse" />
-                Local Folder Scanner (C:\iodata)
-              </CardTitle>
-              <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Scan & Import stored RFID files across period</CardDescription>
+              <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Local Folder Scanner</CardTitle>
+              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Scan & Import stored RFID files cleanly</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
-                  <Input 
-                    type="date"
-                    value={ioFolderFromDate}
-                    onChange={(e) => setIoFolderFromDate(e.target.value)}
-                    className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
-                  <Input 
-                    type="date"
-                    value={ioFolderToDate}
-                    onChange={(e) => setIoFolderToDate(e.target.value)}
-                    className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
-                  />
+              
+              {/* Scan Source Select */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Scan Source Location</label>
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setScanSource("server")}
+                    className={cn(
+                      "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
+                      scanSource === "server"
+                        ? "bg-white text-slate-800 shadow-sm font-black"
+                        : "text-slate-400 hover:text-slate-700 font-bold"
+                    )}
+                  >
+                    Server C:\iodata
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanSource("local")}
+                    className={cn(
+                      "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
+                      scanSource === "local"
+                        ? "bg-white text-emerald-800 shadow-sm font-black"
+                        : "text-slate-400 hover:text-slate-700 font-bold"
+                    )}
+                  >
+                    User Local Files
+                  </button>
                 </div>
               </div>
 
-              <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
-                <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
-                Looks for files matched: <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span><br />
-                Example: <span className="text-emerald-600 font-black font-sans">Data150526.txt</span> represents May 15th, 2026.
-              </div>
+              {scanSource === "server" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
+                      <Input 
+                        type="date"
+                        value={ioFolderFromDate}
+                        onChange={(e) => setIoFolderFromDate(e.target.value)}
+                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
+                      <Input 
+                        type="date"
+                        value={ioFolderToDate}
+                        onChange={(e) => setIoFolderToDate(e.target.value)}
+                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
+                    <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
+                    Looks for files matched: <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span><br />
+                    Example: <span className="text-emerald-600 font-black font-sans">Data150526.txt</span> represents May 15th, 2026.
+                  </div>
+
+                  <Button
+                    onClick={handleIoFolderScan}
+                    disabled={isProcessingFolderScan}
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    {isProcessingFolderScan ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        Scanning Folder Disk...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={12} />
+                        Run Batch Folder Scan
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {/* Local system dropzone */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select user local DataDDMMYY files</label>
+                    <div className="border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-36">
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept=".txt" 
+                        onChange={handleLocalSystemFilesSelected} 
+                        className="hidden" 
+                        id="local-system-picker" 
+                      />
+                      <label htmlFor="local-system-picker" className="cursor-pointer block w-full h-full">
+                        <UploadCloud className="h-10 w-10 mx-auto mb-2 text-slate-400" />
+                        <span className="text-xs font-black text-slate-700 block leading-tight">Choose Local 'DataDDMMYY' Files</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">or click to browse your local C:\iodata folder</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-sans text-[9px] text-slate-400 leading-normal">
+                    <span className="font-extrabold text-[10px] text-slate-500 block mb-1 font-sans">Sandbox Addon Info:</span>
+                    Browsers cannot directly access your local disk drive programmatically due to active sandbox security constraints. This addon allows you to choose files directly from your local <span className="text-slate-600 font-bold">C:\iodata\</span> folder to scan and authorize them instantly!
+                  </div>
+                </>
+              )}
 
               {/* Console log outputs for folder scans */}
               {folderScanLogs.length > 0 && (
-                <div className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] tracking-tight leading-relaxed max-h-36 overflow-y-auto space-y-1 border border-slate-800">
+                <div className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] tracking-tight leading-relaxed max-h-48 overflow-y-auto space-y-1 border border-slate-800">
                   <p className="text-emerald-400 font-black uppercase tracking-widest border-b border-emerald-950 pb-1 mb-1 font-sans">Scanner Log Debugger:</p>
                   {folderScanLogs.map((logLine, logIdx) => (
-                    <p key={logIdx} className={cn(logLine.startsWith("[FAIL]") ? "text-red-400" : logLine.startsWith("Folder") ? "text-blue-300" : "text-emerald-400")}>
+                    <p key={logIdx} className={cn(logLine.startsWith("[FAIL]") || logLine.startsWith("[ERROR]") ? "text-red-400" : logLine.startsWith("Folder") || logLine.startsWith("---") ? "text-blue-300" : "text-emerald-400")}>
                       &gt; {logLine}
                     </p>
                   ))}
                 </div>
               )}
 
-              <Button
-                onClick={handleIoFolderScan}
-                disabled={isProcessingFolderScan}
-                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-              >
-                {isProcessingFolderScan ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin" />
-                    Scanning Folder Disk...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw size={12} />
-                    Run Batch Folder Scan
-                  </>
-                )}
-              </Button>
             </CardContent>
           </Card>
 

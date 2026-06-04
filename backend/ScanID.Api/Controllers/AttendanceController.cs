@@ -196,5 +196,28 @@ namespace ScanID.Api.Controllers
             var logs = await _attendanceService.ProcessIodataDateRangeAsync(fromDate, toDate);
             return Ok(new { logs });
         }
+
+        /// <summary>
+        /// Request body schema for direct immediate batch lines processing.
+        /// </summary>
+        public class ProcessImmediateLinesRequest
+        {
+            public DateTime Date { get; set; }
+            public List<string> Lines { get; set; } = new();
+        }
+
+        /// <summary>
+        /// Immediately processes multiple raw punch scanner lines for a selected date within a secure atomic transaction.
+        /// Useful for client-side user local system scanner parsing.
+        /// </summary>
+        [HttpPost("iodata/process-immediate-lines")]
+        public async Task<IActionResult> ProcessImmediateLines([FromBody] ProcessImmediateLinesRequest request)
+        {
+            if (request == null) return BadRequest("Missing request model.");
+            if (request.Lines == null || request.Lines.Count == 0) return BadRequest("No lines provided.");
+            
+            var logs = await _attendanceService.ProcessIodataLinesImmediateAsync(request.Date, request.Lines);
+            return Ok(new { logs });
+        }
     }
 }
