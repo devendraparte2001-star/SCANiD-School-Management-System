@@ -46,7 +46,8 @@ import {
   ChevronsRight,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  FolderOpen
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -87,8 +88,14 @@ export default function Attendance({ user }: { user: any }) {
   const [standardsMaster, setStandardsMaster] = useState<any[]>([]);
   const [sectionsMaster, setSectionsMaster] = useState<any[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>(user.schoolId?.toString() || "");
-  const [selectedStandard, setSelectedStandard] = useState<string>("");
-  const [selectedSection, setSelectedSection] = useState<string>("");
+  const [selectedStandard, setSelectedStandard] = useState<string>("all");
+  const [selectedSection, setSelectedSection] = useState<string>("all");
+
+  // User Local Mode folder scan states with From-Date/To-Date inputs and folder selection mechanics
+  const [localFolderFromDate, setLocalFolderFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [localFolderToDate, setLocalFolderToDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [localFolderFiles, setLocalFolderFiles] = useState<File[]>([]);
+  const [localFolderName, setLocalFolderName] = useState<string>("");
 
   // Server-side Toggle, Pagination, and Search for Daily Roll Book
   const [recordType, setRecordType] = useState<"student" | "staff">("student");
@@ -159,11 +166,11 @@ export default function Attendance({ user }: { user: any }) {
         if (user.role === "superadmin" && !selectedSchoolId && schoolData.length > 0) {
           setSelectedSchoolId(schoolData[0].id.toString());
         }
-        if (standardData.length > 0 && !selectedStandard) {
-          setSelectedStandard(standardData[0].id.toString());
+        if (!selectedStandard) {
+          setSelectedStandard("all");
         }
-        if (sectionData.length > 0 && !selectedSection) {
-          setSelectedSection(sectionData[0].id.toString());
+        if (!selectedSection) {
+          setSelectedSection("all");
         }
       } catch (error) {
         console.error("Failed to fetch masters", error);
@@ -542,6 +549,9 @@ export default function Attendance({ user }: { user: any }) {
       }
     }
 
+    // Call fetchStudentsAndAttendance dynamically at the end to ensure status values are synchronized completely
+    await fetchStudentsAndAttendance();
+
     setIsProcessingUpload(false);
     toast.success("Manual background upload processing complete!");
   };
@@ -605,29 +615,29 @@ export default function Attendance({ user }: { user: any }) {
 
     setIsProcessingFolderScan(true);
     setFolderScanLogs([
-      "--- Dynamic Client-Side Folder Scanner Activated ---",
-      `[LOCAL] Selected ${files.length} text scan files to process.`
+      "--- Client-Side Single Files Ingestion Sequence ---",
+      `[LOCAL] Selected ${files.length} custom files to parse.`
     ]);
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const filename = file.name;
-      setFolderScanLogs(prev => [...prev, `[READING] Querying binary buffers for file: ${filename}...`]);
+      setFolderScanLogs(prev => [...prev, `[READING] Reading local files: ${filename}...`]);
 
-      // Parse date from filename DataDDMMYY.txt (style 103 DD/MM/YY priority)
+      // Parse date from filename DataDDMMYY.txt (style 103 DD/MM/Y priority)
       const match = filename.match(/Data(\d{2})(\d{2})(\d{2})\.txt/i);
       if (!match) {
-        setFolderScanLogs(prev => [...prev, `[FAIL] Filename does not match standard DataDDMMYY.txt naming style: ${filename}`]);
+        setFolderScanLogs(prev => [...prev, `[FAIL] Filename does not match standard DataDDMMYY.txt naming format: ${filename}`]);
         continue;
       }
 
       const day = parseInt(match[1]);
       const month = parseInt(match[2]);
-      const year = parseInt(match[3]) + 2000; // Assumed 2000s
+      const year = parseInt(match[3]) + 2000;
 
       const targetDate = new Date(year, month - 1, day);
       if (isNaN(targetDate.getTime())) {
-        setFolderScanLogs(prev => [...prev, `[FAIL] Underflow/Overflow parsing date encoding prefix in filename: ${filename}`]);
+        setFolderScanLogs(prev => [...prev, `[FAIL] Underflow/Overflow parsing date encoding prefix: ${filename}`]);
         continue;
       }
 
@@ -647,20 +657,30 @@ export default function Attendance({ user }: { user: any }) {
           `[PARSED] ${filename} represents Date ${format(targetDate, "dd/MM/yyyy")}. Undergoing atomic transaction parse for ${rawLines.length} scan records...`
         ]);
 
-        // Call the high-performance process-immediate-lines API endpoint!
-        const res = await apiService.processImmediateLines(formattedDateStr, rawLines);
-        const returnedLogs = res.data?.logs || [];
-        
-        setFolderScanLogs(prev => [
-          ...prev,
-          ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
-        ]);
+        // Step 1: Wipe target date once
+        await apiService.processImmediateLines(formattedDateStr, [], true);
+
+        // Step 2: Loop and insert progressively in small chunks of 2 records
+        const chunkSize = 2; // small chunk size for progressive live rendering!
+        for (let j = 0; j < rawLines.length; j += chunkSize) {
+          const chunk = rawLines.slice(j, j + chunkSize);
+          const batchRes = await apiService.processImmediateLines(formattedDateStr, chunk, false);
+          
+          const returnedLogs = batchRes.data?.logs || [];
+          setFolderScanLogs(prev => [
+            ...prev,
+            ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+          ]);
+          
+          // Refresh log grid after each chunk insert!
+          await fetchIodataLogs();
+          // Smooth micro transition delay for gorgeous progressive visual effect
+          await new Promise(resolve => setTimeout(resolve, 80));
+        }
 
         toast.success(`Succesfully imported ${filename} locally!`);
-        // Refresh bottom table logs immediately for instant dynamic populate!
-        await fetchIodataLogs();
       } catch (fileErr: any) {
-        const errMsg = fileErr?.response?.data || fileErr.message || "File parse error";
+        const errMsg = fileErr?.response?.data || fileErr.message || "File error";
         setFolderScanLogs(prev => [...prev, `[ERROR] Failed to import ${filename}: ${errMsg}`]);
       }
     }
@@ -668,7 +688,158 @@ export default function Attendance({ user }: { user: any }) {
     setIsProcessingFolderScan(false);
   };
 
-  // Execute processing of the raw background text scan files in local directory (C:\iodata) based on naming conventions
+  // Directory upload select scanner storage handler
+  const handleLocalFolderFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filesList = e.target.files;
+    if (!filesList || filesList.length === 0) return;
+
+    const filesArray = Array.from(filesList);
+    setLocalFolderFiles(filesArray);
+
+    // Extract base folder name if webkitRelativePath exists (e.g. "iodata/Data150526.txt")
+    if (filesArray[0] && filesArray[0].webkitRelativePath) {
+      const pathParts = filesArray[0].webkitRelativePath.split('/');
+      if (pathParts.length > 1) {
+        setLocalFolderName(pathParts[0]);
+      } else {
+        setLocalFolderName("Selected Folder");
+      }
+    } else {
+      setLocalFolderName("Selected Directory");
+    }
+
+    setFolderScanLogs([
+      "--- Client-Side Folder Loaded ---",
+      `Successfully indexed ${filesArray.length} files from selected local directory. Ready to scan date range!`
+    ]);
+    toast.success(`Loaded local folder containing ${filesArray.length} files! Ready to process selective date ranges.`);
+  };
+
+  // Run date range scanner over user selected folder directory files
+  const handleLocalFolderScan = async () => {
+    if (localFolderFiles.length === 0) {
+      toast.error("Please click & select a local folder containing your DataDDMMYY files first.");
+      return;
+    }
+
+    const start = parseISO(localFolderFromDate);
+    const end = parseISO(localFolderToDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      toast.error("Please enter correct and valid From & To Date ranges for local folder scan.");
+      return;
+    }
+
+    if (start > end) {
+      toast.error("Local Scan validation: From Date can not exceed To Date.");
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (start > today || end > today) {
+      toast.error("Local Scan validation: Dates cannot be in the future.");
+      return;
+    }
+
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 31) {
+      toast.error("Local Scan validation: Date range cannot exceed 31 days to avert memory/network bandwidth issues.");
+      return;
+    }
+
+    setIsProcessingFolderScan(true);
+    setFolderScanLogs([
+      "Initiating Client-Side Local Folder Processing Service...",
+      `Selected Period: ${localFolderFromDate} to ${localFolderToDate}`,
+      `Searching inside folder: ${localFolderName || "C:\\iodata"}`
+    ]);
+
+    try {
+      const datesToProcess: string[] = [];
+      let currentDate = new Date(start);
+      while (currentDate <= end) {
+        datesToProcess.push(format(currentDate, "yyyy-MM-dd"));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      setFolderScanLogs(prev => [...prev, `Found ${datesToProcess.length} calendar days to sync in this period.`]);
+
+      for (let i = 0; i < datesToProcess.length; i++) {
+        const currentDateStr = datesToProcess[i];
+        const parsedDate = parseISO(currentDateStr);
+        const filePrefix = `Data${format(parsedDate, "ddMMyy")}`;
+        const fileNamePattern = `${filePrefix}.txt`;
+
+        setFolderScanLogs(prev => [...prev, `[LOCAL_SCAN] Scanning local files for: ${fileNamePattern}...`]);
+
+        // Find file in selected folder
+        const matchedFile = localFolderFiles.find(
+          f => f.name.toLowerCase() === fileNamePattern.toLowerCase()
+        );
+
+        if (matchedFile) {
+          setFolderScanLogs(prev => [...prev, `[MATCH] Found local matching file: ${matchedFile.name}`]);
+
+          // Read file content
+          const text = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText(matchedFile);
+          });
+
+          const rawLines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+          setFolderScanLogs(prev => [
+            ...prev,
+            `[PARSED] ${matchedFile.name} represents Date ${format(parsedDate, "dd/MM/yyyy")}. Initiating live progressive processing for ${rawLines.length} scan records...`
+          ]);
+
+          // Step 1: Wipe target date once
+          await apiService.processImmediateLines(currentDateStr, [], true);
+
+          // Step 1.5: Wipe target date once
+          await apiService.processImmediateLines(currentDateStr, [], true);
+
+          // Step 2: Progressively insert chunk by chunk (chunk size: 2) to show dynamic logs
+          const chunkSize = 2;
+          for (let j = 0; j < rawLines.length; j += chunkSize) {
+            const chunk = rawLines.slice(j, j + chunkSize);
+            const res = await apiService.processImmediateLines(currentDateStr, chunk, false);
+            
+            const returnedLogs = res.data?.logs || [];
+            setFolderScanLogs(prev => [
+              ...prev,
+              ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+            ]);
+
+            // Refresh bottom table logs immediately for dynamic live display!
+            await fetchIodataLogs();
+            
+            // Short aesthetic delay for awesome rendering effect
+            await new Promise(resolve => setTimeout(resolve, 80));
+          }
+
+          toast.success(`Processed and synced ${fileNamePattern} locally in real-time!`);
+        } else {
+          setFolderScanLogs(prev => [...prev, `[SKIP] No DataDDMMYY.txt file detected in local folder for ${format(parsedDate, "dd/MM/yyyy")}.`]);
+        }
+      }
+
+      setFolderScanLogs(prev => [...prev, `[SUCCESS] Progressive Sync sequence across selected dates completed!`]);
+      toast.success("Progressive local folder sync successful!");
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err?.response?.data || err.message || "File error during parse";
+      setFolderScanLogs(prev => [...prev, `[FAIL] Error occurred: ${errMsg}`]);
+      toast.error("Local progressive folder parse failed. Check scanner logs debugger.");
+    } finally {
+      setIsProcessingFolderScan(false);
+    }
+  };
+
+  // Execute processing of the raw background text scan files in server-side directory (C:\iodata) progressively
   const handleIoFolderScan = async () => {
     const start = parseISO(ioFolderFromDate);
     const end = parseISO(ioFolderToDate);
@@ -698,7 +869,7 @@ export default function Attendance({ user }: { user: any }) {
     }
 
     setIsProcessingFolderScan(true);
-    setFolderScanLogs(["Initiating folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
+    setFolderScanLogs(["Initiating server folder files parsing service...", `Target Period: ${ioFolderFromDate} to ${ioFolderToDate}`]);
 
     try {
       const datesToProcess: string[] = [];
@@ -712,28 +883,54 @@ export default function Attendance({ user }: { user: any }) {
 
       for (let i = 0; i < datesToProcess.length; i++) {
         const currentDateStr = datesToProcess[i];
+        const parsedDate = parseISO(currentDateStr);
         setFolderScanLogs(prev => [...prev, `[SCAN] Checking server index directories for date: ${currentDateStr}...`]);
         
         try {
-          // Process one day as a single narrow range!
-          const res = await apiService.processIodataRange(currentDateStr, currentDateStr);
-          const returnedLogs = res.data?.logs || [];
+          // Progressively read the server file first!
+          const fileRes = await apiService.readServerFile(currentDateStr);
+          const lines = fileRes.data?.lines || [];
+          const filename = fileRes.data?.fileName || `Data${format(parsedDate, "ddMMyy")}.txt`;
           
-          if (Array.isArray(returnedLogs) && returnedLogs.length > 0) {
+          if (Array.isArray(lines) && lines.length > 0) {
             setFolderScanLogs(prev => [
               ...prev,
-              ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+              `[SERVER_PROGRESS] Found server file ${filename} with ${lines.length} logs. Initiating progressive live populate...`
             ]);
-            toast.success(`Synced files for ${currentDateStr}!`);
+            
+            // Step 1: Wipe target date once
+            await apiService.processImmediateLines(currentDateStr, [], true);
+            
+            // Step 2: Loop and insert progressively in small chunks of 2 records
+            const chunkSize = 2; // small chunk size for progressive live rendering!
+            for (let j = 0; j < lines.length; j += chunkSize) {
+              const chunk = lines.slice(j, j + chunkSize);
+              const batchRes = await apiService.processImmediateLines(currentDateStr, chunk, false);
+              
+              const returnedLogs = batchRes.data?.logs || [];
+              setFolderScanLogs(prev => [
+                ...prev,
+                ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
+              ]);
+              
+              // Refresh log grid after each chunk insert!
+              await fetchIodataLogs();
+              // Smooth micro transition delay for gorgeous progressive visual effect
+              await new Promise(resolve => setTimeout(resolve, 80));
+            }
+            
+            toast.success(`Progressively synced ${filename} from server watch folder!`);
           } else {
-            setFolderScanLogs(prev => [...prev, `[SKIP] No DataDDMMYY.txt file detected/loaded on server for ${currentDateStr}.`]);
+            setFolderScanLogs(prev => [...prev, `[SKIP] No readable lines in DataDDMMYY.txt for ${currentDateStr}.`]);
           }
-
-          // Fetch logs immediately so populated list is updated in real-time during processing!
-          await fetchIodataLogs();
         } catch (dayError: any) {
-          const errMsg = dayError?.response?.data || dayError.message || "Error scanning day";
-          setFolderScanLogs(prev => [...prev, `[FAIL] Failed for date ${currentDateStr}: ${errMsg}`]);
+          // Handle the case where the server-side file is not found (which is our standard SKIP case!)
+          if (dayError?.response?.status === 404) {
+            setFolderScanLogs(prev => [...prev, `[SKIP] No matching DataDDMMYY.txt scan file exists on server for ${currentDateStr}.`]);
+          } else {
+            const errMsg = dayError?.response?.data || dayError.message || "Error scanning day";
+            setFolderScanLogs(prev => [...prev, `[FAIL] Failed progressively for date ${currentDateStr}: ${errMsg}`]);
+          }
         }
       }
 
@@ -1559,33 +1756,8 @@ export default function Attendance({ user }: { user: any }) {
          ----------------------------------------- */}
       {activeTab === "manual" && (
         <div className="space-y-6 w-full">
-          {/* Configurable Modern Sub-tab selection for Classic vs RFID Importer */}
-          <div className="flex bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
-            <button
-              onClick={() => setManualSubTab("iodata")}
-              className={cn(
-                "px-4 py-2 text-xs font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2",
-                manualSubTab === "iodata"
-                  ? "bg-white text-emerald-800 shadow-sm border-b-2 border-emerald-500"
-                  : "text-slate-400 hover:text-slate-700"
-              )}
-            >
-              <Cpu size={14} className="animate-pulse" />
-              RFID Auto Importer (IO Data)
-            </button>
-            <button
-              onClick={() => setManualSubTab("classic")}
-              className={cn(
-                "px-4 py-2 text-xs font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2",
-                manualSubTab === "classic"
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-400 hover:text-slate-700"
-              )}
-            >
-              <Sliders size={14} />
-              Manual Roll Mark
-            </button>
-          </div>
+          {/* Configurable Modern Sub-tab selection for Classic manual marking */}
+          {/* Note: RFID Auto Importer (IO Data) sub-tab section is hidden as requested */}
 
           {manualSubTab === "classic" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1894,30 +2066,78 @@ export default function Attendance({ user }: { user: any }) {
                 </>
               ) : (
                 <>
-                  {/* Local system dropzone */}
+                  {/* Dynamic From and To date selection for Local Folder Indexing */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.55">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
+                      <Input 
+                        type="date"
+                        value={localFolderFromDate}
+                        onChange={(e) => setLocalFolderFromDate(e.target.value)}
+                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
+                      <Input 
+                        type="date"
+                        value={localFolderToDate}
+                        onChange={(e) => setLocalFolderToDate(e.target.value)}
+                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Local Folder Directory Picker */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select user local DataDDMMYY files</label>
-                    <div className="border-2 border-dashed border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-36">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select user local C:\iodata Folder</label>
+                    <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/10 hover:bg-emerald-50/20 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-36">
                       <input 
                         type="file" 
                         multiple 
                         accept=".txt" 
-                        onChange={handleLocalSystemFilesSelected} 
+                        onChange={handleLocalFolderFilesSelected} 
                         className="hidden" 
-                        id="local-system-picker" 
+                        id="local-folder-directory-picker" 
+                        {...({
+                          webkitdirectory: "",
+                          directory: ""
+                        } as any)}
                       />
-                      <label htmlFor="local-system-picker" className="cursor-pointer block w-full h-full">
-                        <UploadCloud className="h-10 w-10 mx-auto mb-2 text-slate-400" />
-                        <span className="text-xs font-black text-slate-700 block leading-tight">Choose Local 'DataDDMMYY' Files</span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">or click to browse your local C:\iodata folder</span>
+                      <label htmlFor="local-folder-directory-picker" className="cursor-pointer block w-full h-full">
+                        <FolderOpen className="h-10 w-10 mx-auto mb-2 text-emerald-600 animate-pulse" />
+                        <span className="text-xs font-black text-slate-700 block leading-tight">
+                          {localFolderFiles.length > 0 ? `Folder Indexed: ${localFolderName}` : "Choose Local folder Location"}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                          {localFolderFiles.length > 0 ? `${localFolderFiles.length} files detected - click to change` : "Select C:\\iodata directory"}
+                        </span>
                       </label>
                     </div>
                   </div>
 
                   <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-sans text-[9px] text-slate-400 leading-normal">
-                    <span className="font-extrabold text-[10px] text-slate-500 block mb-1 font-sans">Sandbox Addon Info:</span>
-                    Browsers cannot directly access your local disk drive programmatically due to active sandbox security constraints. This addon allows you to choose files directly from your local <span className="text-slate-600 font-bold">C:\iodata\</span> folder to scan and authorize them instantly!
+                    <span className="font-extrabold text-[10px] text-slate-500 block mb-1 font-sans">Local Folder Processing:</span>
+                    Browse and select your local <span className="text-slate-600 font-bold">C:\iodata\</span> folder. It will scan and extract datewise files named <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span> progressively for the selected date range.
                   </div>
+
+                  <Button
+                    onClick={handleLocalFolderScan}
+                    disabled={isProcessingFolderScan || localFolderFiles.length === 0}
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    {isProcessingFolderScan ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        Scanning Folder...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={12} />
+                        Run User Folder Scan
+                      </>
+                    )}
+                  </Button>
                 </>
               )}
 

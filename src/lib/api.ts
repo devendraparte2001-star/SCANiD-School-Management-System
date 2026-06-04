@@ -414,7 +414,8 @@ export const apiService = {
   enqueueIodataLines: (lines: string[]) => api.post("/attendance/iodata/enqueue", lines),
   reprocessIodata: (id: number) => api.post(`/attendance/iodata/reprocess/${id}`),
   processSingleIodataLine: (line: string) => api.post("/attendance/iodata/process-single", line),
-  processImmediateLines: (date: string, lines: string[]) => api.post("/attendance/iodata/process-immediate-lines", { date, lines }),
+  processImmediateLines: (date: string, lines: string[], wipeTargetDate?: boolean) => api.post("/attendance/iodata/process-immediate-lines", { date, lines, wipeTargetDate }),
+  readServerFile: (date: string) => api.get("/attendance/iodata/read-server-file", { params: { date } }),
 
   // Fees
   getFees: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) => api.get("/fees", { params: { schoolId, academicYearId, ...params } }),

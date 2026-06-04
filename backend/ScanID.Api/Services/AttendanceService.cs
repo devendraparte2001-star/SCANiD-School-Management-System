@@ -435,7 +435,7 @@ namespace ScanID.Api.Services
         /// Processes a list of raw scanner line strings immediately for a specific date in an atomic transaction (User Local System support).
         /// Re-processes cleanly by doing a target wipe first to protect against duplicates (Replace-On-Read / Truncate-and-Reload).
         /// </summary>
-        public async Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines)
+        public async Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines, bool wipeTargetDate = false)
         {
             var logs = new List<string>();
             var targetDate = date.Date;
@@ -444,18 +444,22 @@ namespace ScanID.Api.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Pre-import clean-up (Replace-On-Read / Truncate-and-Reload model):
-                // To support clean, error-tolerant re-processing and completely bypass duplicate constraints,
-                // we wipe any active IodataRecords or corresponding attendance entries created by 'IodataService' on this Date.
-                await _context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate)",
-                    new SqlParameter("@TargetDate", targetDate)
-                );
+                if (wipeTargetDate)
+                {
+                    logs.Add($"[LOCAL_INFO] Performing target wipe cleanup for date: {targetDate:yyyy-MM-dd} (Replace-On-Read model)");
+                    // Pre-import clean-up (Replace-On-Read / Truncate-and-Reload model):
+                    // To support clean, error-tolerant re-processing and completely bypass duplicate constraints,
+                    // we wipe any active IodataRecords or corresponding attendance entries created by 'IodataService' on this Date.
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate)",
+                        new SqlParameter("@TargetDate", targetDate)
+                    );
 
-                await _context.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate) AND [UploadSource] = 'IodataService'",
-                    new SqlParameter("@TargetDate", targetDate)
-                );
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate) AND [UploadSource] = 'IodataService'",
+                        new SqlParameter("@TargetDate", targetDate)
+                    );
+                }
 
                 int linesProcessed = 0;
                 foreach (var line in lines)

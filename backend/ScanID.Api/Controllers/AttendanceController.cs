@@ -204,6 +204,7 @@ namespace ScanID.Api.Controllers
         {
             public DateTime Date { get; set; }
             public List<string> Lines { get; set; } = new();
+            public bool WipeTargetDate { get; set; } = false;
         }
 
         /// <summary>
@@ -214,10 +215,51 @@ namespace ScanID.Api.Controllers
         public async Task<IActionResult> ProcessImmediateLines([FromBody] ProcessImmediateLinesRequest request)
         {
             if (request == null) return BadRequest("Missing request model.");
-            if (request.Lines == null || request.Lines.Count == 0) return BadRequest("No lines provided.");
             
-            var logs = await _attendanceService.ProcessIodataLinesImmediateAsync(request.Date, request.Lines);
+            // Allow empty lines array when only wiping
+            var linesToProcess = request.Lines ?? new List<string>();
+            
+            var logs = await _attendanceService.ProcessIodataLinesImmediateAsync(request.Date, linesToProcess, request.WipeTargetDate);
             return Ok(new { logs });
+        }
+
+        /// <summary>
+        /// Reads a file from the server's watch folder and returns its raw lines.
+        /// Helps the client process files progressively chunk by chunk rather than in single block HTTP executions.
+        /// </summary>
+        [HttpGet("iodata/read-server-file")]
+        public async Task<IActionResult> ReadServerFile([FromQuery] DateTime date)
+        {
+            var watchDir = @"C:\iodata";
+            string filePrefix = $"Data{date:ddMMyy}";
+            string fileNamePattern = $"{filePrefix}.txt";
+            string filePath = Path.Combine(watchDir, fileNamePattern);
+            string archivePath = Path.Combine(watchDir, "processed", fileNamePattern);
+
+            string? targetPath = null;
+            if (File.Exists(filePath))
+            {
+                targetPath = filePath;
+            }
+            else if (File.Exists(archivePath))
+            {
+                targetPath = archivePath;
+            }
+
+            if (targetPath == null)
+            {
+                return NotFound($"No local file {fileNamePattern} exists in C:\\iodata directory.");
+            }
+
+            try
+            {
+                var lines = await File.ReadAllLinesAsync(targetPath);
+                return Ok(new { FileName = fileNamePattern, Lines = lines });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error reading database folder scans: {ex.Message}");
+            }
         }
     }
 }
