@@ -626,6 +626,23 @@ This document records the exact changes, the root causes identified, and the fix
 - `/CHANGES_DOCUMENTATION.md`: Appended Batch 14 changes summary.
 
 
+---
+
+## 61. Issue: ControllerBase.File Context Collision in AttendanceController.cs (Batch 15)
+- **Root Cause & Requirements**:
+  1. **Base Controller Method Collision**: In ASP.NET Core MVC/WebAPI controllers, `ControllerBase` defines helper methods named `File` for returning file content actions (e.g. file downloads).
+  2. **Ambiguous Local Reference**: In `AttendanceController.ReadServerFile`, we accessed `File.Exists` and `File.ReadAllLinesAsync`. The C# compiler resolved the unqualified `File` class identifier to the controller's `File(...)` method, which is invalid in that context and threw error `CS0119`.
+
+- **Remediation**:
+  1. **Fully Qualified Namespace Reference**: Fully qualified the `File` helper class to `System.IO.File` for all `Exists(...)` and `ReadAllLinesAsync(...)` calls, bypassing method collisions.
+
+## 62. Modified/Synchronized Files List (Batch 15)
+
+- /backend/ScanID.Api/Controllers/AttendanceController.cs: Structured file system IO calls specifically via the `System.IO` namespace.
+- /CHANGES_DOCUMENTATION.md: Documented Batch 15 compiler resolution.
+
+
+
 
 
 

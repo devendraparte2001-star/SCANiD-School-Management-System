@@ -237,11 +237,11 @@ namespace ScanID.Api.Controllers
             string archivePath = Path.Combine(watchDir, "processed", fileNamePattern);
 
             string? targetPath = null;
-            if (File.Exists(filePath))
+            if (System.IO.File.Exists(filePath))
             {
                 targetPath = filePath;
             }
-            else if (File.Exists(archivePath))
+            else if (System.IO.File.Exists(archivePath))
             {
                 targetPath = archivePath;
             }
@@ -253,7 +253,7 @@ namespace ScanID.Api.Controllers
 
             try
             {
-                var lines = await File.ReadAllLinesAsync(targetPath);
+                var lines = await System.IO.File.ReadAllLinesAsync(targetPath);
                 return Ok(new { FileName = fileNamePattern, Lines = lines });
             }
             catch (Exception ex)
