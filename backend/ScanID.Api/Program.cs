@@ -164,6 +164,141 @@ try
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<ApplicationDbContext>();
         
+        // 0. SELF-HEALING SCHEMA UPGRADE: Create Weekdays and Holidays, update Shifts columns, and alter Master Tables to include SchoolId/AcademicYearId
+        _ = await context.Database.ExecuteSqlRawAsync(@"
+            -- Create Weekdays table if not exists
+            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Weekdays]') AND type in (N'U'))
+            BEGIN
+                CREATE TABLE [dbo].[Weekdays](
+                    [Id] [int] IDENTITY(1,1) NOT NULL,
+                    [Name] [nvarchar](100) NOT NULL,
+                    [SchoolId] [int] NULL,
+                    [AcademicYearId] [int] NULL,
+                    [IsActive] [bit] NOT NULL CONSTRAINT [DF_Weekdays_IsActive] DEFAULT (1),
+                    [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_Weekdays_IsDeleted] DEFAULT (0),
+                    [CreatedBy] [nvarchar](max) NULL,
+                    [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Weekdays_CreatedOn] DEFAULT (GETUTCDATE()),
+                    [ModifiedBy] [nvarchar](max) NULL,
+                    [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Weekdays_ModifiedOn] DEFAULT (GETUTCDATE()),
+                 CONSTRAINT [PK_Weekdays] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
+
+                INSERT INTO [dbo].[Weekdays] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES 
+                (N'Monday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Tuesday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Wednesday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Thursday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Friday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Saturday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'Sunday', 1, GETUTCDATE(), GETUTCDATE());
+            END
+
+            -- Create Holidays table if not exists
+            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Holidays]') AND type in (N'U'))
+            BEGIN
+                CREATE TABLE [dbo].[Holidays](
+                    [Id] [int] IDENTITY(1,1) NOT NULL,
+                    [Name] [nvarchar](150) NOT NULL,
+                    [FromDate] [datetime2](7) NOT NULL,
+                    [ToDate] [datetime2](7) NOT NULL,
+                    [Description] [nvarchar](max) NULL,
+                    [SchoolId] [int] NULL,
+                    [AcademicYearId] [int] NULL,
+                    [IsActive] [bit] NOT NULL CONSTRAINT [DF_Holidays_IsActive] DEFAULT (1),
+                    [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_Holidays_IsDeleted] DEFAULT (0),
+                    [CreatedBy] [nvarchar](max) NULL,
+                    [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Holidays_CreatedOn] DEFAULT (GETUTCDATE()),
+                    [ModifiedBy] [nvarchar](max) NULL,
+                    [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_Holidays_ModifiedOn] DEFAULT (GETUTCDATE()),
+                 CONSTRAINT [PK_Holidays] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
+            END
+
+            -- Add new Shift columns if they do not exist
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND name = 'Weekdays')
+                    ALTER TABLE [dbo].[Shifts] ADD [Weekdays] NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND name = 'IsSpecialShift')
+                    ALTER TABLE [dbo].[Shifts] ADD [IsSpecialShift] BIT NOT NULL CONSTRAINT [DF_Shifts_IsSpecialShift] DEFAULT (0);
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND name = 'FromDate')
+                    ALTER TABLE [dbo].[Shifts] ADD [FromDate] DATETIME2(7) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND name = 'ToDate')
+                    ALTER TABLE [dbo].[Shifts] ADD [ToDate] DATETIME2(7) NULL;
+            END
+
+            -- Gracefully append SchoolId and AcademicYearId columns to all other Master Tables if missing
+            DECLARE @tableName NVARCHAR(256)
+            DECLARE @sql NVARCHAR(MAX)
+
+            DECLARE table_cursor CURSOR FOR
+            SELECT name FROM sys.tables 
+            WHERE name IN (
+                'Standards', 'Sections', 'AcademicYears', 'Castes', 'SubCastes', 
+                'Religions', 'States', 'Cities', 'BloodGroups', 'Houses', 
+                'AdmissionTypes', 'Categories', 'Sessions', 'Batches', 'Subjects', 
+                'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
+                'StaffInitials'
+            )
+
+            OPEN table_cursor
+            FETCH NEXT FROM table_cursor INTO @tableName
+
+            WHILE @@FETCH_STATUS = 0
+            BEGIN
+                -- Check and add SchoolId
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'SchoolId')
+                BEGIN
+                    SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [SchoolId] INT NULL;'
+                    EXEC sp_executesql @sql
+                END
+
+                -- Check and add AcademicYearId
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'AcademicYearId')
+                BEGIN
+                    SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [AcademicYearId] INT NULL;'
+                    EXEC sp_executesql @sql
+                END
+
+                FETCH NEXT FROM table_cursor INTO @tableName
+            END
+
+            CLOSE table_cursor
+            DEALLOCATE table_cursor
+
+            -- Create Navigation entries for Weekday Master (43) and Holiday Master (44) if NavigationItems has items and they are missing
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[NavigationItems]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 43)
+                BEGIN
+                    SET IDENTITY_INSERT [dbo].[NavigationItems] ON;
+                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
+                    (43, N'Weekday Master', N'Calendar', N'/configuration/weekdays', 25, 18, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+                    SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
+                    
+                    -- Assign to SuperAdmin (1) and Admin (2) fallback paths
+                    IF EXISTS (SELECT 1 FROM [dbo].[NavigationRoles] WHERE [RoleId] = 1)
+                        INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES (43, 1);
+                    IF EXISTS (SELECT 1 FROM [dbo].[NavigationRoles] WHERE [RoleId] = 2)
+                        INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES (43, 2);
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 44)
+                BEGIN
+                    SET IDENTITY_INSERT [dbo].[NavigationItems] ON;
+                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
+                    (44, N'Holiday Master', N'CalendarCheck', N'/configuration/holidays', 25, 19, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+                    SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
+
+                    -- Assign to SuperAdmin (1) and Admin (2) fallback paths
+                    IF EXISTS (SELECT 1 FROM [dbo].[NavigationRoles] WHERE [RoleId] = 1)
+                        INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES (44, 1);
+                    IF EXISTS (SELECT 1 FROM [dbo].[NavigationRoles] WHERE [RoleId] = 2)
+                        INSERT INTO [dbo].[NavigationRoles] ([NavigationItemId], [RoleId]) VALUES (44, 2);
+                END
+            END
+        ");
+
         // 1. Ensure StaffInitials table exists and is populated
         _ = await context.Database.ExecuteSqlRawAsync(@"
             IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StaffInitials]') AND type in (N'U'))

@@ -371,6 +371,32 @@ namespace ScanID.Api.Controllers
         [HttpDelete("shifts/{id}")]
         public async Task<IActionResult> DeleteShift(int id) => await Delete(_context.Shifts, id);
 
+        // --- Weekdays ---
+        [HttpGet("weekdays")]
+        public async Task<ActionResult<IEnumerable<Weekday>>> GetWeekdays() => await GetAll(_context.Weekdays);
+
+        [HttpPost("weekdays")]
+        public async Task<ActionResult<Weekday>> CreateWeekday(Weekday item) => await Create(_context.Weekdays, item);
+
+        [HttpPut("weekdays/{id}")]
+        public async Task<IActionResult> UpdateWeekday(int id, Weekday item) => await Update(id, item);
+
+        [HttpDelete("weekdays/{id}")]
+        public async Task<IActionResult> DeleteWeekday(int id) => await Delete(_context.Weekdays, id);
+
+        // --- Holidays ---
+        [HttpGet("holidays")]
+        public async Task<ActionResult<IEnumerable<Holiday>>> GetHolidays() => await GetAll(_context.Holidays);
+
+        [HttpPost("holidays")]
+        public async Task<ActionResult<Holiday>> CreateHoliday(Holiday item) => await Create(_context.Holidays, item);
+
+        [HttpPut("holidays/{id}")]
+        public async Task<IActionResult> UpdateHoliday(int id, Holiday item) => await Update(id, item);
+
+        [HttpDelete("holidays/{id}")]
+        public async Task<IActionResult> DeleteHoliday(int id) => await Delete(_context.Holidays, id);
+
         // --- Subjects ---
         [HttpGet("subjects")]
         public async Task<ActionResult<IEnumerable<Subject>>> GetSubjects() => await GetAll(_context.Subjects);

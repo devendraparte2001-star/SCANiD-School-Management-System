@@ -11,6 +11,7 @@ import {
   Edit3,
   Hash,
   Calendar,
+  CalendarCheck,
   Users,
   UserPlus,
   MapPin,
@@ -249,6 +250,18 @@ const MASTER_TYPES: Record<
     description: "Manage staff title prefix initials",
     apiPrefix: "StaffInitial",
   },
+  weekdays: {
+    label: "Weekday Master",
+    icon: Calendar,
+    description: "Manage active weekdays of the school program",
+    apiPrefix: "Weekday",
+  },
+  holidays: {
+    label: "Holiday Master",
+    icon: CalendarCheck,
+    description: "Manage school and staff holidays calendar",
+    apiPrefix: "Holiday",
+  },
   navigation: {
     label: "Navigation Master",
     icon: LayoutGrid,
@@ -274,6 +287,10 @@ export default function Configuration({
 
   // Master dependencies for related lookups (like Sub-Castes needing Castes)
   const [dependencies, setDependencies] = useState<Record<string, any[]>>({});
+
+  const visibleSchools = user.role === "superadmin"
+    ? (dependencies.schools || [])
+    : (dependencies.schools || []).filter((s: any) => s.id?.toString() === user.schoolId?.toString());
 
   // Sync active tab with prop
   useEffect(() => {
@@ -462,6 +479,31 @@ export default function Configuration({
   }, [activeTab]);
 
   useEffect(() => {
+    const loadGlobalLookups = async () => {
+      try {
+        const [schoolsRes, yearsRes, weekdaysRes] = await Promise.all([
+          apiService.getSchools(),
+          apiService.getAcademicYears(),
+          apiService.getWeekdays ? apiService.getWeekdays() : Promise.resolve({ data: [] }),
+        ]);
+        const sData = schoolsRes.data?.data || schoolsRes.data || [];
+        const yData = yearsRes.data?.data || yearsRes.data || [];
+        const wData = weekdaysRes.data?.data || weekdaysRes.data || [];
+
+        setDependencies(prev => ({
+          ...prev,
+          schools: Array.isArray(sData) ? sData : [],
+          academicYears: Array.isArray(yData) ? yData : [],
+          weekdaysData: Array.isArray(wData) ? wData : [],
+        }));
+      } catch (err) {
+        console.error("Failed to load global lookups:", err);
+      }
+    };
+    loadGlobalLookups();
+  }, []);
+
+  useEffect(() => {
     if (!isDialogOpen) {
       setSelectedPhotoFile(null);
       if (localPhotoPreview) {
@@ -503,7 +545,12 @@ export default function Configuration({
       role: item?.role
         ? item.role.toLowerCase().replace(/\s+/g, "")
         : "student",
-      schoolId: item?.schoolId ? item.schoolId.toString() : "",
+      schoolId: item?.schoolId ? item.schoolId.toString() : (user.schoolId && user.schoolId !== "all" ? user.schoolId.toString() : ""),
+      academicYearId: item?.academicYearId ? item.academicYearId.toString() : (user.academicYearId ? user.academicYearId.toString() : ""),
+      weekdays: item?.weekdays || "",
+      isSpecialShift: item?.isSpecialShift || false,
+      fromDate: item?.fromDate ? item.fromDate.split('T')[0] : "",
+      toDate: item?.toDate ? item.toDate.split('T')[0] : "",
       // Extended school parameters for comprehensive UI form support
       shortName: item?.shortName || "",
       cityId: item?.cityId?.toString() || "",
@@ -578,6 +625,24 @@ export default function Configuration({
       }
     }
 
+    if (activeTab === "shifts" && formData.isSpecialShift) {
+      if (!formData.fromDate) newErrors.fromDate = true;
+      if (!formData.toDate) newErrors.toDate = true;
+      if (formData.fromDate && formData.toDate && new Date(formData.fromDate) > new Date(formData.toDate)) {
+        toast.error("From Date cannot be after To Date for special shifts.");
+        newErrors.toDate = true;
+      }
+    }
+
+    if (activeTab === "holidays") {
+      if (!formData.fromDate) newErrors.fromDate = true;
+      if (!formData.toDate) newErrors.toDate = true;
+      if (formData.fromDate && formData.toDate && new Date(formData.fromDate) > new Date(formData.toDate)) {
+        toast.error("From Date cannot be after To Date for holidays.");
+        newErrors.toDate = true;
+      }
+    }
+
     setFormErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
@@ -617,6 +682,21 @@ export default function Configuration({
         payload.description = formData.description;
       }
 
+      // Add global school and academic year selection, except when dealing with schools or navigations
+      if (activeTab !== "schools" && activeTab !== "navigation") {
+        if (formData.schoolId) {
+          payload.schoolId = parseSafeInt(formData.schoolId);
+        } else if (user.schoolId && user.schoolId !== "all") {
+          payload.schoolId = parseSafeInt(user.schoolId);
+        }
+        
+        if (formData.academicYearId) {
+          payload.academicYearId = parseSafeInt(formData.academicYearId);
+        } else if (user.academicYearId) {
+          payload.academicYearId = parseSafeInt(user.academicYearId);
+        }
+      }
+
       // Add type-specific fields with proper type conversion
       if (activeTab === "shifts") {
         payload.startTime = formData.startTime;
@@ -625,6 +705,14 @@ export default function Configuration({
         payload.spanInTime = formData.spanInTime;
         payload.lunchStart = formData.lunchStart;
         payload.lunchEnd = formData.lunchEnd;
+        payload.weekdays = formData.weekdays;
+        payload.isSpecialShift = !!formData.isSpecialShift;
+        payload.fromDate = formData.isSpecialShift && formData.fromDate ? formData.fromDate : null;
+        payload.toDate = formData.isSpecialShift && formData.toDate ? formData.toDate : null;
+      } else if (activeTab === "holidays") {
+        payload.fromDate = formData.fromDate;
+        payload.toDate = formData.toDate;
+        payload.description = formData.description;
       } else if (activeTab === "academic-years") {
         payload.isCurrent = formData.isCurrent;
       } else if (activeTab === "houses") {
@@ -919,7 +1007,7 @@ export default function Configuration({
                     {activeTab !== "role-assignment" &&
                       activeTab !== "navigation" && (
                         <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                          {activeTab === "shifts" ? "Shift Details / Timings" : "Description"}
+                          {activeTab === "shifts" ? "Shift Details / Timings" : activeTab === "holidays" ? "Holiday Duration & Info" : "Description"}
                         </TableHead>
                       )}
                     <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -1252,6 +1340,51 @@ export default function Configuration({
                                       Recess: {item.lunchStart || "N/A"} to {item.lunchEnd || "N/A"}
                                     </div>
                                   )}
+                                  <div className="text-[10px] text-slate-500 font-semibold flex items-center flex-wrap gap-1 mt-1">
+                                    <span className="font-extrabold uppercase text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded mr-1">
+                                      Days:
+                                    </span>
+                                    <span>
+                                      {item.weekdays && dependencies.weekdaysData
+                                        ? item.weekdays
+                                            .split(",")
+                                            .map((id: string) => {
+                                              const wd = dependencies.weekdaysData.find((w: any) => w.id?.toString() === id);
+                                              return wd ? wd.name : id;
+                                            })
+                                            .join(", ")
+                                        : (item.weekdays || "All Weekdays")}
+                                    </span>
+                                  </div>
+                                  {item.isSpecialShift && (
+                                    <div className="text-[10.5px] font-bold text-orange-600 bg-orange-50 border border-orange-100 flex items-center gap-1.5 px-2 py-0.5 rounded mt-1 max-w-max">
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                                      <span>Special: {item.fromDate ? item.fromDate.split('T')[0] : "Start"} to {item.toDate ? item.toDate.split('T')[0] : "End"}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : activeTab === "holidays" ? (
+                                <div className="flex flex-col gap-1 text-[11px] font-medium">
+                                  <div className="text-slate-700 font-extrabold text-[12px] flex items-center gap-1.5">
+                                    <CalendarCheck size={13} className="text-purple-500 shrink-0" />
+                                    <span>
+                                      {item.fromDate ? item.fromDate.split('T')[0] : "N/A"} to {item.toDate ? item.toDate.split('T')[0] : "N/A"}
+                                    </span>
+                                    {item.toDate && new Date(item.toDate) < new Date() ? (
+                                      <Badge className="bg-slate-200 text-slate-500 rounded text-[8px] font-black uppercase border-none px-1.5 py-0.2 ml-1">
+                                        Passed Holiday
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-emerald-500 text-white rounded text-[8px] font-black uppercase border-none px-1.5 py-0.2 ml-1 animate-pulse">
+                                        Upcoming / Active
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {item.description && (
+                                    <span className="text-[10px] text-slate-400 font-bold block italic truncate max-w-[260px] pl-4.5">
+                                      "{item.description}"
+                                    </span>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="font-bold text-slate-400 italic truncate block max-w-[200px]">
@@ -1407,6 +1540,53 @@ export default function Configuration({
               />
             </div>
 
+            {/* School & Academic Year Selector on ALL masters except Schools, Navigation and Role Assignment */}
+            {activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    School Assignment
+                  </Label>
+                  <Select
+                    value={formData.schoolId || ""}
+                    onValueChange={(val) => setFormData({ ...formData, schoolId: val })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
+                      <SelectValue placeholder="Select School" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
+                      {visibleSchools.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id.toString()} className="font-semibold py-2">
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Academic Year
+                  </Label>
+                  <Select
+                    value={formData.academicYearId || ""}
+                    onValueChange={(val) => setFormData({ ...formData, academicYearId: val })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
+                      {(dependencies.academicYears || []).map((y: any) => (
+                        <SelectItem key={y.id} value={y.id.toString()} className="font-semibold py-2">
+                          {y.name} {y.isCurrent && "(Current)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {activeTab === "shifts" && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -1488,6 +1668,158 @@ export default function Configuration({
                       onChange={(e) => setFormData({ ...formData, lunchEnd: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Select Weekdays for Shift
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    {(dependencies.weekdaysData && dependencies.weekdaysData.length > 0
+                      ? dependencies.weekdaysData
+                      : [
+                          { id: 1, name: "Monday" },
+                          { id: 2, name: "Tuesday" },
+                          { id: 3, name: "Wednesday" },
+                          { id: 4, name: "Thursday" },
+                          { id: 5, name: "Friday" },
+                          { id: 6, name: "Saturday" },
+                          { id: 7, name: "Sunday" },
+                        ]
+                    ).map((w: any) => {
+                      const selectedIds = formData.weekdays ? formData.weekdays.split(",") : [];
+                      const isChecked = selectedIds.includes(w.id.toString());
+                      return (
+                        <label key={w.id} className="flex items-center gap-2 cursor-pointer py-1">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              let newIds = [...selectedIds];
+                              if (e.target.checked) {
+                                newIds.push(w.id.toString());
+                              } else {
+                                newIds = newIds.filter((id) => id !== w.id.toString());
+                              }
+                              setFormData({ ...formData, weekdays: newIds.join(",") });
+                            }}
+                          />
+                          <span className="text-sm font-bold text-slate-600">{w.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <input
+                    id="isSpecialShift"
+                    type="checkbox"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    checked={formData.isSpecialShift || false}
+                    onChange={(e) => setFormData({ ...formData, isSpecialShift: e.target.checked })}
+                  />
+                  <Label htmlFor="isSpecialShift" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                    Is Special Shift? (Temporary/Exam Shift)
+                  </Label>
+                </div>
+
+                {formData.isSpecialShift && (
+                  <div className="grid grid-cols-2 gap-4 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                    <div className="space-y-2">
+                      <Label htmlFor="fromDate" className={cn("text-xs font-black uppercase tracking-wider", formErrors.fromDate ? "text-red-500" : "text-slate-500")}>
+                        From Date {formErrors.fromDate && "*"}
+                      </Label>
+                      <Input
+                        id="fromDate"
+                        type="date"
+                        className={cn(
+                          "h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold",
+                          formErrors.fromDate && "border-red-500 ring-2 ring-red-500/10"
+                        )}
+                        value={formData.fromDate || ""}
+                        onChange={(e) => {
+                          setFormData({ ...formData, fromDate: e.target.value });
+                          if (formErrors.fromDate) setFormErrors(p => ({ ...p, fromDate: false }));
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="toDate" className={cn("text-xs font-black uppercase tracking-wider", formErrors.toDate ? "text-red-500" : "text-slate-500")}>
+                        To Date {formErrors.toDate && "*"}
+                      </Label>
+                      <Input
+                        id="toDate"
+                        type="date"
+                        className={cn(
+                          "h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold",
+                          formErrors.toDate && "border-red-500 ring-2 ring-red-500/10"
+                        )}
+                        value={formData.toDate || ""}
+                        onChange={(e) => {
+                          setFormData({ ...formData, toDate: e.target.value });
+                          if (formErrors.toDate) setFormErrors(p => ({ ...p, toDate: false }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {activeTab === "holidays" && (
+              <>
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="space-y-2">
+                    <Label htmlFor="fromDate" className={cn("text-xs font-black uppercase tracking-wider", formErrors.fromDate ? "text-red-500" : "text-slate-500")}>
+                      From Date *
+                    </Label>
+                    <Input
+                      id="fromDate"
+                      type="date"
+                      className={cn(
+                        "h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold",
+                        formErrors.fromDate && "border-red-500 ring-2 ring-red-500/10"
+                      )}
+                      value={formData.fromDate || ""}
+                      onChange={(e) => {
+                        setFormData({ ...formData, fromDate: e.target.value });
+                        if (formErrors.fromDate) setFormErrors(p => ({ ...p, fromDate: false }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="toDate" className={cn("text-xs font-black uppercase tracking-wider", formErrors.toDate ? "text-red-500" : "text-slate-500")}>
+                      To Date *
+                    </Label>
+                    <Input
+                      id="toDate"
+                      type="date"
+                      className={cn(
+                        "h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold",
+                        formErrors.toDate && "border-red-500 ring-2 ring-red-500/10"
+                      )}
+                      value={formData.toDate || ""}
+                      onChange={(e) => {
+                        setFormData({ ...formData, toDate: e.target.value });
+                        if (formErrors.toDate) setFormErrors(p => ({ ...p, toDate: false }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Holiday Description (Optional)
+                  </Label>
+                  <Input
+                    id="description"
+                    placeholder="e.g. Festival, Independence Day, etc..."
+                    className="h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
+                    value={formData.description || ""}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
                 </div>
               </>
             )}

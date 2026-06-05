@@ -514,6 +514,16 @@ export const apiService = {
   updateShift: (id: number, data: MasterWriteRequest) => api.put(`/masters/shifts/${id}`, data),
   deleteShift: (id: number) => api.delete(`/masters/shifts/${id}`),
 
+  getWeekdays: (params?: PaginatedParams) => api.get("/masters/weekdays", { params }),
+  createWeekday: (data: MasterWriteRequest) => api.post("/masters/weekdays", data),
+  updateWeekday: (id: number, data: MasterWriteRequest) => api.put(`/masters/weekdays/${id}`, data),
+  deleteWeekday: (id: number) => api.delete(`/masters/weekdays/${id}`),
+
+  getHolidays: (params?: PaginatedParams) => api.get("/masters/holidays", { params }),
+  createHoliday: (data: MasterWriteRequest) => api.post("/masters/holidays", data),
+  updateHoliday: (id: number, data: MasterWriteRequest) => api.put(`/masters/holidays/${id}`, data),
+  deleteHoliday: (id: number) => api.delete(`/masters/holidays/${id}`),
+
   getSubjects: (params?: PaginatedParams) => api.get("/masters/subjects", { params }),
   createSubject: (data: MasterWriteRequest) => api.post("/masters/subjects", data),
   updateSubject: (id: number, data: MasterWriteRequest) => api.put(`/masters/subjects/${id}`, data),

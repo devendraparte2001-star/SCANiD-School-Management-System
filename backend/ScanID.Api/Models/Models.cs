@@ -15,6 +15,8 @@ namespace ScanID.Api.Models
         public DateTime CreatedOn { get; set; } = DateTime.Now;
         public string? ModifiedBy { get; set; }
         public DateTime ModifiedOn { get; set; } = DateTime.Now;
+        public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
     }
 
     /// <summary>
@@ -107,7 +109,6 @@ namespace ScanID.Api.Models
         public int? RoleId { get; set; }
         [ForeignKey("RoleId")]
         public Role? RoleEntity { get; set; }
-        public int? SchoolId { get; set; }
         [ForeignKey("SchoolId")]
         public School? School { get; set; }
     }
@@ -148,7 +149,6 @@ namespace ScanID.Api.Models
         [Required]
         public string Name { get; set; } = string.Empty;
         
-        public int SchoolId { get; set; }
         public string Status { get; set; } = "Active";
         public int RollNumber { get; set; }
 
@@ -185,7 +185,6 @@ namespace ScanID.Api.Models
         // --- ID Mapping properties for master data ---
         public int? StandardId { get; set; }
         public int? SectionId { get; set; }
-        public int? AcademicYearId { get; set; }
         public int? CategoryId { get; set; }
         
         [ForeignKey("AcademicYearId")]
@@ -307,7 +306,6 @@ namespace ScanID.Api.Models
     {
         public int Id { get; set; }
         public int UserId { get; set; }
-        public int SchoolId { get; set; }
         public string EmployeeId { get; set; } = string.Empty; // Employee Code
         public string? Initials { get; set; }
         public string? Department { get; set; }
@@ -539,6 +537,29 @@ namespace ScanID.Api.Models
         public string? SpanInTime { get; set; }
         public string? LunchStart { get; set; }
         public string? LunchEnd { get; set; }
+        public string? Weekdays { get; set; }
+        public bool IsSpecialShift { get; set; } = false;
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+    }
+
+    /// <summary> Master data for weekdays. </summary>
+    public class Weekday : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    /// <summary> Master data for school holidays. </summary>
+    public class Holiday : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Name { get; set; } = string.Empty;
+        public DateTime FromDate { get; set; }
+        public DateTime ToDate { get; set; }
+        public string? Description { get; set; }
     }
 
     /// <summary> Master data for academic subjects. </summary>

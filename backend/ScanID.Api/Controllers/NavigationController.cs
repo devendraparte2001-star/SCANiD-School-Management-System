@@ -187,6 +187,8 @@ namespace ScanID.Api.Controllers
                 new { id = 40, title = "Designation Master", icon = "Briefcase", path = "/configuration/designations", parentId = 25, sortOrder = 15, roleIds = adminOnly },
                 new { id = 41, title = "Occupation Master", icon = "Hammer", path = "/configuration/occupations", parentId = 25, sortOrder = 16, roleIds = adminOnly },
                 new { id = 42, title = "Staff Initials", icon = "UserRound", path = "/configuration/staff-initials", parentId = 25, sortOrder = 17, roleIds = adminOnly },
+                new { id = 43, title = "Weekday Master", icon = "Calendar", path = "/configuration/weekdays", parentId = 25, sortOrder = 18, roleIds = adminOnly },
+                new { id = 44, title = "Holiday Master", icon = "CalendarCheck", path = "/configuration/holidays", parentId = 25, sortOrder = 19, roleIds = adminOnly },
                 
                 // System Audit
                 new { id = 23, title = "System Audit", icon = "Terminal", path = "/system-logs", parentId = (int?)null, sortOrder = 6, roleIds = new[] { 1 } }

@@ -52,6 +52,8 @@ namespace ScanID.Api.Data
         public DbSet<Role> Roles { get; set; }
         public DbSet<SchoolSection> SchoolSections { get; set; }
         public DbSet<StaffInitial> StaffInitials { get; set; }
+        public DbSet<Weekday> Weekdays { get; set; }
+        public DbSet<Holiday> Holidays { get; set; }
 
         /// <summary>
         /// Configures the model, including global query filters for soft deletion.
@@ -99,6 +101,8 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<Occupation>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Role>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<SchoolSection>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<Weekday>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<Holiday>().HasQueryFilter(x => !x.IsDeleted);
         }
 
         /// <summary>
