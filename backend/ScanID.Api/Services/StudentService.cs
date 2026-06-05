@@ -415,247 +415,467 @@ namespace ScanID.Api.Services
         }
 
         /// <summary>
-        /// Validates unique fields and bulk creates multiple students within a single transaction with automatic rollbacks.
+        /// Validates unique fields and bulk creates multiple students within safe transactions.
+        /// High performance SqlBulkCopy is coupled with an automatic row-by-row fallback rollback handler to preserve partial successes.
         /// </summary>
         public async Task<object> CreateBulkStudentsAsync(IEnumerable<Student> students)
         {
             if (students == null || !students.Any())
                 throw new ArgumentException("No student data provided.");
 
-            // Standard bulk business check for duplicates by querying only the database records that match the uploaded batch.
-            // This is critically scale-robust and prevents loading millions of rows (OutOfMemoryException) into memory.
-            var incomingGrNos = students.Select(s => s.GrNo).Where(g => !string.IsNullOrEmpty(g)).Distinct().ToList();
-            var incomingAadhars = students.Select(s => s.AadharCard).Where(a => !string.IsNullOrEmpty(a)).Distinct().ToList();
-            var incomingRfids = students.Select(s => s.Rfid).Where(r => !string.IsNullOrEmpty(r)).Distinct().ToList();
-            var incomingUniforms = students.Select(s => s.UniformId).Where(u => !string.IsNullOrEmpty(u)).Distinct().ToList();
+            var responseDto = new BulkUploadResponseDto();
+            
+            // Track 1-based indices to match row indices in Excel sheet 
+            var studentListWithIndex = students.Select((s, idx) => new { Student = s, RowIndex = idx + 1 }).ToList();
 
-            var dbStudents = await _context.Students
-                .AsNoTracking()
-                .Where(s => !s.IsDeleted && (
-                    (s.GrNo != null && incomingGrNos.Contains(s.GrNo)) ||
-                    (s.AadharCard != null && incomingAadhars.Contains(s.AadharCard)) ||
-                    (s.Rfid != null && incomingRfids.Contains(s.Rfid)) ||
-                    (s.UniformId != null && incomingUniforms.Contains(s.UniformId))
-                ))
-                .Select(s => new { s.GrNo, s.AadharCard, s.Rfid, s.UniformId })
-                .ToListAsync();
+            // Sets for unique values validation within the uploaded file itself across all processed batches
+            var cumulativeGrNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var cumulativeAadhars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var cumulativeRfids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var cumulativeUniforms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var cumulativeRollKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            var dbGrNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var dbAadhars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var dbRfids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var dbUniforms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var dbs in dbStudents)
+            var batchSize = 2500;
+            var connection = (SqlConnection)_context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
             {
-                if (!string.IsNullOrEmpty(dbs.GrNo)) dbGrNos.Add(dbs.GrNo.Trim());
-                if (!string.IsNullOrEmpty(dbs.AadharCard)) dbAadhars.Add(dbs.AadharCard.Trim());
-                if (!string.IsNullOrEmpty(dbs.Rfid)) dbRfids.Add(dbs.Rfid.Trim());
-                if (!string.IsNullOrEmpty(dbs.UniformId)) dbUniforms.Add(dbs.UniformId.Trim());
+                await connection.OpenAsync();
             }
 
-            // Uniqueness check for RollNumber per SchoolId, StandardId, SectionId combo
-            var dbActiveRolls = await _context.Students
-                .AsNoTracking()
-                .Where(s => !s.IsDeleted && s.StandardId != null && s.SectionId != null)
-                .Select(s => new { s.SchoolId, s.StandardId, s.SectionId, s.RollNumber })
-                .ToListAsync();
-
-            var dbRollKeys = new HashSet<string>();
-            foreach (var r in dbActiveRolls)
+            for (int batchOffset = 0; batchOffset < studentListWithIndex.Count; batchOffset += batchSize)
             {
-                dbRollKeys.Add($"{r.SchoolId}-{r.StandardId}-{r.SectionId}-{r.RollNumber}");
-            }
+                var batchItems = studentListWithIndex.Skip(batchOffset).Take(batchSize).ToList();
 
-            var batchGrNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var batchAadhars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var batchRfids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var batchUniforms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var batchRollKeys = new HashSet<string>();
+                // 1. Optimize lookup parameters - retrieve database records matching only target identifiers inside this batch
+                var incomingGrNos = batchItems.Select(s => s.Student.GrNo).Where(g => !string.IsNullOrEmpty(g)).Distinct().ToList();
+                var incomingAadhars = batchItems.Select(s => s.Student.AadharCard).Where(a => !string.IsNullOrEmpty(a)).Distinct().ToList();
+                var incomingRfids = batchItems.Select(s => s.Student.Rfid).Where(r => !string.IsNullOrEmpty(r)).Distinct().ToList();
+                var incomingUniforms = batchItems.Select(s => s.Student.UniformId).Where(u => !string.IsNullOrEmpty(u)).Distinct().ToList();
 
-            int index = 1;
-            foreach (var s in students)
-            {
-                var grno = (s.GrNo ?? "").Trim();
-                if (string.IsNullOrEmpty(grno))
+                var dbGrNos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var dbAadhars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var dbRfids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var dbUniforms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                if (incomingGrNos.Any() || incomingAadhars.Any() || incomingRfids.Any() || incomingUniforms.Any())
                 {
-                    throw new InvalidOperationException($"Row {index}: GRNO is required and cannot be empty.");
-                }
-                if (batchGrNos.Contains(grno) || dbGrNos.Contains(grno))
-                    throw new InvalidOperationException($"Row {index}: Duplicate GRNO '{grno}' detected.");
-                batchGrNos.Add(grno);
+                    var dbConflictingStudents = await _context.Students
+                        .AsNoTracking()
+                        .Where(s => !s.IsDeleted && (
+                            (s.GrNo != null && incomingGrNos.Contains(s.GrNo)) ||
+                            (s.AadharCard != null && incomingAadhars.Contains(s.AadharCard)) ||
+                            (s.Rfid != null && incomingRfids.Contains(s.Rfid)) ||
+                            (s.UniformId != null && incomingUniforms.Contains(s.UniformId))
+                        ))
+                        .Select(s => new { s.GrNo, s.AadharCard, s.Rfid, s.UniformId })
+                        .ToListAsync();
 
-                var aadhar = (s.AadharCard ?? "").Trim();
-                if (!string.IsNullOrEmpty(aadhar))
-                {
-                    if (batchAadhars.Contains(aadhar) || dbAadhars.Contains(aadhar))
-                        throw new InvalidOperationException($"Row {index}: Duplicate Aadhar Card '{aadhar}' detected.");
-                    batchAadhars.Add(aadhar);
-                }
-
-                var rfid = (s.Rfid ?? "").Trim();
-                if (!string.IsNullOrEmpty(rfid))
-                {
-                    if (batchRfids.Contains(rfid) || dbRfids.Contains(rfid))
-                        throw new InvalidOperationException($"Row {index}: Duplicate RFID '{rfid}' detected.");
-                    batchRfids.Add(rfid);
-                }
-
-                var uniform = (s.UniformId ?? "").Trim();
-                if (!string.IsNullOrEmpty(uniform))
-                {
-                    if (batchUniforms.Contains(uniform) || dbUniforms.Contains(uniform))
-                        throw new InvalidOperationException($"Row {index}: Duplicate UniformID '{uniform}' detected.");
-                    batchUniforms.Add(uniform);
-                }
-
-                if (s.StandardId.HasValue && s.SectionId.HasValue)
-                {
-                    var rollKey = $"{s.SchoolId}-{s.StandardId}-{s.SectionId}-{s.RollNumber}";
-                    if (batchRollKeys.Contains(rollKey) || dbRollKeys.Contains(rollKey))
-                        throw new InvalidOperationException($"Row {index}: Duplicate Roll Number '{s.RollNumber}' detected for this combination of School, Standard and Division.");
-                    batchRollKeys.Add(rollKey);
-                }
-
-                index++;
-            }
-
-            // Perform transaction scoped high-performance SqlBulkCopy
-            return await ExecuteWithRetryAsync<object>(async () =>
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var connection = (SqlConnection)_context.Database.GetDbConnection();
-                    if (connection.State != System.Data.ConnectionState.Open)
+                    foreach (var dbs in dbConflictingStudents)
                     {
-                        await connection.OpenAsync();
+                        if (!string.IsNullOrEmpty(dbs.GrNo)) dbGrNos.Add(dbs.GrNo.Trim());
+                        if (!string.IsNullOrEmpty(dbs.AadharCard)) dbAadhars.Add(dbs.AadharCard.Trim());
+                        if (!string.IsNullOrEmpty(dbs.Rfid)) dbRfids.Add(dbs.Rfid.Trim());
+                        if (!string.IsNullOrEmpty(dbs.UniformId)) dbUniforms.Add(dbs.UniformId.Trim());
+                    }
+                }
+
+                // Query DB active roll numbers for combos matching the current batch offset
+                var schoolIds = batchItems.Select(s => s.Student.SchoolId).Distinct().ToList();
+                var standardIds = batchItems.Select(s => s.Student.StandardId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+                var sectionIds = batchItems.Select(s => s.Student.SectionId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+
+                var dbRollKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (schoolIds.Any() && standardIds.Any() && sectionIds.Any())
+                {
+                    var dbActiveRolls = await _context.Students
+                        .AsNoTracking()
+                        .Where(s => !s.IsDeleted && s.StandardId != null && s.SectionId != null &&
+                                    schoolIds.Contains(s.SchoolId) &&
+                                    standardIds.Contains(s.StandardId.Value) &&
+                                    sectionIds.Contains(s.SectionId.Value))
+                        .Select(s => new { s.SchoolId, s.StandardId, s.SectionId, s.RollNumber })
+                        .ToListAsync();
+
+                    foreach (var r in dbActiveRolls)
+                    {
+                        dbRollKeys.Add($"{r.SchoolId}-{r.StandardId}-{r.SectionId}-{r.RollNumber}");
+                    }
+                }
+
+                var batchValidStudentsWithIndex = new List<(Student Student, int RowIndex)>();
+
+                // 2. Row validations
+                foreach (var item in batchItems)
+                {
+                    var s = item.Student;
+                    var rowIndex = item.RowIndex;
+                    string? rowError = null;
+
+                    // Student name check
+                    if (string.IsNullOrEmpty(s.Name))
+                    {
+                        rowError = "Student Name is required.";
                     }
 
-                    var dbTransaction = (SqlTransaction)transaction.GetDbTransaction();
-
-                    // Create a schema-aligned DataTable to stream student records via TDS bulk protocols
-                    using var table = new System.Data.DataTable();
-                    table.Columns.Add("Name", typeof(string));
-                    table.Columns.Add("SchoolId", typeof(int));
-                    table.Columns.Add("Status", typeof(string));
-                    table.Columns.Add("RollNumber", typeof(int));
-                    table.Columns.Add("FirstName", typeof(string));
-                    table.Columns.Add("MiddleName", typeof(string));
-                    table.Columns.Add("LastName", typeof(string));
-                    table.Columns.Add("GrNo", typeof(string));
-                    table.Columns.Add("Gender", typeof(string));
-                    table.Columns.Add("DateOfBirth", typeof(DateTime));
-                    table.Columns.Add("Address", typeof(string));
-                    table.Columns.Add("MotherName", typeof(string));
-                    table.Columns.Add("FatherContactNo", typeof(string));
-                    table.Columns.Add("MotherContactNo", typeof(string));
-                    table.Columns.Add("AadharCard", typeof(string));
-                    table.Columns.Add("UniformId", typeof(string));
-                    table.Columns.Add("Rfid", typeof(string));
-                    table.Columns.Add("SchoolSectionId", typeof(int));
-                    table.Columns.Add("AdmissionDate", typeof(DateTime));
-                    table.Columns.Add("Email", typeof(string));
-                    table.Columns.Add("StandardId", typeof(int));
-                    table.Columns.Add("SectionId", typeof(int));
-                    table.Columns.Add("AcademicYearId", typeof(int));
-                    table.Columns.Add("CasteId", typeof(int));
-                    table.Columns.Add("SubCasteId", typeof(int));
-                    table.Columns.Add("ReligionId", typeof(int));
-                    table.Columns.Add("BloodGroupId", typeof(int));
-                    table.Columns.Add("HouseId", typeof(int));
-                    table.Columns.Add("AdmissionTypeId", typeof(int));
-                    table.Columns.Add("CityId", typeof(int));
-                    table.Columns.Add("StateId", typeof(int));
-                    table.Columns.Add("ShiftId", typeof(int));
-                    table.Columns.Add("CategoryId", typeof(int));
-                    table.Columns.Add("Sms", typeof(bool));
-                    table.Columns.Add("IsStateBoard", typeof(bool));
-                    table.Columns.Add("ProfilePhotoPath", typeof(string));
-                    table.Columns.Add("DigitalUniform", typeof(bool));
-                    table.Columns.Add("DigitalNotebook", typeof(bool));
-                    table.Columns.Add("OptedForBus", typeof(bool));
-                    table.Columns.Add("IsActive", typeof(bool));
-                    table.Columns.Add("IsDeleted", typeof(bool));
-                    table.Columns.Add("CreatedBy", typeof(string));
-                    table.Columns.Add("CreatedOn", typeof(DateTime));
-                    table.Columns.Add("ModifiedBy", typeof(string));
-                    table.Columns.Add("ModifiedOn", typeof(DateTime));
-
-                    foreach (var s in students)
+                    // GrNo validation and uniqueness check
+                    var grno = (s.GrNo ?? "").Trim();
+                    if (rowError == null)
                     {
-                        table.Rows.Add(
-                            s.Name ?? string.Empty,
-                            s.SchoolId,
-                            s.Status ?? "Active",
-                            s.RollNumber,
-                            (object?)s.FirstName ?? DBNull.Value,
-                            (object?)s.MiddleName ?? DBNull.Value,
-                            (object?)s.LastName ?? DBNull.Value,
-                            (object?)s.GrNo ?? DBNull.Value,
-                            (object?)s.Gender ?? DBNull.Value,
-                            (object?)s.DateOfBirth ?? DBNull.Value,
-                            (object?)s.Address ?? DBNull.Value,
-                            (object?)s.MotherName ?? DBNull.Value,
-                            (object?)s.FatherContactNo ?? DBNull.Value,
-                            (object?)s.MotherContactNo ?? DBNull.Value,
-                            (object?)s.AadharCard ?? DBNull.Value,
-                            (object?)s.UniformId ?? DBNull.Value,
-                            (object?)s.Rfid ?? DBNull.Value,
-                            (object?)s.SchoolSectionId ?? DBNull.Value,
-                            (object?)s.AdmissionDate ?? DBNull.Value,
-                            (object?)s.Email ?? DBNull.Value,
-                            (object?)s.StandardId ?? DBNull.Value,
-                            (object?)s.SectionId ?? DBNull.Value,
-                            (object?)s.AcademicYearId ?? DBNull.Value,
-                            (object?)s.CasteId ?? DBNull.Value,
-                            (object?)s.SubCasteId ?? DBNull.Value,
-                            (object?)s.ReligionId ?? DBNull.Value,
-                            (object?)s.BloodGroupId ?? DBNull.Value,
-                            (object?)s.HouseId ?? DBNull.Value,
-                            (object?)s.AdmissionTypeId ?? DBNull.Value,
-                            (object?)s.CityId ?? DBNull.Value,
-                            (object?)s.StateId ?? DBNull.Value,
-                            (object?)s.ShiftId ?? DBNull.Value,
-                            (object?)s.CategoryId ?? DBNull.Value,
-                            s.Sms,
-                            s.IsStateBoard,
-                            (object?)s.ProfilePhotoPath ?? DBNull.Value,
-                            s.DigitalUniform,
-                            s.DigitalNotebook,
-                            s.OptedForBus,
-                            s.IsActive,
-                            s.IsDeleted,
-                            (object?)s.CreatedBy ?? "SYSTEM",
-                            s.CreatedOn == default ? DateTime.UtcNow : s.CreatedOn,
-                            (object?)s.ModifiedBy ?? "SYSTEM",
-                            s.ModifiedOn == default ? DateTime.UtcNow : s.ModifiedOn
-                        );
-                    }
-
-                    using (var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, dbTransaction))
-                    {
-                        bulkCopy.DestinationTableName = "[dbo].[Students]";
-                        bulkCopy.BulkCopyTimeout = 600; // 10 minutes timeout
-                        bulkCopy.BatchSize = 10000; // Process in blocks of 10k
-
-                        foreach (System.Data.DataColumn col in table.Columns)
+                        if (string.IsNullOrEmpty(grno))
                         {
-                            bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                            rowError = "GR Number (GrNo) is required.";
+                        }
+                        else if (cumulativeGrNos.Contains(grno))
+                        {
+                            rowError = $"Duplicate GR Number '{grno}' within the uploaded file.";
+                        }
+                        else if (dbGrNos.Contains(grno))
+                        {
+                            rowError = $"GR Number '{grno}' already exists in the database.";
+                        }
+                    }
+
+                    // AadharCard validations
+                    var aadhar = (s.AadharCard ?? "").Trim();
+                    if (rowError == null && !string.IsNullOrEmpty(aadhar))
+                    {
+                        if (cumulativeAadhars.Contains(aadhar))
+                        {
+                            rowError = $"Duplicate Aadhar Card '{aadhar}' within the uploaded file.";
+                        }
+                        else if (dbAadhars.Contains(aadhar))
+                        {
+                            rowError = $"Aadhar Card '{aadhar}' already exists in the database.";
+                        }
+                    }
+
+                    // RFID validations
+                    var rfid = (s.Rfid ?? "").Trim();
+                    if (rowError == null && !string.IsNullOrEmpty(rfid))
+                    {
+                        if (cumulativeRfids.Contains(rfid))
+                        {
+                            rowError = $"Duplicate RFID '{rfid}' within the uploaded file.";
+                        }
+                        else if (dbRfids.Contains(rfid))
+                        {
+                            rowError = $"RFID '{rfid}' already exists in the database.";
+                        }
+                    }
+
+                    // UniformID validations
+                    var uniform = (s.UniformId ?? "").Trim();
+                    if (rowError == null && !string.IsNullOrEmpty(uniform))
+                    {
+                        if (cumulativeUniforms.Contains(uniform))
+                        {
+                            rowError = $"Duplicate Uniform ID '{uniform}' within the uploaded file.";
+                        }
+                        else if (dbUniforms.Contains(uniform))
+                        {
+                            rowError = $"Uniform ID '{uniform}' already exists in the database.";
+                        }
+                    }
+
+                    // Composite School + Standard + Section + RollNumber checks
+                    if (rowError == null && s.StandardId.HasValue && s.SectionId.HasValue)
+                    {
+                        var rollKey = $"{s.SchoolId}-{s.StandardId}-{s.SectionId}-{s.RollNumber}";
+                        if (cumulativeRollKeys.Contains(rollKey))
+                        {
+                            rowError = $"Duplicate Roll Number '{s.RollNumber}' for this combination of School, Standard and Division in the uploaded file.";
+                        }
+                        else if (dbRollKeys.Contains(rollKey))
+                        {
+                            rowError = $"Roll Number '{s.RollNumber}' already exists for this combination of School, Standard and Division in the database.";
+                        }
+                    }
+
+                    if (rowError != null)
+                    {
+                        responseDto.ErrorRows.Add(new BulkUploadErrorDetail
+                        {
+                            RowIndex = rowIndex,
+                            Name = s.Name ?? string.Empty,
+                            GrNo = grno,
+                            Error = rowError
+                        });
+                        responseDto.ErrorCount++;
+                    }
+                    else
+                    {
+                        // Save attributes inside cumulative tracking so other records inside this upload stream validate against it
+                        if (!string.IsNullOrEmpty(grno)) cumulativeGrNos.Add(grno);
+                        if (!string.IsNullOrEmpty(aadhar)) cumulativeAadhars.Add(aadhar);
+                        if (!string.IsNullOrEmpty(rfid)) cumulativeRfids.Add(rfid);
+                        if (!string.IsNullOrEmpty(uniform)) cumulativeUniforms.Add(uniform);
+                        
+                        if (s.StandardId.HasValue && s.SectionId.HasValue)
+                        {
+                            var rollKey = $"{s.SchoolId}-{s.StandardId}-{s.SectionId}-{s.RollNumber}";
+                            cumulativeRollKeys.Add(rollKey);
                         }
 
-                        await bulkCopy.WriteToServerAsync(table);
+                        batchValidStudentsWithIndex.Add((s, rowIndex));
                     }
+                }
 
-                    await transaction.CommitAsync();
-                    return new { count = students.Count(), message = "Bulk upload successful" };
-                }
-                catch (Exception ex)
+                // 3. Execution of SqlBulkCopy for valid batch records
+                if (batchValidStudentsWithIndex.Any())
                 {
-                    await transaction.RollbackAsync();
-                    FileLogger.LogError(new Exception("Bulk student insert transaction failed via SqlBulkCopy. Rolling back all inserts.", ex));
-                    throw;
+                    var validStudentsOnly = batchValidStudentsWithIndex.Select(x => x.Student).ToList();
+
+                    try
+                    {
+                        // Wrap SqlBulkCopy in its own transaction
+                        using var transaction = await _context.Database.BeginTransactionAsync();
+                        var dbTransaction = (SqlTransaction)transaction.GetDbTransaction();
+
+                        using var table = BuildStudentDataTable(validStudentsOnly);
+
+                        using (var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, dbTransaction))
+                        {
+                            bulkCopy.DestinationTableName = "[dbo].[Students]";
+                            bulkCopy.BulkCopyTimeout = 600; // 10 minutes limit
+                            bulkCopy.BatchSize = 5000;
+
+                            foreach (DataColumn col in table.Columns)
+                            {
+                                bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                            }
+
+                            await bulkCopy.WriteToServerAsync(table);
+                        }
+
+                        await transaction.CommitAsync();
+
+                        // Add successfully bulk inserted rows
+                        foreach (var stWithIdx in batchValidStudentsWithIndex)
+                        {
+                            responseDto.InsertedRows.Add(new StudentRowDto
+                            {
+                                Name = stWithIdx.Student.Name,
+                                GrNo = stWithIdx.Student.GrNo,
+                                Status = stWithIdx.Student.Status,
+                                RollNumber = stWithIdx.Student.RollNumber
+                            });
+                            responseDto.InsertedCount++;
+                        }
+                    }
+                    catch (Exception bulkEx)
+                    {
+                        FileLogger.LogError(new Exception($"High-speed BulkCopy failed for offset batch size {validStudentsOnly.Count}. Falling back to row-by-row fallback handler to preserve all valid rows.", bulkEx));
+
+                        // 4. Robust row-by-row fallback so valid rows are not lost!
+                        foreach (var stWithIdx in batchValidStudentsWithIndex)
+                        {
+                            var singleStudent = stWithIdx.Student;
+                            var singleRowIndex = stWithIdx.RowIndex;
+
+                            try
+                            {
+                                // Direct SQL to bypass any Entity Framework Tracking cache blocks
+                                using var cmd = connection.CreateCommand();
+                                cmd.CommandText = @"
+                                    INSERT INTO [dbo].[Students] (
+                                        Name, SchoolId, Status, RollNumber, FirstName, MiddleName, LastName, GrNo, Gender, DateOfBirth, 
+                                        Address, MotherName, FatherContactNo, MotherContactNo, AadharCard, UniformId, Rfid, SchoolSectionId, 
+                                        AdmissionDate, Email, StandardId, SectionId, AcademicYearId, CasteId, SubCasteId, ReligionId, 
+                                        BloodGroupId, HouseId, AdmissionTypeId, CityId, StateId, ShiftId, CategoryId, Sms, IsStateBoard, 
+                                        ProfilePhotoPath, DigitalUniform, DigitalNotebook, OptedForBus, IsActive, IsDeleted, CreatedBy, 
+                                        CreatedOn, ModifiedBy, ModifiedOn
+                                    ) VALUES (
+                                        @Name, @SchoolId, @Status, @RollNumber, @FirstName, @MiddleName, @LastName, @GrNo, @Gender, @DateOfBirth, 
+                                        @Address, @MotherName, @FatherContactNo, @MotherContactNo, @AadharCard, @UniformId, @Rfid, @SchoolSectionId, 
+                                        @AdmissionDate, @Email, @StandardId, @SectionId, @AcademicYearId, @CasteId, @SubCasteId, @ReligionId, 
+                                        @BloodGroupId, @HouseId, @AdmissionTypeId, @CityId, @StateId, @ShiftId, @CategoryId, @Sms, @IsStateBoard, 
+                                        @ProfilePhotoPath, @DigitalUniform, @DigitalNotebook, @OptedForBus, @IsActive, @IsDeleted, @CreatedBy, 
+                                        @CreatedOn, @ModifiedBy, @ModifiedOn
+                                    )";
+
+                                AddStudentParameters(cmd, singleStudent);
+
+                                await cmd.ExecuteNonQueryAsync();
+
+                                responseDto.InsertedRows.Add(new StudentRowDto
+                                {
+                                    Name = singleStudent.Name,
+                                    GrNo = singleStudent.GrNo,
+                                    Status = singleStudent.Status,
+                                    RollNumber = singleStudent.RollNumber
+                                });
+                                responseDto.InsertedCount++;
+                            }
+                            catch (Exception rowEx)
+                            {
+                                var innerMsg = rowEx.InnerException?.Message ?? rowEx.Message;
+                                responseDto.ErrorRows.Add(new BulkUploadErrorDetail
+                                {
+                                    RowIndex = singleRowIndex,
+                                    Name = singleStudent.Name ?? string.Empty,
+                                    GrNo = singleStudent.GrNo ?? "",
+                                    Error = $"Database insert error: {innerMsg}"
+                                });
+                                responseDto.ErrorCount++;
+                            }
+                        }
+                    }
                 }
-            });
+            }
+
+            return responseDto;
+        }
+
+        private DataTable BuildStudentDataTable(List<Student> students)
+        {
+            var table = new DataTable();
+            table.Columns.Add("Name", typeof(string));
+            table.Columns.Add("SchoolId", typeof(int));
+            table.Columns.Add("Status", typeof(string));
+            table.Columns.Add("RollNumber", typeof(int));
+            table.Columns.Add("FirstName", typeof(string));
+            table.Columns.Add("MiddleName", typeof(string));
+            table.Columns.Add("LastName", typeof(string));
+            table.Columns.Add("GrNo", typeof(string));
+            table.Columns.Add("Gender", typeof(string));
+            table.Columns.Add("DateOfBirth", typeof(DateTime));
+            table.Columns.Add("Address", typeof(string));
+            table.Columns.Add("MotherName", typeof(string));
+            table.Columns.Add("FatherContactNo", typeof(string));
+            table.Columns.Add("MotherContactNo", typeof(string));
+            table.Columns.Add("AadharCard", typeof(string));
+            table.Columns.Add("UniformId", typeof(string));
+            table.Columns.Add("Rfid", typeof(string));
+            table.Columns.Add("SchoolSectionId", typeof(int));
+            table.Columns.Add("AdmissionDate", typeof(DateTime));
+            table.Columns.Add("Email", typeof(string));
+            table.Columns.Add("StandardId", typeof(int));
+            table.Columns.Add("SectionId", typeof(int));
+            table.Columns.Add("AcademicYearId", typeof(int));
+            table.Columns.Add("CasteId", typeof(int));
+            table.Columns.Add("SubCasteId", typeof(int));
+            table.Columns.Add("ReligionId", typeof(int));
+            table.Columns.Add("BloodGroupId", typeof(int));
+            table.Columns.Add("HouseId", typeof(int));
+            table.Columns.Add("AdmissionTypeId", typeof(int));
+            table.Columns.Add("CityId", typeof(int));
+            table.Columns.Add("StateId", typeof(int));
+            table.Columns.Add("ShiftId", typeof(int));
+            table.Columns.Add("CategoryId", typeof(int));
+            table.Columns.Add("Sms", typeof(bool));
+            table.Columns.Add("IsStateBoard", typeof(bool));
+            table.Columns.Add("ProfilePhotoPath", typeof(string));
+            table.Columns.Add("DigitalUniform", typeof(bool));
+            table.Columns.Add("DigitalNotebook", typeof(bool));
+            table.Columns.Add("OptedForBus", typeof(bool));
+            table.Columns.Add("IsActive", typeof(bool));
+            table.Columns.Add("IsDeleted", typeof(bool));
+            table.Columns.Add("CreatedBy", typeof(string));
+            table.Columns.Add("CreatedOn", typeof(DateTime));
+            table.Columns.Add("ModifiedBy", typeof(string));
+            table.Columns.Add("ModifiedOn", typeof(DateTime));
+
+            foreach (var s in students)
+            {
+                table.Rows.Add(
+                    s.Name ?? string.Empty,
+                    s.SchoolId,
+                    s.Status ?? "Active",
+                    s.RollNumber,
+                    (object?)s.FirstName ?? DBNull.Value,
+                    (object?)s.MiddleName ?? DBNull.Value,
+                    (object?)s.LastName ?? DBNull.Value,
+                    (object?)s.GrNo ?? DBNull.Value,
+                    (object?)s.Gender ?? DBNull.Value,
+                    (object?)s.DateOfBirth ?? DBNull.Value,
+                    (object?)s.Address ?? DBNull.Value,
+                    (object?)s.MotherName ?? DBNull.Value,
+                    (object?)s.FatherContactNo ?? DBNull.Value,
+                    (object?)s.MotherContactNo ?? DBNull.Value,
+                    (object?)s.AadharCard ?? DBNull.Value,
+                    (object?)s.UniformId ?? DBNull.Value,
+                    (object?)s.Rfid ?? DBNull.Value,
+                    (object?)s.SchoolSectionId ?? DBNull.Value,
+                    (object?)s.AdmissionDate ?? DBNull.Value,
+                    (object?)s.Email ?? DBNull.Value,
+                    (object?)s.StandardId ?? DBNull.Value,
+                    (object?)s.SectionId ?? DBNull.Value,
+                    (object?)s.AcademicYearId ?? DBNull.Value,
+                    (object?)s.CasteId ?? DBNull.Value,
+                    (object?)s.SubCasteId ?? DBNull.Value,
+                    (object?)s.ReligionId ?? DBNull.Value,
+                    (object?)s.BloodGroupId ?? DBNull.Value,
+                    (object?)s.HouseId ?? DBNull.Value,
+                    (object?)s.AdmissionTypeId ?? DBNull.Value,
+                    (object?)s.CityId ?? DBNull.Value,
+                    (object?)s.StateId ?? DBNull.Value,
+                    (object?)s.ShiftId ?? DBNull.Value,
+                    (object?)s.CategoryId ?? DBNull.Value,
+                    s.Sms,
+                    s.IsStateBoard,
+                    (object?)s.ProfilePhotoPath ?? DBNull.Value,
+                    s.DigitalUniform,
+                    s.DigitalNotebook,
+                    s.OptedForBus,
+                    s.IsActive,
+                    s.IsDeleted,
+                    (object?)s.CreatedBy ?? "SYSTEM",
+                    s.CreatedOn == default ? DateTime.UtcNow : s.CreatedOn,
+                    (object?)s.ModifiedBy ?? "SYSTEM",
+                    s.ModifiedOn == default ? DateTime.UtcNow : s.ModifiedOn
+                );
+            }
+
+            return table;
+        }
+
+        private void AddStudentParameters(DbCommand cmd, Student s)
+        {
+            cmd.Parameters.Add(new SqlParameter("@Name", s.Name ?? string.Empty));
+            cmd.Parameters.Add(new SqlParameter("@SchoolId", s.SchoolId));
+            cmd.Parameters.Add(new SqlParameter("@Status", s.Status ?? "Active"));
+            cmd.Parameters.Add(new SqlParameter("@RollNumber", s.RollNumber));
+            cmd.Parameters.Add(new SqlParameter("@FirstName", (object?)s.FirstName ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@MiddleName", (object?)s.MiddleName ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@LastName", (object?)s.LastName ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@GrNo", (object?)s.GrNo ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Gender", (object?)s.Gender ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@DateOfBirth", (object?)s.DateOfBirth ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Address", (object?)s.Address ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@MotherName", (object?)s.MotherName ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@FatherContactNo", (object?)s.FatherContactNo ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@MotherContactNo", (object?)s.MotherContactNo ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@AadharCard", (object?)s.AadharCard ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@UniformId", (object?)s.UniformId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Rfid", (object?)s.Rfid ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@SchoolSectionId", (object?)s.SchoolSectionId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@AdmissionDate", (object?)s.AdmissionDate ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Email", (object?)s.Email ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@StandardId", (object?)s.StandardId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@SectionId", (object?)s.SectionId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@AcademicYearId", (object?)s.AcademicYearId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@CasteId", (object?)s.CasteId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@SubCasteId", (object?)s.SubCasteId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@ReligionId", (object?)s.ReligionId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@BloodGroupId", (object?)s.BloodGroupId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@HouseId", (object?)s.HouseId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@AdmissionTypeId", (object?)s.AdmissionTypeId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@CityId", (object?)s.CityId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@StateId", (object?)s.StateId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@ShiftId", (object?)s.ShiftId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@CategoryId", (object?)s.CategoryId ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Sms", s.Sms));
+            cmd.Parameters.Add(new SqlParameter("@IsStateBoard", s.IsStateBoard));
+            cmd.Parameters.Add(new SqlParameter("@ProfilePhotoPath", (object?)s.ProfilePhotoPath ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@DigitalUniform", s.DigitalUniform));
+            cmd.Parameters.Add(new SqlParameter("@DigitalNotebook", s.DigitalNotebook));
+            cmd.Parameters.Add(new SqlParameter("@OptedForBus", s.OptedForBus));
+            cmd.Parameters.Add(new SqlParameter("@IsActive", s.IsActive));
+            cmd.Parameters.Add(new SqlParameter("@IsDeleted", s.IsDeleted));
+            cmd.Parameters.Add(new SqlParameter("@CreatedBy", (object?)s.CreatedBy ?? "SYSTEM"));
+            cmd.Parameters.Add(new SqlParameter("@CreatedOn", s.CreatedOn == default ? DateTime.UtcNow : s.CreatedOn));
+            cmd.Parameters.Add(new SqlParameter("@ModifiedBy", (object?)s.ModifiedBy ?? "SYSTEM"));
+            cmd.Parameters.Add(new SqlParameter("@ModifiedOn", s.ModifiedOn == default ? DateTime.UtcNow : s.ModifiedOn));
         }
 
         /// <summary>

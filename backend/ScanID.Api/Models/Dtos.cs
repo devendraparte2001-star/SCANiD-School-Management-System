@@ -319,4 +319,38 @@ namespace ScanID.Api.Models
         public string? CreatedBy { get; set; }
         public string? ModifiedBy { get; set; }
     }
+
+    /// <summary>
+    /// Response model for high-performance bulk student upload API.
+    /// Supports partial success reporting.
+    /// </summary>
+    public class BulkUploadResponseDto
+    {
+        public int InsertedCount { get; set; }
+        public int ErrorCount { get; set; }
+        public List<BulkUploadErrorDetail> ErrorRows { get; set; } = new List<BulkUploadErrorDetail>();
+        public List<StudentRowDto> InsertedRows { get; set; } = new List<StudentRowDto>();
+    }
+
+    /// <summary>
+    /// Details for invalid student records discovered during bulk validation.
+    /// </summary>
+    public class BulkUploadErrorDetail
+    {
+        public int RowIndex { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string GrNo { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Simplified successful student registration summary in bulk upload.
+    /// </summary>
+    public class StudentRowDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? GrNo { get; set; }
+        public string? Status { get; set; }
+        public int RollNumber { get; set; }
+    }
 }

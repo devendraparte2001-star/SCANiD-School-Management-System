@@ -619,6 +619,27 @@ export default function Students({ user }: { user: UserType }) {
     e.target.value = '';
   };
 
+  const handleExportErrors = () => {
+    const errorRows = uploadResults.filter(r => r.status === 'error');
+    if (errorRows.length === 0) {
+      toast.error("No error logs to export.");
+      return;
+    }
+
+    // Convert to user-friendly Excel format
+    const errorData = errorRows.map(r => ({
+      "Row Index": r.id + 1,
+      "Name/Identifiers": r.name,
+      "Failed Cause / Error Message": r.error || "Duplicate unique field or database constraint violation"
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(errorData);
+    XLSX.utils.book_append_sheet(wb, ws, "Students Import Errors");
+    XLSX.writeFile(wb, `Student_Import_Errors_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success("Correct those items and upload again!");
+  };
+
   const downloadSampleExcel = async () => {
     try {
       // Define standard headers based on all current student table fields in exact sequence
@@ -983,211 +1004,64 @@ export default function Students({ user }: { user: UserType }) {
           }
         });
 
-        // 1) Fetch existing students from the database for comprehensive pre-validation checks
-        let existingStudentsDbList: any[] = [];
-        try {
-          const allRes = await apiService.getStudents(
-            parseSafeInt(user.schoolId),
-            parseSafeInt(user.academicYearId),
-            { page: 1, pageSize: 100000 }
-          );
-          const allData = allRes.data;
-          existingStudentsDbList = Array.isArray(allData)
-            ? allData
-            : (allData && Array.isArray(allData.data) ? allData.data : []);
-        } catch (fetchErr) {
-          console.error("Could not load existing records for pre-validation:", fetchErr);
-        }
+        // 1) Submit full payload to ultra high-performance bulk API in a single request
+        const studentsPayload = processedStudents.filter(s => s !== null);
 
-        // Build Sets of existing unique identifiers for fast O(1) lookup
-        const existingGrnos = new Set<string>();
-        const existingAadhars = new Set<string>();
-        const existingRfids = new Set<string>();
-        const existingUniforms = new Set<string>();
-        const existingRollCombos = new Set<string>();
-
-        existingStudentsDbList.forEach((s: any) => {
-          const getVal = (prop: string, fallback?: any) => {
-            if (!s) return fallback;
-            const keys = Object.keys(s);
-            const match = keys.find(k => k.toLowerCase() === prop.toLowerCase());
-            return match ? s[match] : fallback;
-          };
-          const grno = (getVal("GRNO") || s.grno || "").toString().trim().toLowerCase();
-          const aadhar = (getVal("aadharcard") || s.aadharCard || "").toString().trim().toLowerCase();
-          const rfidVal = (getVal("RFID") || s.rfid || s.CARDID || s.cardId || "").toString().trim().toLowerCase();
-          const uniformVal = (getVal("uniformid") || s.uniformid || "").toString().trim().toLowerCase();
-
-          if (grno) existingGrnos.add(grno);
-          if (aadhar) existingAadhars.add(aadhar);
-          if (rfidVal) existingRfids.add(rfidVal);
-          if (uniformVal) existingUniforms.add(uniformVal);
-
-          const rVal = (s.rollNumber || s.roll || "").toString().trim().toLowerCase();
-          const stdVal = (s.standardId || s.StandardId || "").toString().trim().toLowerCase();
-          const secVal = (s.sectionId || s.SectionId || "").toString().trim().toLowerCase();
-          const schVal = (s.schoolId || s.SchoolId || "").toString().trim().toLowerCase();
-          if (rVal && stdVal && secVal && schVal) {
-            existingRollCombos.add(`${schVal}_${stdVal}_${secVal}_${rVal}`);
-          }
-        });
-
-        // Set up sets for in-batch duplicates check
-        const batchRegs = new Set<string>();
-        const batchAadhars = new Set<string>();
-        const batchRfids = new Set<string>();
-        const batchUniforms = new Set<string>();
-        const batchRollCombos = new Set<string>();
-
-        let totalValidationErrorsFound = 0;
-        const validatedResults = initialResults.map((result: any, idx: number) => {
-          const s = processedStudents[idx];
-          if (!s) return { ...result, status: 'error', error: 'Invalid record format' };
-
-          const grno = (s.GrNo || "").toString().trim().toLowerCase();
-          const aadhar = (s.aadharCard || "").toString().trim().toLowerCase();
-          const rfid = (s.rfid || "").toString().trim().toLowerCase();
-          const uniform = (s.uniformId || "").toString().trim().toLowerCase();
-
-          let rowError = "";
-
-          // a) grno/GRNO
-          if (grno) {
-            if (batchRegs.has(grno)) {
-              rowError = `Duplicate Registration Number/GRNO '${s.GrNo}' in uploaded file.`;
-            } else if (existingGrnos.has(grno)) {
-              rowError = `Registration Number/GRNO '${s.GrNo}' already exists in database.`;
-            } else {
-              batchRegs.add(grno);
-            }
-          }
-
-          // b) AadharCard
-          if (!rowError && aadhar) {
-            if (batchAadhars.has(aadhar)) {
-              rowError = `Duplicate Aadhar Card '${s.aadharCard}' in uploaded file.`;
-            } else if (existingAadhars.has(aadhar)) {
-              rowError = `Aadhar Card '${s.aadharCard}' already exists in database.`;
-            } else {
-              batchAadhars.add(aadhar);
-            }
-          }
-
-          // c) RFID
-          if (!rowError && rfid) {
-            if (batchRfids.has(rfid)) {
-              rowError = `Duplicate RFID '${s.rfid}' in uploaded file.`;
-            } else if (existingRfids.has(rfid)) {
-              rowError = `RFID '${s.rfid}' already exists in database.`;
-            } else {
-              batchRfids.add(rfid);
-            }
-          }
-          else {
-            batchRfids.add(rfid);
-          }
-
-          // d) UniformID
-          if (!rowError && uniform) {
-            if (batchUniforms.has(uniform)) {
-              rowError = `Duplicate UniformID '${s.uniformId}' in uploaded file.`;
-            } else if (existingUniforms.has(uniform)) {
-              rowError = `UniformID '${s.uniformId}' already exists in database.`;
-            } else {
-              batchUniforms.add(uniform);
-            }
-          }
-          else {
-            batchUniforms.add(uniform);
-          }
-
-          // e) Roll Number combination uniqueness check
-          const roll = (s.rollNumber || "").toString().trim().toLowerCase();
-          const std = (s.standardId || "").toString().trim().toLowerCase();
-          const sec = (s.sectionId || "").toString().trim().toLowerCase();
-          const sch = (s.schoolId || "").toString().trim().toLowerCase();
-          if (!rowError && roll && std && sec && sch) {
-            const combo = `${sch}_${std}_${sec}_${roll}`;
-            if (batchRollCombos.has(combo)) {
-              rowError = `Duplicate Roll Number '${s.rollNumber}' for this School, Standard, and Division combination in the uploaded file.`;
-            } else if (existingRollCombos.has(combo)) {
-              rowError = `Roll Number '${s.rollNumber}' already exists for this School, Standard, and Division combination in the database.`;
-            } else {
-              batchRollCombos.add(combo);
-            }
-          }
-
-          if (rowError) {
-            totalValidationErrorsFound++;
-            return {
-              ...result,
-              status: 'error',
-              error: rowError
-            };
-          }
-          return { ...result, status: 'pending' };
-        });
-
-        if (totalValidationErrorsFound > 0) {
-          setUploadResults(validatedResults);
+        if (studentsPayload.length === 0) {
+          toast.error("All rows have invalid data formats.");
           setIsProcessing(false);
-          toast.error(`Validation failed: ${totalValidationErrorsFound} unique field conflict(s) detected. Please correct the fields in your datasheet and try again.`);
-          if (bulkFileInputRef.current) bulkFileInputRef.current.value = "";
           return;
         }
 
-        // Dynamic upload process: Sequential or Chunked to update UI
-        let successCount = 0;
-        let failCount = 0;
+        // Trigger processing status on initial list
+        setUploadResults(initialResults.map(res => ({ ...res, status: 'processing' })));
 
-        // Process in chunks of 5 for balance between speed and UI responsiveness
-        const chunkSize = 5;
-        for (let i = 0; i < processedStudents.length; i += chunkSize) {
-          const chunk = processedStudents.slice(i, i + chunkSize);
-          const chunkIndices = Array.from({ length: chunk.length }, (_, k) => i + k);
+        try {
+          // Fire single post request
+          const response = await apiService.bulkCreateStudents(studentsPayload);
+          const resultData = response.data;
 
-          // Filter out failed mapping rows
-          const validRows = chunk.filter(s => s !== null);
-          const validIndices = chunkIndices.filter(idx => processedStudents[idx] !== null);
+          const insertedCount = resultData.insertedCount || 0;
+          const errorCount = resultData.errorCount || 0;
+          const errorDetails = resultData.errorRows || [];
 
-          setUploadResults(prev => prev.map(res =>
-            chunkIndices.includes(res.id) ? { ...res, status: 'processing' } : res
-          ));
-
-          try {
-            await apiService.bulkCreateStudents(validRows);
-
-            setUploadResults(prev => prev.map(res =>
-              validIndices.includes(res.id) ? { ...res, status: 'success' } : res
-            ));
-
-            // Mark failed mapping rows
-            const invalidIndices = chunkIndices.filter(idx => processedStudents[idx] === null);
-            if (invalidIndices.length > 0) {
-              setUploadResults(prev => prev.map(res =>
-                invalidIndices.includes(res.id) ? { ...res, status: 'error', error: 'Invalid data format' } : res
-              ));
-              failCount += invalidIndices.length;
+          // Map response back to visual student grid tracker
+          const updatedResults = initialResults.map((result, idx) => {
+            const rowNum = idx + 1;
+            const rowErr = errorDetails.find((err: any) => err.rowIndex === rowNum);
+            
+            if (rowErr) {
+              return {
+                ...result,
+                status: 'error' as const,
+                error: rowErr.error || "Validation check or database integrity violation"
+              };
             }
+            return {
+              ...result,
+              status: 'success' as const,
+              error: null
+            };
+          });
 
-            successCount += validRows.length;
-          } catch (error: any) {
-            console.error(`Chunk ${i} upload error:`, error);
-            const errorMsg = typeof error.response?.data === 'string'
-              ? error.response.data
-              : (error.response?.data?.message || error.message || 'Server error');
-            setUploadResults(prev => prev.map(res =>
-              chunkIndices.includes(res.id) ? { ...res, status: 'error', error: errorMsg } : res
-            ));
-            failCount += chunk.length;
+          setUploadResults(updatedResults);
+
+          if (errorCount === 0) {
+            toast.success(`Successfully imported all ${insertedCount} students.`);
+            setTimeout(() => setIsBulkUploadOpen(false), 2000);
+          } else {
+            toast.warning(`Imported ${insertedCount} students, but ${errorCount} failed. Click "Export Errors" to download log.`);
           }
-        }
+        } catch (postErr: any) {
+          console.error("Bulk upload API error:", postErr);
+          const errorMsg = postErr.response?.data?.message || postErr.response?.data || postErr.message || "Endpoint error";
 
-        if (failCount === 0) {
-          toast.success(`Successfully imported all ${successCount} students.`);
-          setTimeout(() => setIsBulkUploadOpen(false), 2000);
-        } else {
-          toast.warning(`Imported ${successCount} students, but ${failCount} failed.`);
+          setUploadResults(initialResults.map(res => ({
+            ...res,
+            status: 'error' as const,
+            error: `Import halted: ${errorMsg}`
+          })));
+          toast.error(`Bulk import failed: ${errorMsg}`);
         }
 
         fetchStudents();
@@ -1554,13 +1428,23 @@ export default function Students({ user }: { user: UserType }) {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between px-2">
                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Import Stream Activity</h4>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <Badge className="bg-emerald-500 hover:bg-emerald-600 font-black px-2 py-0.5 rounded-lg text-[10px]">
                             {uploadResults.filter(r => r.status === 'success').length} SUCCESS
                           </Badge>
                           <Badge className="bg-rose-500 hover:bg-rose-600 font-black px-2 py-0.5 rounded-lg text-[10px]">
                             {uploadResults.filter(r => r.status === 'error').length} FAILED
                           </Badge>
+                          {uploadResults.some(r => r.status === 'error') && (
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              className="border-rose-200 hover:bg-rose-50 text-rose-600 text-[10px] font-black h-6 px-2.5 rounded-lg ml-2 shrink-0 shadow-sm"
+                              onClick={handleExportErrors}
+                            >
+                              <Download size={11} className="mr-1" /> Export Errors
+                            </Button>
+                          )}
                         </div>
                       </div>
 
