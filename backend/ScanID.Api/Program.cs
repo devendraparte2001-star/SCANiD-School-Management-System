@@ -238,7 +238,7 @@ try
                 'Religions', 'States', 'Cities', 'BloodGroups', 'Houses', 
                 'AdmissionTypes', 'Categories', 'Sessions', 'Batches', 'Subjects', 
                 'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
-                'StaffInitials'
+                'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords'
             )
 
             OPEN table_cursor

@@ -36,7 +36,7 @@ This document lists all modifications, bug fixes, database schema updates, and U
 | `backend/ScanID.Api/Controllers/StaffController.cs` | **Edited** | Safe assignment of the nullable `SchoolId` field using C# null-coalescing operator (`staff.SchoolId ?? 0`) inside object factory projection method to prevent CS0266 compiler failure. |
 | `backend/ScanID.Api/Controllers/StudentsController.cs` | **Edited** | Checked for type safety of the nullable `SchoolId` field in `ToDto` projection, and secured folder name sanitization flow by introducing compile-time non-null parameter resolution indicators (`student.SchoolId!.Value` and `schoolIdVal ?? "1"`), eliminating static analysis warning CS8604. |
 | `backend/ScanID.Api/Utilities/DbMapper.cs` | **Edited** | Guaranteed nullable `SchoolId` conversion safety on entity mapping bindings by using safe fallback coalescing assignments when constructing connected custom joins. |
-| `backend/ScanID.Api/Program.cs` | **Edited** | Added automated self-healing SQL initiation scripts that dynamically add missing columns, populate baseline seed data, and clean identity navigation items on start. |
+| `backend/ScanID.Api/Program.cs` | **Edited** | Added automated self-healing SQL initiation scripts that dynamically add missing columns, populate baseline seed data, and clean identity navigation items on start. Added 'Shifts', 'Messages', 'Notifications', and 'IodataRecords' to self-healing alignment cursor list to fix internal DB query exceptions. |
 | `src/lib/api.ts` | **Edited** | Added client-side lookup getters (`getWeekdays`, `getHolidays`) and save parameters. |
 | `src/pages/Configuration.tsx` | **Edited** | Configured `MASTER_TYPES` for weekdays and holidays. Integrated custom datetime validation, interactive days multi-checkbox lists, past-holiday badge highlighting, and role-based school selection filters. Implemented explicit trigger value bindings for dropdown lookups (resolving the raw ID display glitch) and unified multi-school ERP isolation filtering inside `filteredData` mapping. |
 
@@ -60,3 +60,18 @@ The start pipeline running in `Program.cs` automatically ensures that:
 - `Weekdays` table is created and seeded with IDs `1` to `7` representing **Monday** through **Sunday**.
 - `Holidays` table is created.
 - Existing custom navigation keys are safely ordered from `1` through `44`, appending the necessary permissions for the new modules under the **Master & Config** sidebar tab.
+
+---
+
+## 🛠️ Shift Master API Error Resolution (500 Internal Server Error)
+
+### 1. Root-Cause Analysis
+- **The Issue**: When attempting to fetch or manage Shift master records (`/api/masters/shifts`), the server returned an **HTTP 500 Internal Server Error**.
+- **Cause**: The `Shift` class in `Models.cs` inherits from `BaseEntity` (which contains `SchoolId` and `AcademicYearId`). Entity Framework Core constructs SQL queries requesting `SchoolId` and `AcademicYearId` columns from the `Shifts` table. However, the database table lacked these columns, resulting in an `Invalid column name 'SchoolId'` SQL exception.
+
+### 2. Implementation & Database Healing
+- **The Resolution**: Modified `/backend/ScanID.Api/Program.cs` to add `'Shifts'` (along with `'Messages'`, `'Notifications'`, and `'IodataRecords'`) to the automated self-healing script's table list cursor.
+- **Dynamic Migration**: On backend startup, the self-healing SQL initializer now identifies any table in this list missing `SchoolId` or `AcademicYearId` and runs safe incremental `ALTER TABLE` commands:
+  - `ALTER TABLE [dbo].[Shifts] ADD [SchoolId] INT NULL;`
+  - `ALTER TABLE [dbo].[Shifts] ADD [AcademicYearId] INT NULL;`
+- This ensures full alignment between the C# models and the SQL database without breaking any pre-existing records.
