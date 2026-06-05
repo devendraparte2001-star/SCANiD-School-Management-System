@@ -197,11 +197,11 @@ namespace ScanID.Api.Services
 
             var props = typeof(IodataRecord).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                                             .Where(p => p.CanWrite && (
-                                                p.PropertyType.IsPrimitive || 
-                                                p.PropertyType == typeof(string) || 
-                                                p.PropertyType == typeof(decimal) || 
-                                                p.PropertyType == typeof(DateTime) || 
-                                                p.PropertyType == typeof(Guid) || 
+                                                p.PropertyType.IsPrimitive ||
+                                                p.PropertyType == typeof(string) ||
+                                                p.PropertyType == typeof(decimal) ||
+                                                p.PropertyType == typeof(DateTime) ||
+                                                p.PropertyType == typeof(Guid) ||
                                                 p.PropertyType.IsEnum ||
                                                 (Nullable.GetUnderlyingType(p.PropertyType) != null && (
                                                     Nullable.GetUnderlyingType(p.PropertyType)!.IsPrimitive ||
@@ -242,34 +242,52 @@ namespace ScanID.Api.Services
 
         public async Task<IodataRecord?> ProcessSingleIodataLineAsync(string line)
         {
-            if (string.IsNullOrWhiteSpace(line)) return null;
+            if (string.IsNullOrWhiteSpace(line))
+                return null;
+
+            var parts = line.Split(',');
+
+            if (parts.Length < 3)
+            {
+                await _errorLogService.InsertErrorLogAsync(
+                    "Invalid line format",
+                    "Warning",
+                    line,
+                    $"AttendanceService.ProcessSingleIodataLineAsync - Raw line: {line}");
+                return null;
+            }
+
+            var rfid = parts[0].Trim();
+            var punchDate = parts[1].Trim();
+            var punchTime = parts[2].Trim();
+            var machineId = parts.Length > 3 ? parts[3].Trim() : null;
+            var transactionId = parts.Length > 4 ? parts[4].Trim() : null;
+            var createdDateTime = parts.Length > 5 ? parts[5].Trim() : null;
+
+            if (string.IsNullOrWhiteSpace(rfid) || string.IsNullOrWhiteSpace(punchDate) || string.IsNullOrWhiteSpace(punchTime))
+            {
+                await _errorLogService.InsertErrorLogAsync(
+                    "Missing required fields",
+                    "Warning",
+                    line,
+                    $"AttendanceService.ProcessSingleIodataLineAsync - Required fields missing: {line}");
+                return null;
+            }
 
             try
             {
-                var parts = line.Split(',');
-                if (parts.Length >= 3)
-                {
-                    var rfid = parts[0].Trim();
-                    var punchDate = parts[1].Trim();
-                    var punchTime = parts[2].Trim();
-                    var machineId = parts.Length > 3 ? parts[3].Trim() : null;
-                    var transactionId = parts.Length > 4 ? parts[4].Trim() : null;
-                    var createdDateTime = parts.Length > 5 ? parts[5].Trim() : null;
+                var records = await DbMapper.ExecuteStoredProcedureAsync<IodataRecord>(
+                    _context,
+                    "dbo.sp_ProcessIodataRecord",
+                    ("Rfid", rfid),
+                    ("PunchDate", punchDate),
+                    ("PunchTime", punchTime),
+                    ("MachineId", machineId),
+                    ("TransactionId", transactionId),
+                    ("CreatedDateTime", createdDateTime)
+                );
 
-                    var records = await DbMapper.ExecuteStoredProcedureAsync<IodataRecord>(
-                        _context,
-                        "dbo.sp_ProcessIodataRecord",
-                        ("Rfid", rfid),
-                        ("PunchDate", punchDate),
-                        ("PunchTime", punchTime),
-                        ("MachineId", machineId),
-                        ("TransactionId", transactionId),
-                        ("CreatedDateTime", createdDateTime)
-                    );
-
-                    using var enumerator = records.GetEnumerator();
-                    return enumerator.MoveNext() ? enumerator.Current : null;
-                }
+                return records.FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -277,10 +295,9 @@ namespace ScanID.Api.Services
                     ex.Message,
                     "Error",
                     ex.ToString(),
-                    $"AttendanceService.ProcessSingleIodataLineAsync - Raw line: {line}"
-                );
+                    $"AttendanceService.ProcessSingleIodataLineAsync - Raw line: {line}");
+                return null;
             }
-            return null;
         }
 
         public async Task<bool> ReprocessIodataRecordAsync(int recordId)
@@ -343,7 +360,7 @@ namespace ScanID.Api.Services
                     // Naming structure updated from MMDDYY -> DDMMYY format according to specification
                     string filePrefix = $"Data{d:ddMMyy}";
                     string fileNamePattern = $"{filePrefix}.txt";
-                    
+
                     string filePath = Path.Combine(watchDir, fileNamePattern);
                     string archivePath = Path.Combine(watchDir, "processed", fileNamePattern);
 
@@ -397,7 +414,7 @@ namespace ScanID.Api.Services
                             // Commit daily transaction on total sequence success
                             await transaction.CommitAsync();
                             totalLinesProcessed += localLinesCount;
-                            
+
                             logs.Add($"[TX_COMMIT] Successfully committed all {localLinesCount} records for {fileNamePattern}.");
                         }
                         catch (Exception fileEx)
@@ -405,7 +422,7 @@ namespace ScanID.Api.Services
                             // In case of any SQL exceptions, schema mismatch, or line timeouts, roll back all table mutations done during this date's processing blocks.
                             await transaction.RollbackAsync();
                             logs.Add($"[TX_ROLLBACK] Critical failure in '{fileNamePattern}'. Database state cleanly rolled back! Error: {fileEx.Message}");
-                            
+
                             // High-performance incident reporting in core audit registers
                             await _errorLogService.InsertErrorLogAsync(
                                 fileEx.Message,
@@ -435,54 +452,77 @@ namespace ScanID.Api.Services
         /// Processes a list of raw scanner line strings immediately for a specific date in an atomic transaction (User Local System support).
         /// Re-processes cleanly by doing a target wipe first to protect against duplicates (Replace-On-Read / Truncate-and-Reload).
         /// </summary>
-        public async Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines, bool wipeTargetDate = false)
+        public async Task<List<string>> ProcessIodataLinesImmediateAsync(
+    DateTime date,
+    List<string> lines,
+    bool wipeTargetDate = false)
         {
             var logs = new List<string>();
             var targetDate = date.Date;
-            logs.Add($"[LOCAL_INFO] Starting immediate process of {lines.Count} scans for date: {targetDate:yyyy-MM-dd}");
+            var sourceLines = lines ?? new List<string>();
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            logs.Add($"[LOCAL_INFO] Starting immediate process of {sourceLines.Count} scans for {targetDate:yyyy-MM-dd}");
+
             try
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
                 if (wipeTargetDate)
                 {
-                    logs.Add($"[LOCAL_INFO] Performing target wipe cleanup for date: {targetDate:yyyy-MM-dd} (Replace-On-Read model)");
-                    // Pre-import clean-up (Replace-On-Read / Truncate-and-Reload model):
-                    // To support clean, error-tolerant re-processing and completely bypass duplicate constraints,
-                    // we wipe any active IodataRecords or corresponding attendance entries created by 'IodataService' on this Date.
                     await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate)",
-                        new SqlParameter("@TargetDate", targetDate)
-                    );
+                        "DELETE FROM [dbo].[IodataRecords] WHERE CONVERT(DATE, [Date]) = @TargetDate",
+                        new SqlParameter("@TargetDate", targetDate));
 
                     await _context.Database.ExecuteSqlRawAsync(
-                        "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = CONVERT(DATE, @TargetDate) AND [UploadSource] = 'IodataService'",
-                        new SqlParameter("@TargetDate", targetDate)
-                    );
+                        "DELETE FROM [dbo].[Attendance] WHERE CONVERT(DATE, [Date]) = @TargetDate AND [UploadSource] = 'IodataService'",
+                        new SqlParameter("@TargetDate", targetDate));
+
+                    logs.Add($"[LOCAL_INFO] Wipe completed for {targetDate:yyyy-MM-dd}");
                 }
 
-                int linesProcessed = 0;
-                foreach (var line in lines)
+                int successCount = 0;
+                int failCount = 0;
+
+                foreach (var line in sourceLines)
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    await ProcessSingleIodataLineAsync(line);
-                    linesProcessed++;
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        logs.Add("[SKIP] Empty line");
+                        continue;
+                    }
+
+                    try
+                    {
+                        var result = await ProcessSingleIodataLineAsync(line);
+                        if (result != null)
+                        {
+                            successCount++;
+                            logs.Add($"[OK] {line}");
+                        }
+                        else
+                        {
+                            failCount++;
+                            logs.Add($"[FAIL] Could not process line: {line}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failCount++;
+                        logs.Add($"[FAIL] {line} => {ex.Message}");
+                    }
                 }
 
                 await transaction.CommitAsync();
-                logs.Add($"[LOCAL_SUCCESS] Processed and committed {linesProcessed} lines cleanly for {targetDate:yyyy-MM-dd}.");
+                logs.Add($"[LOCAL_SUCCESS] Completed. Success: {successCount}, Failed: {failCount}");
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                logs.Add($"[LOCAL_FAIL] Failed to process lines immediately. All database state rolled back cleanly. Error: {ex.Message}");
-
+                logs.Add($"[LOCAL_FAIL] Batch failed: {ex.Message}");
                 await _errorLogService.InsertErrorLogAsync(
                     ex.Message,
                     "Error",
                     ex.ToString(),
-                    $"AttendanceService.ProcessIodataLinesImmediateAsync - Error during file import transaction rollback for date {targetDate:yyyy-MM-dd}."
-                );
+                    $"AttendanceService.ProcessIodataLinesImmediateAsync - Date: {targetDate:yyyy-MM-dd}");
             }
 
             return logs;
