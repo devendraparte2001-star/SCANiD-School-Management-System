@@ -403,6 +403,7 @@ export default function Attendance({ user }: { user: any }) {
   };
 
   // Launch manual upload sequential generation
+  // Launch manual upload sequential generation
   const handleManualUploadSubmit = async () => {
     const start = parseISO(fromDate);
     const end = parseISO(toDate);
@@ -425,13 +426,49 @@ export default function Attendance({ user }: { user: any }) {
       return;
     }
 
+    setIsProcessingUpload(true);
+    let resolvedStudents = [...students];
+
+    // Prefetch all matching students up to 2000 to completely avoid pagination truncation during manual uploads
+    if (attendeeType === "all" || attendeeType === "student") {
+      try {
+        const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
+        const academicYearIdToUse = parseSafeInt(user.academicYearId);
+        const stdId = selectedStandard && selectedStandard !== "all" ? parseSafeInt(selectedStandard) : undefined;
+        const sectId = selectedSection && selectedSection !== "all" ? parseSafeInt(selectedSection) : undefined;
+
+        const rosterRes = await apiService.getStudents(schoolIdToUse, academicYearIdToUse, {
+          page: 1,
+          pageSize: 2000,
+          standardId: stdId,
+          sectionId: sectId
+        });
+
+        const rawRoster = Array.isArray(rosterRes.data)
+          ? rosterRes.data
+          : (rosterRes.data?.data || []);
+
+        if (rawRoster.length > 0) {
+          resolvedStudents = rawRoster.map((s: any) => {
+            const sName = s.name || s.fullName || (s.user ? (s.user.name || s.user.fullName) : `Student ID ${s.id}`);
+            return {
+              id: s.id,
+              name: sName
+            };
+          });
+        }
+      } catch (err) {
+        console.error("Failed to prefetch full student roster, falling back to cached state", err);
+      }
+    }
+
     // Prepare processing checklist
     const uploadTargets: { name: string; role: string; date: string; studentId?: number; staffId?: number }[] = [];
 
     dates.forEach(d => {
       // Include Students
       if (attendeeType === "all" || attendeeType === "student") {
-        students.forEach(s => {
+        resolvedStudents.forEach(s => {
           uploadTargets.push({
             name: s.name,
             role: "Student",
@@ -488,6 +525,7 @@ export default function Attendance({ user }: { user: any }) {
     });
 
     if (uploadTargets.length === 0) {
+      setIsProcessingUpload(false);
       toast.error("No target records found matching filters");
       return;
     }
@@ -1797,6 +1835,30 @@ export default function Attendance({ user }: { user: any }) {
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
 
+                  {/* Branch Selector (For Superadmin Role) */}
+                  {user.role === "superadmin" && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">School Branch</label>
+                      <Select value={selectedSchoolId} onValueChange={(val) => setSelectedSchoolId(val || "")}>
+                        <SelectTrigger className="border-slate-200 bg-blue-50/10 font-bold rounded-xl h-11 pointer-events-auto">
+                          <SelectValue placeholder="Select School Branch">
+                            {selectedSchoolId ? schools.find(s => s.id.toString() === selectedSchoolId)?.name : undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-68 rounded-2xl shadow-2xl border-slate-200 p-2 bg-white">
+                          <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">
+                            Select School Branch
+                          </SelectItem>
+                          {Array.isArray(schools) && schools.map(s => (
+                            <SelectItem key={s.id} value={s.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                              <span className="text-sm font-bold">{s.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   {/* Date range inputs */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1822,11 +1884,19 @@ export default function Attendance({ user }: { user: any }) {
                   {/* Attendee Category selector: Students, Staff, Teacher (shows All by default) */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Attendee Type</label>
-                    <Select value={attendeeType} onValueChange={(val) => setAttendeeType(val || "")}>
+                    <Select value={attendeeType} onValueChange={(val) => {
+                      setAttendeeType(val || "");
+                      if (val === "student" || val === "all") {
+                        setRecordType("student");
+                      } else {
+                        setRecordType("staff");
+                      }
+                      setPage(1);
+                    }}>
                       <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
                         <SelectValue placeholder="Select Attendee Type" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
+                      <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2 bg-white">
                         <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">All (Students, Teachers, Staff)</SelectItem>
                         <SelectItem value="student" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Student Body</SelectItem>
                         <SelectItem value="teacher" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Academic Teachers</SelectItem>
@@ -1834,6 +1904,49 @@ export default function Attendance({ user }: { user: any }) {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Standards & Divisions Select selectors (Rendered for Student/All contexts) */}
+                  {(attendeeType === "all" || attendeeType === "student") && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Standard ID</label>
+                        <Select value={selectedStandard} onValueChange={(val) => { setSelectedStandard(val || ""); setPage(1); }}>
+                          <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
+                            <SelectValue placeholder="All Standards">
+                              {selectedStandard === "all"
+                                ? "All Standards"
+                                : (standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined)}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2 bg-white">
+                            <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer">All Standards</SelectItem>
+                            {Array.isArray(standardsMaster) && standardsMaster.map(std => (
+                              <SelectItem key={std.id} value={std.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer">{std.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Division ID</label>
+                        <Select value={selectedSection} onValueChange={(val) => { setSelectedSection(val || ""); setPage(1); }}>
+                          <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
+                            <SelectValue placeholder="All Divisions">
+                              {selectedSection === "all"
+                                ? "All Divisions"
+                                : (selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined)}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2 bg-white">
+                            <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer">All Divisions</SelectItem>
+                            {Array.isArray(sectionsMaster) && sectionsMaster.map(sec => (
+                              <SelectItem key={sec.id} value={sec.id.toString()} className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer">Division {sec.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Target Status configuration */}
                   <div className="space-y-2">
@@ -1899,10 +2012,19 @@ export default function Attendance({ user }: { user: any }) {
                     </div>
                   </div>
 
+                  {/* Dynamic target counter indicator */}
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                    <span className="text-slate-400 font-bold block mb-1">Upload Targets Identified:</span>
+                    {attendeeType === "student" && `👥 ${students.length} Student(s) loaded`}
+                    {attendeeType === "teacher" && `🧑‍🏫 ${teachers.length} Teacher(s) loaded`}
+                    {attendeeType === "staff" && `💼 ${staffList.length} Staff Member(s) loaded`}
+                    {attendeeType === "all" && `👥 ${students.length} Student(s) | 🧑‍🏫 ${teachers.length} Teachers | 💼 ${staffList.length} Staff`}
+                  </div>
+
                   {/* Trigger manual loading */}
                   <Button
                     onClick={handleManualUploadSubmit}
-                    disabled={isProcessingUpload || students.length === 0}
+                    disabled={isProcessingUpload}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl h-12 font-bold tracking-wider text-xs uppercase"
                   >
                     {isProcessingUpload ? (

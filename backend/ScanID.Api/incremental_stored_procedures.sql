@@ -972,7 +972,7 @@ GO
 
 IF OBJECT_ID('dbo.sp_ManageSchool', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageSchool;
 GO
-CREATE PROCEDURE dbo.sp_ManageSchool
+CREATE PROCEDURE [dbo].[sp_ManageSchool]
     @Action NVARCHAR(10), -- 'INSERT', 'UPDATE', 'DELETE'
     @Id INT = NULL,
     @Name NVARCHAR(100) = NULL,
@@ -981,6 +981,7 @@ CREATE PROCEDURE dbo.sp_ManageSchool
     @ContactNumber NVARCHAR(50) = NULL,
     @Email NVARCHAR(100) = NULL,
     @CreatedBy NVARCHAR(100) = NULL,
+    @ModifiedBy NVARCHAR(100) = NULL,
     @ShortName NVARCHAR(100) = NULL,
     @CityId INT = NULL,
     @StateId INT = NULL,
@@ -1008,13 +1009,13 @@ BEGIN
             ShortName, CityId, StateId, Pincode, SMSLimit, TotalSMSSent, SMSBalance, EnableSMS,
             EnablePresenteeSMS, AutomaticBirthdaySMS, EnableWhatsapp, WebsiteUrl, SMSSenderID, BusNumbers,
             SCANiDContact, SCANiDEmail, InChargeContact,
-            IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy
+            IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
         ) VALUES (
             @Name, @LogoPath, @Address, @ContactNumber, @Email,
             @ShortName, @CityId, @StateId, @Pincode, @SMSLimit, @TotalSMSSent, @SMSBalance, @EnableSMS,
             @EnablePresenteeSMS, @AutomaticBirthdaySMS, @EnableWhatsapp, @WebsiteUrl, @SMSSenderID, @BusNumbers,
             @SCANiDContact, @SCANiDEmail, @InChargeContact,
-            1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy
+            1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy, @ModifiedBy
         );
         SELECT SCOPE_IDENTITY();
     END
@@ -1043,7 +1044,8 @@ BEGIN
             SCANiDContact = ISNULL(@SCANiDContact, SCANiDContact),
             SCANiDEmail = ISNULL(@SCANiDEmail, SCANiDEmail),
             InChargeContact = ISNULL(@InChargeContact, InChargeContact),
-            ModifiedOn = GETUTCDATE()
+            ModifiedOn = GETUTCDATE(),
+            ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy)
         WHERE Id = @Id;
     END
     ELSE IF @Action = 'DELETE'

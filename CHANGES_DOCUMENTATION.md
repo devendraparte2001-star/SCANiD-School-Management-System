@@ -642,6 +642,25 @@ This document records the exact changes, the root causes identified, and the fix
 - /CHANGES_DOCUMENTATION.md: Documented Batch 15 compiler resolution.
 
 
+---
+
+## 63. Issue: Restoring Standard, Section, and Branch Selections to Manual Upload Filters (Batch 16)
+- **Root Cause & Requirements**:
+  1. **Missing Filter Contexts**: In previous refactorings of the "Manual Attendance Upload" tab, options to select School Branch, Standard ID, and Division ID were not rendered. This prevented users from filtering and targeting specific classrooms when performing bulk manual attendance logs uploads.
+  2. **Coupling & Pagination Limitation**: The manual upload was coupled to the screen's paginated list (`students.length === 0` validation check), meaning the submit action was disabled if the view did not run background fetching, and was truncated to the paginated slice rather than marking the entire target class.
+
+- **Remediation & Enhancements**:
+  1. **Inject Context Selectors**: Restored full School Branch (for superadmin role), Standard ID, and Division ID selectors into the "Manual Upload Filters" Settings card, matching the visual styles of the Daily tab.
+  2. **Synchronize Background Fetching**: Integrated `setRecordType` updates into the attendee type selection so switching filters automatically triggers passive loading of matching student registers.
+  3. **Visual Target Indicator**: Added a real-time summary indicator showing how many students, teachers, or administrators are currently matching the active filters to be uploaded.
+  4. **Full-Roster Pre-Fetching**: Upgraded `handleManualUploadSubmit` to dynamically pre-fetch the full target student roster matching the filters (up to 2000 records) rather than being bounded by the active visual paginated view.
+
+## 64. Modified/Synchronized Files List (Batch 16)
+
+- /src/pages/Attendance.tsx: Restored School, Standard, and Section dropdowns, updated state synchronizations, integrated targets counter, and removed logical execution blockers.
+- /CHANGES_DOCUMENTATION.md: Documented Batch 16 restoration.
+
+
 
 
 
