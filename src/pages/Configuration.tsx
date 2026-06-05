@@ -846,15 +846,46 @@ export default function Configuration({
     }
   };
 
-  const filteredData = masterData.filter(
-    (item) =>
+  const filteredData = masterData.filter((item) => {
+    // 1. Text Search Filter
+    const matchesSearch =
       (item.name || item.title || item.fullName)
         ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       (item.description || item.path)
         ?.toLowerCase()
-        .includes(searchQuery.toLowerCase()),
-  );
+        .includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // 2. School and Academic Year Multi-School ERP Filters
+    // Skip filtering for "schools" master and "navigation" master
+    if (activeTab === "schools" || activeTab === "navigation") {
+      return true;
+    }
+
+    // Role-dependent School Filter
+    if (user.schoolId && user.schoolId !== "all") {
+      // If the master record is associated with a specific school, it must match the active school
+      // If the master record has no schoolId (null, 0, or undefined), it is a global master visible to all schools
+      const itemSchoolId = item.schoolId || item.SchoolId;
+      if (itemSchoolId && itemSchoolId.toString() !== user.schoolId.toString()) {
+        return false;
+      }
+    }
+
+    // Academic Year Filter where applicable
+    if (user.academicYearId) {
+      // If the master record has a specific academic year associated, it must match
+      // If it doesn't have one (null, 0, or undefined), it is cross-year or global
+      const itemYearId = item.academicYearId || item.AcademicYearId;
+      if (itemYearId && itemYearId.toString() !== user.academicYearId.toString()) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const activeConfig = MASTER_TYPES[activeTab];
   const Icon = activeConfig.icon;
@@ -1552,7 +1583,9 @@ export default function Configuration({
                     onValueChange={(val) => setFormData({ ...formData, schoolId: val })}
                   >
                     <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                      <SelectValue placeholder="Select School" />
+                      <SelectValue placeholder="Select School">
+                        {formData.schoolId ? (visibleSchools.find((s: any) => s.id?.toString() === formData.schoolId?.toString())?.name || formData.schoolId) : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
                       {visibleSchools.map((s: any) => (
@@ -1573,7 +1606,9 @@ export default function Configuration({
                     onValueChange={(val) => setFormData({ ...formData, academicYearId: val })}
                   >
                     <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                      <SelectValue placeholder="Select Year" />
+                      <SelectValue placeholder="Select Year">
+                        {formData.academicYearId ? ((dependencies.academicYears || []).find((y: any) => y.id?.toString() === formData.academicYearId?.toString())?.name || formData.academicYearId) : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
                       {(dependencies.academicYears || []).map((y: any) => (
@@ -1921,7 +1956,9 @@ export default function Configuration({
                       }
                     >
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                        <SelectValue placeholder="Root" />
+                        <SelectValue placeholder="Root">
+                          {formData.parentId ? (dependencies.parentNavs?.find((n: any) => n.id?.toString() === formData.parentId?.toString())?.title || formData.parentId) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
                         <SelectItem value="" className="font-semibold py-2">
@@ -2068,7 +2105,21 @@ export default function Configuration({
                       }}
                     >
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                        <SelectValue placeholder="Select Role" />
+                        <SelectValue placeholder="Select Role">
+                          {formData.role ? (
+                            (dependencies.roles || []).find(
+                              (r: any) =>
+                                r.name.toLowerCase().replace(/\s+/g, "") ===
+                                formData.role.toLowerCase().replace(/\s+/g, "")
+                            )?.name || (
+                              formData.role === "superadmin" ? "Super Admin" :
+                              formData.role === "admin" ? "Admin" :
+                              formData.role === "teacher" ? "Teacher" :
+                              formData.role === "student" ? "Student" :
+                              formData.role === "parent" ? "Parent" : formData.role
+                            )
+                          ) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60 overflow-y-auto">
                         {Array.isArray(dependencies.roles) &&
@@ -2136,7 +2187,9 @@ export default function Configuration({
                       }
                     >
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                        <SelectValue placeholder="Global / Unassigned" />
+                        <SelectValue placeholder="Global / Unassigned">
+                          {formData.schoolId ? ((dependencies.schools || []).find((s: any) => s.id?.toString() === formData.schoolId?.toString())?.name || formData.schoolId) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60 overflow-y-auto">
                         <SelectItem
@@ -2345,7 +2398,9 @@ export default function Configuration({
                       }}
                     >
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                        <SelectValue placeholder="Select State" />
+                        <SelectValue placeholder="Select State">
+                          {formData.stateId ? ((dependencies.states || []).find((s: any) => s.id?.toString() === formData.stateId?.toString())?.name || formData.stateId) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-48 overflow-y-auto">
                         <SelectItem
@@ -2380,7 +2435,9 @@ export default function Configuration({
                       disabled={!formData.stateId}
                     >
                       <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4 disabled:opacity-50">
-                        <SelectValue placeholder="Select City" />
+                        <SelectValue placeholder="Select City">
+                          {formData.cityId ? ((dependencies.cities || []).find((c: any) => c.id?.toString() === formData.cityId?.toString())?.name || formData.cityId) : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-48 overflow-y-auto">
                         <SelectItem
@@ -2831,7 +2888,9 @@ export default function Configuration({
                         "border-red-500 ring-2 ring-red-500/10",
                     )}
                   >
-                    <SelectValue placeholder="Select Parent Caste" />
+                    <SelectValue placeholder="Select Parent Caste">
+                      {formData.casteId ? ((dependencies.castes || []).find((c: any) => c.id?.toString() === formData.casteId?.toString())?.name || formData.casteId) : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                     <SelectItem
@@ -2883,7 +2942,9 @@ export default function Configuration({
                         "border-red-500 ring-2 ring-red-500/10",
                     )}
                   >
-                    <SelectValue placeholder="Select State Name" />
+                    <SelectValue placeholder="Select State Name">
+                      {formData.stateId ? ((dependencies.states || []).find((s: any) => s.id?.toString() === formData.stateId?.toString())?.name || formData.stateId) : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                     <SelectItem

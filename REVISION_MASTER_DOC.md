@@ -38,7 +38,20 @@ This document lists all modifications, bug fixes, database schema updates, and U
 | `backend/ScanID.Api/Utilities/DbMapper.cs` | **Edited** | Guaranteed nullable `SchoolId` conversion safety on entity mapping bindings by using safe fallback coalescing assignments when constructing connected custom joins. |
 | `backend/ScanID.Api/Program.cs` | **Edited** | Added automated self-healing SQL initiation scripts that dynamically add missing columns, populate baseline seed data, and clean identity navigation items on start. |
 | `src/lib/api.ts` | **Edited** | Added client-side lookup getters (`getWeekdays`, `getHolidays`) and save parameters. |
-| `src/pages/Configuration.tsx` | **Edited** | Configured `MASTER_TYPES` for weekdays and holidays. Integrated custom datetime validation, interactive days multi-checkbox lists, past-holiday badge highlighting, and role-based school selection filters. |
+| `src/pages/Configuration.tsx` | **Edited** | Configured `MASTER_TYPES` for weekdays and holidays. Integrated custom datetime validation, interactive days multi-checkbox lists, past-holiday badge highlighting, and role-based school selection filters. Implemented explicit trigger value bindings for dropdown lookups (resolving the raw ID display glitch) and unified multi-school ERP isolation filtering inside `filteredData` mapping. |
+
+---
+
+## 🛠️ Global Dropdown Display Name Mapping & Isolation Fixes (Checkpoint 1 Finalization)
+
+### 1. Explicit ID-to-Text Select Trigger Mapping
+- **The Issue**: Because Base UI is a headless, un-styled library, standard `<SelectValue>` calls with empty children display raw database IDs (e.g. `1`, `3`) instead of human-readable text upon asynchronous prepopulation or value changes.
+- **The Resolution**: Updated all `<SelectValue>` elements in `Configuration.tsx` (School Assignment, Academic Year, State, City, Parent Caste, State Name, Parent Menu, System Role, and Assigned School selectors) to accept a dynamic render child which finds the matching display text from active dependencies based on the selected ID value.
+
+### 2. Multi-School ERP Records Isolation
+- **The Resolution**: Enhanced the client-side `filteredData` computation in `Configuration.tsx` so that when non-superadmin users (like School Admins) or superadmins with active institutional/year selections browse master config tables, the view filters on:
+  1. **Active Institution** (`user.schoolId` match other than global defaults or null/unassigned fields).
+  2. **Active Academic Session** (`user.academicYearId` match other than multi-year fallback defaults).
 
 ---
 
