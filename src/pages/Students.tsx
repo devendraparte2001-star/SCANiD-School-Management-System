@@ -779,6 +779,14 @@ export default function Students({ user }: { user: UserType }) {
               return "";
             };
 
+            const cleanOptInt = (val: any): number | null => {
+              if (val === undefined || val === null) return null;
+              const str = val.toString().trim();
+              if (str === "") return null;
+              const parsed = parseInt(str);
+              return isNaN(parsed) ? null : parsed;
+            };
+
             // 1. School Name Resolution
             const schName = getFieldCleanVal(["SchoolName", "School", "school_name"]);
             const schMasterId = item.SchoolId || (schName ? schools.find((sch: any) =>
@@ -963,22 +971,21 @@ export default function Students({ user }: { user: UserType }) {
               motherName: getFieldCleanVal(["MotherName", "MOTHERNAME"]),
               aadharCard: getFieldCleanVal(["AadharCard", "aadharcard", "aadhar_card"]),
               rfid: getFieldCleanVal(["RFID", "CARDID", "card_id", "rfid"]),
-              shiftName: shiftName,
 
-              standardId: stdMasterId,
-              sectionId: divMasterId,
-              shiftId: shiftMasterId,
-              academicYearId: ayMasterId,
-              bloodGroupId: bgMasterId,
-              religionId: religionMasterId,
-              houseId: houseMasterId,
-              admissionTypeId: admissionTypeMasterId,
-              casteId: casteMasterId,
-              subCasteId: subCasteId,
-              categoryId: categoryMasterId,
-              cityId: cityId,
-              stateId: stateId,
-              schoolSectionId: schoolSectionId,
+              standardId: cleanOptInt(stdMasterId),
+              sectionId: cleanOptInt(divMasterId),
+              shiftId: cleanOptInt(shiftMasterId),
+              academicYearId: cleanOptInt(ayMasterId),
+              bloodGroupId: cleanOptInt(bgMasterId),
+              religionId: cleanOptInt(religionMasterId),
+              houseId: cleanOptInt(houseMasterId),
+              admissionTypeId: cleanOptInt(admissionTypeMasterId),
+              casteId: cleanOptInt(casteMasterId),
+              subCasteId: cleanOptInt(subCasteId),
+              categoryId: cleanOptInt(categoryMasterId),
+              cityId: cleanOptInt(cityId),
+              stateId: cleanOptInt(stateId),
+              schoolSectionId: cleanOptInt(schoolSectionId),
               admissionDate: parseAndFormatDate(getFieldCleanVal(["AdmissionDate", "admission_date"])),
 
               uniformId: getFieldCleanVal(["UniformID", "UniformId", "uniformid", "uniform_id"]),
@@ -1048,7 +1055,31 @@ export default function Students({ user }: { user: UserType }) {
           }
         } catch (postErr: any) {
           console.error("Bulk upload API error:", postErr);
-          const errorMsg = postErr.response?.data?.message || postErr.response?.data || postErr.message || "Endpoint error";
+          
+          let errorMsg = "Endpoint error";
+          if (postErr.response?.data) {
+            const data = postErr.response.data;
+            if (typeof data === "string") {
+              errorMsg = data;
+            } else if (data.message) {
+              errorMsg = data.message;
+            } else if (data.errors) {
+              // Extract ASP.NET core model validation messages
+              errorMsg = Object.entries(data.errors)
+                .map(([key, messages]) => `${key}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+                .join('; ');
+            } else if (data.title) {
+              errorMsg = data.title;
+            } else {
+              try {
+                errorMsg = JSON.stringify(data);
+              } catch {
+                errorMsg = "Invalid server response structure";
+              }
+            }
+          } else {
+            errorMsg = postErr.message || "Endpoint error";
+          }
 
           setUploadResults(initialResults.map(res => ({
             ...res,
