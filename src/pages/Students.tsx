@@ -709,9 +709,18 @@ export default function Students({ user }: { user: UserType }) {
 
   const [isDragging, setIsDragging] = useState(false);
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
     setIsDragging(true);
   };
 
@@ -1389,56 +1398,65 @@ export default function Students({ user }: { user: UserType }) {
                 />
               </SimpleTooltip>
               <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-3xl rounded-[2rem]">
-                <div className="bg-slate-900 px-8 py-5 text-white shrink-0">
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-6 text-white shrink-0 border-b border-slate-800 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                   <DialogHeader>
-                    <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3">
-                      <div className="p-2 bg-blue-500 rounded-xl">
+                    <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-3">
+                      <div className="p-2.5 bg-indigo-500 rounded-xl shadow-md shadow-indigo-500/20">
                         <Upload size={20} className="text-white" />
                       </div>
                       Batch Student Onboarding
                     </DialogTitle>
-                    <DialogDescription className="text-slate-400 text-xs">
-                      Synchronize your physical register with the digital campus database using our high-speed Excel importer.
+                    <DialogDescription className="text-slate-400 mt-1 max-w-lg text-[13px] leading-relaxed">
+                      Synchronize your physical register with the digital campus database using our high-speed Excel importer. Keep master structures identical.
                     </DialogDescription>
                   </DialogHeader>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-white">
+                <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/50">
                   {uploadResults.length === 0 ? (
                     <div
+                      onDragEnter={handleDragEnter}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
+                      onClick={() => bulkFileInputRef.current?.click()}
                       className={cn(
-                        "p-10 border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center gap-6 transition-all group",
+                        "p-10 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center gap-6 transition-all duration-300 group cursor-pointer bg-white relative outline-none",
                         isDragging
-                          ? "border-blue-500 bg-blue-50/20 scale-[1.01]"
-                          : "border-slate-100 bg-slate-50/30 hover:bg-slate-55 hover:border-blue-100"
+                          ? "border-indigo-500 bg-indigo-50/30 scale-[1.01] shadow-lg shadow-indigo-100"
+                          : "border-slate-200 bg-white hover:bg-slate-50/50 hover:border-indigo-400 hover:shadow-md hover:shadow-slate-100"
                       )}
                     >
-                      <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                        <FileText className="text-blue-500" size={32} />
+                      <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-600 transition-all duration-300">
+                        <FileText className="text-white" size={28} />
                       </div>
-                      <div className="text-center space-y-2">
-                        <h4 className="text-lg font-black text-slate-900 tracking-tight">Drop your datasheet here</h4>
-                        <p className="text-xs text-slate-400 font-bold max-w-xs leading-relaxed uppercase tracking-widest">
-                          Strictly supports .XLSX and .XLS formats. Follow the system-defined schema for 100% precision.
+                      <div className="text-center space-y-1.5 pointer-events-none">
+                        <h4 className="text-lg font-bold text-slate-850 tracking-tight">Drop your datasheet here</h4>
+                        <p className="text-xs text-slate-400 font-medium max-w-sm leading-relaxed tracking-normal">
+                          Strictly supports <span className="font-bold text-slate-600">.XLSX</span> and <span className="font-bold text-slate-600">.XLS</span> formats. Follow the system-defined schema for 100% precision.
                         </p>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+                      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-md pt-2">
                         <Button
-                          className="flex-1 bg-slate-900 hover:bg-black text-white font-black rounded-2xl h-12 shadow-xl shadow-slate-200 active:scale-[0.98] transition-all cursor-pointer"
-                          onClick={() => bulkFileInputRef.current?.click()}
+                          className="flex-grow bg-slate-900 hover:bg-black text-white font-bold rounded-xl h-11 shadow-sm active:scale-[0.98] transition-all cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            bulkFileInputRef.current?.click();
+                          }}
                           disabled={isProcessing}
                         >
                           {isProcessing ? "Processing Streams..." : "Browse Local Files"}
                         </Button>
                         <Button
                           variant="outline"
-                          className="flex-1 border-slate-200 hover:bg-slate-50 font-black rounded-2xl h-12 transition-all gap-2 text-slate-600 cursor-pointer"
-                          onClick={downloadSampleExcel}
+                          className="flex-grow border-slate-200 hover:bg-slate-100 font-bold rounded-xl h-11 transition-all gap-2 text-slate-600 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadSampleExcel();
+                          }}
                         >
-                          <Download size={18} /> Sample Sheet
+                          <Download size={16} /> Sample Sheet
                         </Button>
                       </div>
                       <input
@@ -1450,76 +1468,88 @@ export default function Students({ user }: { user: UserType }) {
                       />
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between px-2">
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Import Stream Activity</h4>
-                        <div className="flex gap-2 items-center">
-                          <Badge className="bg-emerald-500 hover:bg-emerald-600 font-black px-2 py-0.5 rounded-lg text-[10px]">
+                    <div className="space-y-4 animate-in fade-in-50 duration-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800 tracking-tight">Onboarding Activity Stream</h4>
+                          <p className="text-[11px] text-slate-400">Live feed of student verification and resolution streams</p>
+                        </div>
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-100 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                             {uploadResults.filter(r => r.status === 'success').length} SUCCESS
-                          </Badge>
-                          <Badge className="bg-rose-500 hover:bg-rose-600 font-black px-2 py-0.5 rounded-lg text-[10px]">
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-100 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
                             {uploadResults.filter(r => r.status === 'error').length} FAILED
-                          </Badge>
+                          </span>
                           {uploadResults.some(r => r.status === 'error') && (
                             <Button
                               size="xs"
                               variant="outline"
-                              className="border-rose-200 hover:bg-rose-50 text-rose-600 text-[10px] font-black h-6 px-2.5 rounded-lg ml-2 shrink-0 shadow-sm"
+                              className="border-rose-150 hover:bg-rose-50 text-rose-600 text-[10px] font-bold h-7 px-3 rounded-lg shadow-sm active:scale-[0.98] transition-transform"
                               onClick={handleExportErrors}
                             >
-                              <Download size={11} className="mr-1" /> Export Errors
+                              <Download size={11} className="mr-1.5" /> Export Errors
                             </Button>
                           )}
                         </div>
                       </div>
 
-                      <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 bg-slate-50/50">
+                      <div className="border border-slate-150 rounded-2xl overflow-hidden bg-white shadow-sm">
+                        <div className="max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 bg-slate-50/20">
                           <Table>
-                            <TableHeader className="bg-white sticky top-0 z-10 shadow-sm">
+                            <TableHeader className="bg-white sticky top-0 z-10 border-b border-slate-100 shadow-sm">
                               <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-6">Row</TableHead>
-                                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entity Signature</TableHead>
-                                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-6">Activity State</TableHead>
+                                <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-6 w-16">Row</TableHead>
+                                <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Entity Signature</TableHead>
+                                <TableHead className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right pr-6 w-32">Activity State</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {uploadResults.map((result) => (
-                                <TableRow key={result.id} className="group border-slate-100 bg-white/50 hover:bg-slate-50 transition-colors">
-                                  <TableCell className="pl-6 font-mono text-[10px] text-slate-400">{(result.id + 1).toString().padStart(3, '0')}</TableCell>
-                                  <TableCell className="py-3 max-w-[340px]">
-                                    <div className="flex flex-col space-y-1">
-                                      <span className="text-xs font-bold text-slate-900">{result.name}</span>
-                                      {result.error && (
-                                        <span className="text-[10px] text-rose-600 font-bold leading-normal break-words whitespace-normal block bg-rose-50/60 p-2 rounded-xl border border-rose-100/60 mt-1">
-                                          {result.error}
-                                        </span>
+                              {[...uploadResults]
+                                .sort((a, b) => {
+                                  // Show 'error' (failed) status at the top, followed by 'success' or other items
+                                  if (a.status === 'error' && b.status !== 'error') return -1;
+                                  if (a.status !== 'error' && b.status === 'error') return 1;
+                                  return a.id - b.id; // Keep original excel row index sequence amongst items with same status
+                                })
+                                .map((result) => (
+                                  <TableRow key={result.id} className="group border-slate-100 bg-white/40 hover:bg-slate-50/80 transition-colors">
+                                    <TableCell className="pl-6 font-mono text-[11px] text-slate-400/80">{(result.id + 1).toString().padStart(3, '0')}</TableCell>
+                                    <TableCell className="py-3 max-w-[340px]">
+                                      <div className="flex flex-col space-y-1">
+                                        <span className="text-xs font-semibold text-slate-800">{result.name}</span>
+                                        {result.error && (
+                                          <span className="text-[10px] text-rose-600 font-medium leading-normal break-words whitespace-normal block bg-rose-50/50 p-2 rounded-lg border border-rose-100/45 mt-1">
+                                            {result.error}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-6">
+                                      {result.status === 'pending' && <Badge variant="outline" className="text-[9px] font-bold tracking-tight border-slate-200 text-slate-400 bg-slate-50">QUEUED</Badge>}
+                                      {result.status === 'processing' && (
+                                        <div className="inline-flex items-center justify-end gap-1.5">
+                                          <div className="w-1.5 h-1.5 bg-indigo-505 rounded-full animate-pulse"></div>
+                                          <span className="text-[9px] font-bold text-indigo-600 tracking-wider">SYNCING...</span>
+                                        </div>
                                       )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right pr-6">
-                                    {result.status === 'pending' && <Badge variant="outline" className="text-[9px] font-black tracking-tight border-slate-300 text-slate-400 bg-transparent">QUEUED</Badge>}
-                                    {result.status === 'processing' && (
-                                      <div className="flex items-center justify-end gap-2">
-                                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
-                                        <span className="text-[9px] font-black text-blue-600 tracking-tight">SYNCING...</span>
-                                      </div>
-                                    )}
-                                    {result.status === 'success' && (
-                                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full border border-emerald-100">
-                                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                                        <span className="text-[9px] font-black uppercase tracking-tight">VERIFIED</span>
-                                      </div>
-                                    )}
-                                    {result.status === 'error' && (
-                                      <div className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full border border-rose-100">
-                                        <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-bounce"></div>
-                                        <span className="text-[9px] font-black uppercase tracking-tight">FAILED</span>
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                                      {result.status === 'success' && (
+                                        <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full border border-emerald-100">
+                                          <div className="w-1 h-1 bg-emerald-500 rounded-full"></div>
+                                          <span className="text-[9px] font-bold uppercase tracking-wider">VERIFIED</span>
+                                        </div>
+                                      )}
+                                      {result.status === 'error' && (
+                                        <div className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2.5 py-1 rounded-full border border-rose-100">
+                                          <div className="w-1 h-1 bg-rose-500 rounded-full animate-bounce"></div>
+                                          <span className="text-[9px] font-bold uppercase tracking-wider">FAILED</span>
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
                             </TableBody>
                           </Table>
                         </div>
@@ -1527,13 +1557,13 @@ export default function Students({ user }: { user: UserType }) {
                     </div>
                   )}
 
-                  <div className="bg-amber-50/50 border border-amber-100 p-5 rounded-2xl flex gap-4">
+                  <div className="bg-amber-50/55 border border-amber-100 p-5 rounded-2xl flex gap-4">
                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0">
                       <Filter className="text-amber-500" size={18} />
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-amber-900 uppercase tracking-widest">Master Data Integrity</p>
-                      <p className="text-xs text-amber-700/80 leading-relaxed font-medium">
+                      <p className="text-xs text-amber-700 leading-relaxed font-semibold">
                         The importer automatically maps names (e.g., "10th Standard") to system IDs. Ensure spelling exactly matches the Master Configuration to avoid orphan records.
                       </p>
                     </div>
@@ -1543,7 +1573,7 @@ export default function Students({ user }: { user: UserType }) {
                 {uploadResults.length > 0 && !isProcessing && (
                   <div className="p-6 bg-slate-50 border-t border-slate-100 shrink-0">
                     <Button
-                      className="w-full bg-slate-900 hover:bg-black font-black rounded-xl h-10 transition-all"
+                      className="w-full bg-slate-900 hover:bg-black font-black rounded-xl h-10 transition-all cursor-pointer"
                       onClick={() => {
                         setIsBulkUploadOpen(false);
                         setUploadResults([]);
