@@ -20,7 +20,7 @@ var allowedCorsOrigins = !string.IsNullOrWhiteSpace(corsOriginsOverride)
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
-builder.Services.Configure<RouteOptions>(options => 
+builder.Services.Configure<RouteOptions>(options =>
 {
     options.LowercaseUrls = true;
     options.LowercaseQueryStrings = true;
@@ -96,7 +96,7 @@ app.Use(async (context, next) =>
         FileLogger.LogError(ex);
 
         // Log to Database (optional, don't crash if DB is down)
-        try 
+        try
         {
             var db = context.RequestServices.GetRequiredService<ApplicationDbContext>();
             db.ErrorLogs.Add(new ErrorLog
@@ -113,12 +113,13 @@ app.Use(async (context, next) =>
         {
             FileLogger.LogError(new Exception("Failed to log error to database. " + dbEx.Message, dbEx));
         }
-        
+
         // Return a cleaner 500 error instead of throwing a raw exception that might leak info
         context.Response.StatusCode = 500;
         context.Response.ContentType = "application/json";
-        await context.Response.WriteAsJsonAsync(new { 
-            error = "Internal Server Error", 
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "Internal Server Error",
             message = ex.Message,
             details = "Check server logs for more information."
         });
@@ -129,8 +130,8 @@ app.Use(async (context, next) =>
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    //c.SwaggerEndpoint("/swagger/v1/swagger.json", "ScanID API v1");
-    c.SwaggerEndpoint("/scanid_erp_api/swagger/v1/swagger.json", "ScanID API v1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ScanID API v1");
+    // c.SwaggerEndpoint("/scanid_erp_api/swagger/v1/swagger.json", "ScanID API v1");
     c.RoutePrefix = "swagger"; // Keep it at /swagger
 });
 
@@ -140,7 +141,7 @@ if (app.Environment.IsDevelopment())
     // In development, we might not have SSL certificates configured locally, 
     // so we skip redirection to prevent "Empty Response" errors.
 }
-else 
+else
 {
     //app.UseHttpsRedirection();
 }
@@ -151,136 +152,5 @@ app.MapGet("/", () => Results.Content("<h1>ScanID API is running!</h1><p>Visit <
 
 app.UseAuthorization();
 app.MapControllers();
-
-// =========================================================================
-// SELF-HEALING DATABASE INITIALIZER
-// Automatically patches and aligns tables, constraints, and stored procedures
-// to prevent any schema mismatch issues on startup.
-// =========================================================================
-try
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        
-        // 1. Ensure StaffInitials table exists and is populated
-        _ = await context.Database.ExecuteSqlRawAsync(@"
-            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StaffInitials]') AND type in (N'U'))
-            BEGIN
-                CREATE TABLE [dbo].[StaffInitials](
-                    [Id] [int] IDENTITY(1,1) NOT NULL,
-                    [Name] [nvarchar](100) NOT NULL,
-                    [IsActive] [bit] NOT NULL CONSTRAINT [DF_StaffInitials_IsActive] DEFAULT (1),
-                    [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_StaffInitials_IsDeleted] DEFAULT (0),
-                    [CreatedBy] [nvarchar](max) NULL,
-                    [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_StaffInitials_CreatedOn] DEFAULT (GETUTCDATE()),
-                    [ModifiedBy] [nvarchar](max) NULL,
-                    [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_StaffInitials_ModifiedOn] DEFAULT (GETUTCDATE()),
-                 CONSTRAINT [PK_StaffInitials] PRIMARY KEY CLUSTERED ([Id] ASC)
-                );
-
-                INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Mr.', 1, GETUTCDATE(), GETUTCDATE());
-                INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Mrs.', 1, GETUTCDATE(), GETUTCDATE());
-                INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Ms.', 1, GETUTCDATE(), GETUTCDATE());
-                INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Dr.', 1, GETUTCDATE(), GETUTCDATE());
-                INSERT INTO [dbo].[StaffInitials] ([Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES (N'Prof.', 1, GETUTCDATE(), GETUTCDATE());
-            END
-        ");
-
-        // 2. Clear old constraints on Teachers table and DROP Teachers table if Staff table already exists
-        _ = await context.Database.ExecuteSqlRawAsync(@"
-            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
-            BEGIN
-                IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Teachers]') AND type in (N'U'))
-                BEGIN
-                    IF EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Teachers_Users_UserId' AND parent_object_id = OBJECT_ID('dbo.Teachers'))
-                        ALTER TABLE [dbo].[Teachers] DROP CONSTRAINT [FK_Teachers_Users_UserId];
-                    IF EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Teachers_Schools_SchoolId' AND parent_object_id = OBJECT_ID('dbo.Teachers'))
-                        ALTER TABLE [dbo].[Teachers] DROP CONSTRAINT [FK_Teachers_Schools_SchoolId];
-                    
-                    DROP TABLE [dbo].[Teachers];
-                END
-            END
-        ");
-
-        // 3. Re-align and update sp_ManageUser stored procedure dynamically to support @ModifiedBy (11 parameters)
-        _ = await context.Database.ExecuteSqlRawAsync("IF OBJECT_ID('dbo.sp_ManageUser', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageUser;");
-        _ = await context.Database.ExecuteSqlRawAsync(@"
-            CREATE PROCEDURE dbo.sp_ManageUser
-                @Action NVARCHAR(10),
-                @Id INT = NULL,
-                @Username NVARCHAR(100) = NULL,
-                @PasswordHash NVARCHAR(255) = NULL,
-                @Name NVARCHAR(100) = NULL,
-                @Email NVARCHAR(100) = NULL,
-                @Role NVARCHAR(50) = NULL,
-                @RoleId INT = NULL,
-                @SchoolId INT = NULL,
-                @CreatedBy NVARCHAR(100) = NULL,
-                @ModifiedBy NVARCHAR(100) = NULL
-            AS
-            BEGIN
-                SET NOCOUNT ON;
-                IF @Action = 'INSERT'
-                BEGIN
-                    IF @PasswordHash IS NULL OR @PasswordHash = ''
-                    BEGIN
-                        SET @PasswordHash = 'password123';
-                    END
-
-                    INSERT INTO [dbo].[Users] (
-                        Username, PasswordHash, Name, Email, Role, RoleId, SchoolId, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
-                    ) VALUES (
-                        @Username, @PasswordHash, @Name, @Email, @Role, @RoleId, @SchoolId, 1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy, @ModifiedBy
-                    );
-                    SELECT SCOPE_IDENTITY();
-                END
-                ELSE IF @Action = 'UPDATE'
-                BEGIN
-                    UPDATE [dbo].[Users] SET
-                        Username = ISNULL(@Username, Username),
-                        PasswordHash = ISNULL(@PasswordHash, PasswordHash),
-                        Name = ISNULL(@Name, Name),
-                        Email = ISNULL(@Email, Email),
-                        Role = ISNULL(@Role, Role),
-                        RoleId = ISNULL(@RoleId, RoleId),
-                        SchoolId = ISNULL(@SchoolId, SchoolId),
-                        ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy),
-                        ModifiedOn = GETUTCDATE()
-                    WHERE Id = @Id;
-                END
-                ELSE IF @Action = 'DELETE'
-                BEGIN
-                    UPDATE [dbo].[Users] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
-                END
-            END
-        ");
-
-        // 4. Drop redundant Temp_ columns from Staff table if they exist
-        _ = await context.Database.ExecuteSqlRawAsync(@"
-            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
-            BEGIN
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_IsActive')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsActive];
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_IsDeleted')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_IsDeleted];
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_CreatedBy')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedBy];
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_CreatedOn')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_CreatedOn];
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_ModifiedBy')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedBy];
-                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'Temp_ModifiedOn')
-                    ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedOn];
-            END
-        ");
-    }
-}
-catch (Exception ex)
-{
-    FileLogger.LogError(new Exception("Database self-healing initializer failed: " + ex.Message, ex));
-}
-
 app.Run();
 

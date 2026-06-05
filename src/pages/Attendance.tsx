@@ -3,38 +3,38 @@ import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { 
-  Calendar as CalendarIcon, 
-  Check, 
-  X, 
-  Clock, 
-  Save, 
-  Loader2, 
-  CalendarCheck, 
-  UploadCloud, 
-  FileText, 
-  BarChart3, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  TrendingUp, 
-  Users, 
+import {
+  Calendar as CalendarIcon,
+  Check,
+  X,
+  Clock,
+  Save,
+  Loader2,
+  CalendarCheck,
+  UploadCloud,
+  FileText,
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  TrendingUp,
+  Users,
   Layers,
   Cpu,
   Sliders,
@@ -52,15 +52,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { cn, parseSafeInt } from "@/lib/utils";
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from "recharts";
 
 // Interfaces for our interactive upload entries
@@ -76,7 +76,7 @@ interface UploadLog {
 export default function Attendance({ user }: { user: any }) {
   // Navigation tabs: daily (Daily Roll Call), manual (Manual Attendance Upload), report (Attendance Reports)
   const [activeTab, setActiveTab] = useState<"daily" | "manual" | "report">("daily");
-  
+
   // -----------------------------------------
   // State for Daily Attendance Tab
   // -----------------------------------------
@@ -153,16 +153,16 @@ export default function Attendance({ user }: { user: any }) {
           apiService.getStandards(),
           apiService.getSections()
         ]);
-        
+
         const normalize = (res: any) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
         const schoolData = normalize(schoolsRes);
         const standardData = normalize(standardsRes);
         const sectionData = normalize(sectionsRes);
-        
+
         setSchools(schoolData);
         setStandardsMaster(standardData);
         setSectionsMaster(sectionData);
-        
+
         if (user.role === "superadmin" && !selectedSchoolId && schoolData.length > 0) {
           setSelectedSchoolId(schoolData[0].id.toString());
         }
@@ -222,22 +222,22 @@ export default function Attendance({ user }: { user: any }) {
       // Pass role filtering dynamically to getAttendance in parallel
       const [rosterRes, attendanceRes] = await Promise.all([
         recordType === "student"
-          ? apiService.getStudents(schoolIdToUse, academicYearIdToUse, { 
-              page, 
-              pageSize, 
-              search: search || undefined, 
-              standardId: stdId, 
-              sectionId: sectId,
-              sortBy: sortBy,
-              sortOrder: sortOrder
-            })
-          : apiService.getStaff(schoolIdToUse, academicYearIdToUse, { 
-              page, 
-              pageSize, 
-              search: search || undefined,
-              sortBy: sortBy,
-              sortOrder: sortOrder
-            }),
+          ? apiService.getStudents(schoolIdToUse, academicYearIdToUse, {
+            page,
+            pageSize,
+            search: search || undefined,
+            standardId: stdId,
+            sectionId: sectId,
+            sortBy: sortBy,
+            sortOrder: sortOrder
+          })
+          : apiService.getStaff(schoolIdToUse, academicYearIdToUse, {
+            page,
+            pageSize,
+            search: search || undefined,
+            sortBy: sortBy,
+            sortOrder: sortOrder
+          }),
         apiService.getAttendance(formattedDate, schoolIdToUse, academicYearIdToUse, {
           role: recordType,
           page: 1,
@@ -245,16 +245,16 @@ export default function Attendance({ user }: { user: any }) {
         })
       ]);
 
-      const rawRoster = Array.isArray(rosterRes.data) 
-        ? rosterRes.data 
+      const rawRoster = Array.isArray(rosterRes.data)
+        ? rosterRes.data
         : (rosterRes.data?.data || []);
-      
+
       const paginationObj = rosterRes.data?.pagination || {};
       setTotalPages(paginationObj.totalPages || Math.ceil((rosterRes.data?.totalCount || rawRoster.length) / pageSize) || 1);
       setTotalCount(rosterRes.data?.totalCount ?? paginationObj.totalCount ?? rawRoster.length);
 
-      const attendanceRecords = Array.isArray(attendanceRes.data) 
-        ? attendanceRes.data 
+      const attendanceRecords = Array.isArray(attendanceRes.data)
+        ? attendanceRes.data
         : (attendanceRes.data?.data || []);
 
       // Mapping standard or staff records with local schema mappings safely
@@ -264,13 +264,13 @@ export default function Attendance({ user }: { user: any }) {
           const userObj = s.user || {};
           const sKeys = Object.keys(s);
           const uKeys = Object.keys(userObj);
-          
+
           const sMatch = sKeys.find(k => k.toLowerCase() === prop.toLowerCase());
           if (sMatch) return s[sMatch];
-          
+
           const uMatch = uKeys.find(k => k.toLowerCase() === prop.toLowerCase());
           if (uMatch) return userObj[uMatch];
-          
+
           return fallback;
         };
 
@@ -285,8 +285,8 @@ export default function Attendance({ user }: { user: any }) {
           }
         });
 
-        const currentStatus = matchedRecord 
-          ? (matchedRecord.status ?? matchedRecord.Status ?? "Present").toLowerCase() 
+        const currentStatus = matchedRecord
+          ? (matchedRecord.status ?? matchedRecord.Status ?? "Present").toLowerCase()
           : "present";
 
         if (recordType === "student") {
@@ -358,9 +358,9 @@ export default function Attendance({ user }: { user: any }) {
         }
         return payload;
       });
-      
+
       // Submit safely via our dual-binding bulk transaction endpoint
-      await apiService.markAttendance(records); 
+      await apiService.markAttendance(records);
       toast.success(`${recordType === "student" ? "Student" : "Staff"} Attendance updated successfully in SQL Server`);
       fetchStudentsAndAttendance();
     } catch (error) {
@@ -427,7 +427,7 @@ export default function Attendance({ user }: { user: any }) {
 
     // Prepare processing checklist
     const uploadTargets: { name: string; role: string; date: string; studentId?: number; staffId?: number }[] = [];
-    
+
     dates.forEach(d => {
       // Include Students
       if (attendeeType === "all" || attendeeType === "student") {
@@ -440,7 +440,7 @@ export default function Attendance({ user }: { user: any }) {
           });
         });
       }
-      
+
       // Include Teachers (Academic Staff)
       if (attendeeType === "all" || attendeeType === "teacher") {
         const targetTeachersNext = teachers.length > 0 ? teachers.map(t => ({
@@ -452,7 +452,7 @@ export default function Attendance({ user }: { user: any }) {
           { name: "Sunita Deshmukh (Chemistry)", role: "Teacher", staffId: 2 },
           { name: "Ramesh Sharma (Mathematics)", role: "Teacher", staffId: 3 }
         ];
-        
+
         targetTeachersNext.forEach(t => {
           uploadTargets.push({
             name: t.name,
@@ -462,20 +462,20 @@ export default function Attendance({ user }: { user: any }) {
           });
         });
       }
-      
+
       // Include Staff (Administrative Staff)
       if (attendeeType === "all" || attendeeType === "staff") {
-        const targetStaffNext = staffList.length > 0 
+        const targetStaffNext = staffList.length > 0
           ? staffList.map(st => ({
-              name: st.name || st.fullName || `Staff Member ${st.id}`,
-              role: "Staff",
-              staffId: st.id
-            }))
+            name: st.name || st.fullName || `Staff Member ${st.id}`,
+            role: "Staff",
+            staffId: st.id
+          }))
           : [
-              { name: "Anish Kumar (Administrative Admin)", role: "Staff", staffId: 4 },
-              { name: "Milind Sane (Librarian Clerk)", role: "Staff", staffId: 5 },
-              { name: "Kirti Roy (Registrar General)", role: "Staff", staffId: 6 }
-            ];
+            { name: "Anish Kumar (Administrative Admin)", role: "Staff", staffId: 4 },
+            { name: "Milind Sane (Librarian Clerk)", role: "Staff", staffId: 5 },
+            { name: "Kirti Roy (Registrar General)", role: "Staff", staffId: 6 }
+          ];
         targetStaffNext.forEach(st => {
           uploadTargets.push({
             name: st.name,
@@ -665,13 +665,13 @@ export default function Attendance({ user }: { user: any }) {
         for (let j = 0; j < rawLines.length; j += chunkSize) {
           const chunk = rawLines.slice(j, j + chunkSize);
           const batchRes = await apiService.processImmediateLines(formattedDateStr, chunk, false);
-          
+
           const returnedLogs = batchRes.data?.logs || [];
           setFolderScanLogs(prev => [
             ...prev,
             ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
           ]);
-          
+
           // Refresh log grid after each chunk insert!
           await fetchIodataLogs();
           // Smooth micro transition delay for gorgeous progressive visual effect
@@ -807,7 +807,7 @@ export default function Attendance({ user }: { user: any }) {
           for (let j = 0; j < rawLines.length; j += chunkSize) {
             const chunk = rawLines.slice(j, j + chunkSize);
             const res = await apiService.processImmediateLines(currentDateStr, chunk, false);
-            
+
             const returnedLogs = res.data?.logs || [];
             setFolderScanLogs(prev => [
               ...prev,
@@ -816,7 +816,7 @@ export default function Attendance({ user }: { user: any }) {
 
             // Refresh bottom table logs immediately for dynamic live display!
             await fetchIodataLogs();
-            
+
             // Short aesthetic delay for awesome rendering effect
             await new Promise(resolve => setTimeout(resolve, 80));
           }
@@ -885,40 +885,41 @@ export default function Attendance({ user }: { user: any }) {
         const currentDateStr = datesToProcess[i];
         const parsedDate = parseISO(currentDateStr);
         setFolderScanLogs(prev => [...prev, `[SCAN] Checking server index directories for date: ${currentDateStr}...`]);
-        
+
         try {
           // Progressively read the server file first!
           const fileRes = await apiService.readServerFile(currentDateStr);
           const lines = fileRes.data?.lines || [];
           const filename = fileRes.data?.fileName || `Data${format(parsedDate, "ddMMyy")}.txt`;
-          
+
           if (Array.isArray(lines) && lines.length > 0) {
             setFolderScanLogs(prev => [
               ...prev,
               `[SERVER_PROGRESS] Found server file ${filename} with ${lines.length} logs. Initiating progressive live populate...`
             ]);
-            
+
             // Step 1: Wipe target date once
             await apiService.processImmediateLines(currentDateStr, [], true);
-            
+
             // Step 2: Loop and insert progressively in small chunks of 2 records
             const chunkSize = 2; // small chunk size for progressive live rendering!
+
             for (let j = 0; j < lines.length; j += chunkSize) {
               const chunk = lines.slice(j, j + chunkSize);
               const batchRes = await apiService.processImmediateLines(currentDateStr, chunk, false);
-              
+
               const returnedLogs = batchRes.data?.logs || [];
               setFolderScanLogs(prev => [
                 ...prev,
                 ...returnedLogs.map((l: any) => typeof l === "string" ? l : JSON.stringify(l))
               ]);
-              
+
               // Refresh log grid after each chunk insert!
               await fetchIodataLogs();
               // Smooth micro transition delay for gorgeous progressive visual effect
               await new Promise(resolve => setTimeout(resolve, 80));
             }
-            
+
             toast.success(`Progressively synced ${filename} from server watch folder!`);
           } else {
             setFolderScanLogs(prev => [...prev, `[SKIP] No readable lines in DataDDMMYY.txt for ${currentDateStr}.`]);
@@ -1068,7 +1069,7 @@ export default function Attendance({ user }: { user: any }) {
     const totalDays = 20;
     const present = Math.floor((seedPercent / 100) * totalDays);
     const absent = totalDays - present;
-    
+
     return {
       id: s.id,
       name: s.name,
@@ -1088,7 +1089,7 @@ export default function Attendance({ user }: { user: any }) {
     { date: "May 15", studentRate: aggregateRate - 2, staffRate: 98, overall: aggregateRate - 1 },
     { date: "May 16", studentRate: aggregateRate + 1, staffRate: 96, overall: aggregateRate },
     { date: "May 17", studentRate: aggregateRate - 4, staffRate: 97, overall: aggregateRate - 2 },
-    { date: "May 18", studentRate: aggregateRate,     staffRate: 99, overall: aggregateRate + 1 },
+    { date: "May 18", studentRate: aggregateRate, staffRate: 99, overall: aggregateRate + 1 },
     { date: "May 19", studentRate: aggregateRate + 2, staffRate: 95, overall: aggregateRate },
     { date: "May 20", studentRate: aggregateRate - 1, staffRate: 98, overall: aggregateRate - 1 },
     { date: "May 21", studentRate: aggregateRate + 3, staffRate: 97, overall: aggregateRate + 2 }
@@ -1096,14 +1097,14 @@ export default function Attendance({ user }: { user: any }) {
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
-      
+
       {/* -----------------------------------------
           HEADER SECTION
          ----------------------------------------- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           <div className="bg-emerald-600 p-4 rounded-[1.25rem] text-white shadow-2xl shadow-emerald-200 transition-transform hover:rotate-3">
-             <CalendarCheck size={28} />
+            <CalendarCheck size={28} />
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Daily Attendance</h1>
@@ -1113,34 +1114,34 @@ export default function Attendance({ user }: { user: any }) {
 
         {/* Dynamic Tab Switch buttons */}
         <div className="flex bg-slate-100 p-1 rounded-xl shadow-sm border border-slate-200">
-          <button 
+          <button
             onClick={() => setActiveTab("daily")}
             className={cn(
               "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
-              activeTab === "daily" 
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+              activeTab === "daily"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
             Roll Call
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab("manual")}
             className={cn(
               "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
-              activeTab === "manual" 
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+              activeTab === "manual"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
             Manual Upload
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab("report")}
             className={cn(
               "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
-              activeTab === "report" 
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100" 
+              activeTab === "report"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
@@ -1160,7 +1161,7 @@ export default function Attendance({ user }: { user: any }) {
               <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Select unit and date registry</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 p-8">
-              
+
               {/* Branch Selector */}
               {user.role === "superadmin" && (
                 <div className="space-y-2">
@@ -1192,8 +1193,8 @@ export default function Attendance({ user }: { user: any }) {
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase text-slate-400 tracking-widest ml-1">Attendance Date</label>
                 <div className="relative">
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={format(date, "yyyy-MM-dd")}
                     onChange={(e) => setDate(e.target.value ? parseISO(e.target.value) : new Date())}
                     className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11"
@@ -1233,8 +1234,8 @@ export default function Attendance({ user }: { user: any }) {
                   <Select value={selectedStandard} onValueChange={(val) => { setSelectedStandard(val || ""); setPage(1); }}>
                     <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
                       <SelectValue placeholder="Select Standard">
-                        {selectedStandard === "all" 
-                          ? "All Standards" 
+                        {selectedStandard === "all"
+                          ? "All Standards"
                           : (standardsMaster.find(std => std.id.toString() === selectedStandard)?.name || undefined)}
                       </SelectValue>
                     </SelectTrigger>
@@ -1256,8 +1257,8 @@ export default function Attendance({ user }: { user: any }) {
                   <Select value={selectedSection} onValueChange={(val) => { setSelectedSection(val || ""); setPage(1); }}>
                     <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
                       <SelectValue placeholder="Select Division">
-                        {selectedSection === "all" 
-                          ? "All Divisions" 
+                        {selectedSection === "all"
+                          ? "All Divisions"
                           : (selectedSection ? `Division ${sectionsMaster.find(sec => sec.id.toString() === selectedSection)?.name || ""}` : undefined)}
                       </SelectValue>
                     </SelectTrigger>
@@ -1274,24 +1275,24 @@ export default function Attendance({ user }: { user: any }) {
 
               {/* Presence Summary */}
               <div className="pt-4 space-y-3">
-                  <h4 className="text-xs font-bold uppercase text-slate-400">Class Presence</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                          <p className="text-2xl font-bold text-emerald-700">{students.filter(s => s.status === 'present').length}</p>
-                          <p className="text-[10px] uppercase font-bold text-emerald-600">Present</p>
-                      </div>
-                      <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-                          <p className="text-2xl font-bold text-red-700">{students.filter(s => s.status === 'absent').length}</p>
-                          <p className="text-[10px] uppercase font-bold text-red-600">Absent</p>
-                      </div>
+                <h4 className="text-xs font-bold uppercase text-slate-400">Class Presence</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <p className="text-2xl font-bold text-emerald-700">{students.filter(s => s.status === 'present').length}</p>
+                    <p className="text-[10px] uppercase font-bold text-emerald-600">Present</p>
                   </div>
+                  <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                    <p className="text-2xl font-bold text-red-700">{students.filter(s => s.status === 'absent').length}</p>
+                    <p className="text-[10px] uppercase font-bold text-red-600">Absent</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Right Main Panel */}
           <div className="lg:col-span-3 space-y-6">
-            
+
             {/* If Roll Call tab is active */}
             {activeTab === "daily" && (
               <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white">
@@ -1308,14 +1309,14 @@ export default function Attendance({ user }: { user: any }) {
                       onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                       className="h-9 w-60 rounded-xl text-xs font-semibold border-slate-200 bg-slate-50/50"
                     />
-                    <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({...x, status: 'present'})))}>Mark All Present</Button>
+                    <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({ ...x, status: 'present' })))}>Mark All Present</Button>
                     {canManage && (
-                      <Button 
-                        className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-bold" 
+                      <Button
+                        className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-bold"
                         onClick={handleSave}
                         disabled={isSaving || loading}
                       >
-                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         {isSaving ? "Saving..." : "Save Changes"}
                       </Button>
                     )}
@@ -1330,49 +1331,49 @@ export default function Attendance({ user }: { user: any }) {
                     <>
                       <Table>
                         <TableHeader>
-                            <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
-                              <TableHead 
-                                className="w-[140px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
-                                onClick={() => handleSort("grno")}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {recordType === "student" ? "GR No" : "Emp Code"}
-                                  {sortBy === "grno" ? (
-                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
-                                  ) : (
-                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="w-24 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
-                                onClick={() => handleSort("roll")}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {recordType === "student" ? "Roll" : "Dept/Sub"}
-                                  {sortBy === "roll" ? (
-                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
-                                  ) : (
-                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead 
-                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
-                                onClick={() => handleSort("name")}
-                              >
-                                <div className="flex items-center gap-1">
-                                  Full Identity
-                                  {sortBy === "name" ? (
-                                    sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
-                                  ) : (
-                                    <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
-                                  )}
-                                </div>
-                              </TableHead>
-                              <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
-                              {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
-                            </TableRow>
+                          <TableRow className="bg-slate-50/50 h-16 border-b border-slate-50">
+                            <TableHead
+                              className="w-[140px] pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                              onClick={() => handleSort("grno")}
+                            >
+                              <div className="flex items-center gap-1">
+                                {recordType === "student" ? "GR No" : "Emp Code"}
+                                {sortBy === "grno" ? (
+                                  sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                ) : (
+                                  <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead
+                              className="w-24 hidden sm:table-cell text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                              onClick={() => handleSort("roll")}
+                            >
+                              <div className="flex items-center gap-1">
+                                {recordType === "student" ? "Roll" : "Dept/Sub"}
+                                {sortBy === "roll" ? (
+                                  sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                ) : (
+                                  <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead
+                              className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-slate-900 group/th"
+                              onClick={() => handleSort("name")}
+                            >
+                              <div className="flex items-center gap-1">
+                                Full Identity
+                                {sortBy === "name" ? (
+                                  sortOrder === "asc" ? <ArrowUp size={12} className="text-blue-600 font-bold" /> : <ArrowDown size={12} className="text-blue-600 font-bold" />
+                                ) : (
+                                  <ArrowUpDown size={11} className="text-slate-300 opacity-40 group-hover/th:opacity-100 transition-opacity" />
+                                )}
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Presence Status</TableHead>
+                            {canManage && <TableHead className="text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</TableHead>}
+                          </TableRow>
                         </TableHeader>
                         <TableBody>
                           {Array.isArray(students) && students.map((student) => (
@@ -1381,12 +1382,12 @@ export default function Attendance({ user }: { user: any }) {
                               <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
                               <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
                               <TableCell>
-                                <Badge 
+                                <Badge
                                   className={cn(
                                     "capitalize font-bold text-[10px] px-3",
                                     student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
-                                    student.status === 'absent' ? "bg-red-100 text-red-700" :
-                                    "bg-amber-100 text-amber-700"
+                                      student.status === 'absent' ? "bg-red-100 text-red-700" :
+                                        "bg-amber-100 text-amber-700"
                                   )}
                                   variant="secondary"
                                 >
@@ -1396,24 +1397,24 @@ export default function Attendance({ user }: { user: any }) {
                               {canManage && (
                                 <TableCell className="text-right pr-8">
                                   <div className="flex justify-end gap-1.5 font-bold">
-                                    <Button 
-                                      size="icon" 
-                                      variant={student.status === 'present' ? "default" : "outline"} 
+                                    <Button
+                                      size="icon"
+                                      variant={student.status === 'present' ? "default" : "outline"}
                                       className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
                                       onClick={() => updateStatus(student.id, 'present')}
                                     >
                                       <Check size={14} />
                                     </Button>
-                                    <Button 
-                                      size="icon" 
+                                    <Button
+                                      size="icon"
                                       variant={student.status === 'absent' ? "default" : "outline"}
                                       className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
                                       onClick={() => updateStatus(student.id, 'absent')}
                                     >
                                       <X size={14} />
                                     </Button>
-                                    <Button 
-                                      size="icon" 
+                                    <Button
+                                      size="icon"
                                       variant={student.status === 'late' ? "default" : "outline"}
                                       className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
                                       onClick={() => updateStatus(student.id, 'late')}
@@ -1493,7 +1494,7 @@ export default function Attendance({ user }: { user: any }) {
               <div className="space-y-6">
                 {/* Bento aggregate cards row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                  
+
                   <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
                     <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
                       <BarChart3 size={24} />
@@ -1541,7 +1542,7 @@ export default function Attendance({ user }: { user: any }) {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-                  
+
                   {/* Recharts chart visualization */}
                   <Card className="xl:col-span-3 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-8">
                     <div className="mb-6">
@@ -1553,12 +1554,12 @@ export default function Attendance({ user }: { user: any }) {
                         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorOverall" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                             </linearGradient>
                             <linearGradient id="colorStaff" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
+                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -1604,8 +1605,8 @@ export default function Attendance({ user }: { user: any }) {
                                 <span className={cn(
                                   "text-sm font-black",
                                   rep.rate >= 90 ? "text-emerald-600" :
-                                  rep.rate >= 75 ? "text-amber-600" :
-                                  "text-red-600"
+                                    rep.rate >= 75 ? "text-amber-600" :
+                                      "text-red-600"
                                 )}>
                                   {rep.rate}%
                                 </span>
@@ -1631,10 +1632,10 @@ export default function Attendance({ user }: { user: any }) {
                       <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Database Audit Trail Logs</CardTitle>
                       <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Transaction audit logs capturing actions, updates, and user ids</CardDescription>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={fetchAuditTrail} 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchAuditTrail}
                       className="h-8 rounded-lg font-bold hover:bg-slate-50 border-slate-200"
                     >
                       <RefreshCw size={12} className="mr-1.5" />
@@ -1667,19 +1668,19 @@ export default function Attendance({ user }: { user: any }) {
                                 const entity = log.tableName || log.TableName || "Attendance";
                                 const who = log.userId || log.UserId || log.markedByUserId || log.MarkedByUserId || "1";
                                 const details = log.newValues || log.NewValues || log.details || log.Details || log.remarks || log.Remarks || "Modified record status successfully.";
-                                
+
                                 return (
                                   <TableRow key={log.id || idx} className="h-14 hover:bg-slate-50/50 border-b border-slate-100">
                                     <TableCell className="pl-8 font-mono text-[11px] text-slate-500 whitespace-nowrap">
                                       {format(parseISO(parseDate), "yyyy-MM-dd HH:mm:ss")}
                                     </TableCell>
                                     <TableCell>
-                                      <Badge 
+                                      <Badge
                                         className={cn(
                                           "text-[9px] font-black uppercase tracking-wider px-2 py-0.5",
                                           evType.toLowerCase().includes("insert") || evType.toLowerCase().includes("create") ? "bg-emerald-50 text-emerald-700 border-emerald-100 border" :
-                                          evType.toLowerCase().includes("delete") ? "bg-red-50 text-red-700 border-red-100 border" :
-                                          "bg-blue-50 text-blue-700 border-blue-100 border"
+                                            evType.toLowerCase().includes("delete") ? "bg-red-50 text-red-700 border-red-100 border" :
+                                              "bg-blue-50 text-blue-700 border-blue-100 border"
                                         )}
                                       >
                                         {evType}
@@ -1758,577 +1759,603 @@ export default function Attendance({ user }: { user: any }) {
         <div className="space-y-6 w-full">
           {/* Configurable Modern Sub-tab selection for Classic manual marking */}
           {/* Note: RFID Auto Importer (IO Data) sub-tab section is hidden as requested */}
+          <div className="flex gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setManualSubTab("classic")}
+              className={cn(
+                "flex-1 py-2 text-10px font-black uppercase rounded-lg transition-all",
+                manualSubTab === "classic"
+                  ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              Classic Manual
+            </button>
 
+            <button
+              type="button"
+              onClick={() => setManualSubTab("iodata")}
+              className={cn(
+                "flex-1 py-2 text-10px font-black uppercase rounded-lg transition-all",
+                manualSubTab === "iodata"
+                  ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              IOData Scanner
+            </button>
+          </div>
           {manualSubTab === "classic" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Settings panel */}
-          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white">
-            <CardHeader className="border-b border-slate-50 px-8 py-6">
-              <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Manual Upload Filters</CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Target config and date limits</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              
-              {/* Date range inputs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">From Date</label>
-                  <Input 
-                    type="date" 
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="h-11 rounded-xl border-slate-200 font-semibold"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">To Date</label>
-                  <Input 
-                    type="date" 
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="h-11 rounded-xl border-slate-200 font-semibold"
-                  />
-                </div>
-              </div>
 
-              {/* Attendee Category selector: Students, Staff, Teacher (shows All by default) */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Attendee Type</label>
-                <Select value={attendeeType} onValueChange={(val) => setAttendeeType(val || "")}>
-                  <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
-                    <SelectValue placeholder="Select Attendee Type" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
-                    <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">All (Students, Teachers, Staff)</SelectItem>
-                    <SelectItem value="student" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Student Body</SelectItem>
-                    <SelectItem value="teacher" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Academic Teachers</SelectItem>
-                    <SelectItem value="staff" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Administrative Staff</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Settings panel */}
+              <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white">
+                <CardHeader className="border-b border-slate-50 px-8 py-6">
+                  <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Manual Upload Filters</CardTitle>
+                  <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Target config and date limits</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
 
-              {/* Target Status configuration */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Default Status</label>
-                <div className="flex gap-2">
-                  {["Present", "Absent", "Late"].map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setManualStatusToMark(st)}
-                      className={cn(
-                        "flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all border",
-                        manualStatusToMark === st 
-                          ? st === "Present" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                            : st === "Absent" ? "bg-red-50 border-red-300 text-red-700"
-                            : "bg-amber-50 border-amber-300 text-amber-700"
-                          : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                      )}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Drag and Drop File Selection container */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supporting File Attachment (Optional)</label>
-                <div 
-                  onDragEnter={handleDrag}
-                  onDragOver={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDrop={handleDrop}
-                  className={cn(
-                    "border-2 border-dashed rounded-2xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer",
-                    dragActive ? "border-emerald-500 bg-emerald-50/20" : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/50",
-                    uploadedFile && "border-solid border-emerald-500 bg-emerald-50/30"
-                  )}
-                >
-                  <input 
-                    type="file" 
-                    id="manual-file-upload" 
-                    className="hidden" 
-                    accept=".csv,.xlsx,.txt"
-                    onChange={handleFileChange}
-                  />
-                  <label htmlFor="manual-file-upload" className="w-full h-full cursor-pointer">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <UploadCloud className={cn("h-8 w-8 text-slate-400", uploadedFile && "text-emerald-600 animate-bounce")} />
-                      {uploadedFile ? (
-                        <div>
-                          <p className="text-xs font-black text-emerald-800 tracking-tight leading-tight">{uploadedFile.name}</p>
-                          <p className="text-[10px] font-semibold text-slate-400 mt-1">{(uploadedFile.size / 1024).toFixed(1)} KB - File loaded securely</p>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-xs font-black text-slate-700 leading-tight">Drag and drop file or click to browse</p>
-                          <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Supports CSV, XLS or TXT logs</p>
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Trigger manual loading */}
-              <Button
-                onClick={handleManualUploadSubmit}
-                disabled={isProcessingUpload || students.length === 0}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl h-12 font-bold tracking-wider text-xs uppercase"
-              >
-                {isProcessingUpload ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin mr-2" />
-                    Uploading...
-                  </>
-                ) : (
-                  "Execute Manual Upload"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Records upload logs with interactive status tracking */}
-          <Card className="lg:col-span-2 shadow-sm border-none rounded-[2rem] bg-white overflow-hidden flex flex-col">
-            <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between bg-white pt-8">
-              <div>
-                <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Interactive Upload Status</CardTitle>
-                <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Real-time database loading monitors</CardDescription>
-              </div>
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-3 py-1 bg-slate-100/50 rounded-full">
-                <span className="h-2 w-2 bg-blue-500 rounded-full animate-ping"></span>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                  Success Rate: {uploadLogs.length === 0 ? "0%" : `${Math.round((uploadLogs.filter(x => x.status === "success").length / uploadLogs.length) * 100)}%`}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0 overflow-y-auto max-h-[500px] flex-1">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead className="pl-8 text-[9px] font-black uppercase text-slate-400">Date</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase text-slate-400">Attendee Name</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase text-slate-400">Role</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase text-slate-400">Write Status</TableHead>
-                    <TableHead className="text-right pr-8 text-[9px] font-black uppercase text-slate-400">Diagnostics</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {uploadLogs.map((log) => (
-                    <TableRow key={log.id} className="h-14 hover:bg-slate-50/50">
-                      <TableCell className="pl-8 font-mono text-xs text-slate-500">{log.date}</TableCell>
-                      <TableCell className="font-extrabold text-slate-800 text-sm tracking-tight">{log.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider">
-                          {log.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          {log.status === "pending" && (
-                            <Badge variant="secondary" className="bg-slate-100 text-slate-500 gap-1 font-bold">
-                              <Clock size={10} /> Pending
-                            </Badge>
-                          )}
-                          {log.status === "processing" && (
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 gap-1 font-bold">
-                              <Loader2 size={10} className="animate-spin" /> Processing
-                            </Badge>
-                          )}
-                          {log.status === "success" && (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 gap-1 font-extrabold">
-                              <CheckCircle2 size={10} className="text-emerald-600" /> Success
-                            </Badge>
-                          )}
-                          {log.status === "error" && (
-                            <Badge variant="secondary" className="bg-red-100 text-red-800 gap-1 font-extrabold">
-                              <XCircle size={10} className="text-red-600" /> Failed
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-8">
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {log.status === "success" && "Inserted Identity OK"}
-                          {log.status === "processing" && "Executing MERGE..."}
-                          {log.status === "error" && (log.error || "Execution timeout")}
-                          {log.status === "pending" && "Waiting in Queue..."}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {uploadLogs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-24 text-center text-slate-400 font-bold">
-                        <UploadCloud className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                        No manual uploads in progress. Select date ranges and click "Execute Manual Upload" to begin streaming active logs.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Render RFID Iodata Auto-Importer Tab */}
-      {manualSubTab === "iodata" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-          
-          {/* Unified Local Folder Scanner with Scan Source selection */}
-          <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white h-fit">
-            <CardHeader className="border-b border-slate-50 px-8 py-6">
-              <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Local Folder Scanner</CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Scan & Import stored RFID files cleanly</CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 space-y-4">
-              
-              {/* Scan Source Select */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Scan Source Location</label>
-                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setScanSource("server")}
-                    className={cn(
-                      "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
-                      scanSource === "server"
-                        ? "bg-white text-slate-800 shadow-sm font-black"
-                        : "text-slate-400 hover:text-slate-700 font-bold"
-                    )}
-                  >
-                    Server C:\iodata
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScanSource("local")}
-                    className={cn(
-                      "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
-                      scanSource === "local"
-                        ? "bg-white text-emerald-800 shadow-sm font-black"
-                        : "text-slate-400 hover:text-slate-700 font-bold"
-                    )}
-                  >
-                    User Local Files
-                  </button>
-                </div>
-              </div>
-
-              {scanSource === "server" ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
-                      <Input 
+                  {/* Date range inputs */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">From Date</label>
+                      <Input
                         type="date"
-                        value={ioFolderFromDate}
-                        onChange={(e) => setIoFolderFromDate(e.target.value)}
-                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                        value={fromDate}
+                        onChange={(e) => setFromDate(e.target.value)}
+                        className="h-11 rounded-xl border-slate-200 font-semibold"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
-                      <Input 
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">To Date</label>
+                      <Input
                         type="date"
-                        value={ioFolderToDate}
-                        onChange={(e) => setIoFolderToDate(e.target.value)}
-                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                        value={toDate}
+                        onChange={(e) => setToDate(e.target.value)}
+                        className="h-11 rounded-xl border-slate-200 font-semibold"
                       />
                     </div>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
-                    <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
-                    Looks for files matched: <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span><br />
-                    Example: <span className="text-emerald-600 font-black font-sans">Data150526.txt</span> represents May 15th, 2026.
-                  </div>
-
-                  <Button
-                    onClick={handleIoFolderScan}
-                    disabled={isProcessingFolderScan}
-                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                  >
-                    {isProcessingFolderScan ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        Scanning Folder Disk...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw size={12} />
-                        Run Batch Folder Scan
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {/* Dynamic From and To date selection for Local Folder Indexing */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.55">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
-                      <Input 
-                        type="date"
-                        value={localFolderFromDate}
-                        onChange={(e) => setLocalFolderFromDate(e.target.value)}
-                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
-                      <Input 
-                        type="date"
-                        value={localFolderToDate}
-                        onChange={(e) => setLocalFolderToDate(e.target.value)}
-                        className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Local Folder Directory Picker */}
+                  {/* Attendee Category selector: Students, Staff, Teacher (shows All by default) */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select user local C:\iodata Folder</label>
-                    <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/10 hover:bg-emerald-50/20 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-36">
-                      <input 
-                        type="file" 
-                        multiple 
-                        accept=".txt" 
-                        onChange={handleLocalFolderFilesSelected} 
-                        className="hidden" 
-                        id="local-folder-directory-picker" 
-                        {...({
-                          webkitdirectory: "",
-                          directory: ""
-                        } as any)}
-                      />
-                      <label htmlFor="local-folder-directory-picker" className="cursor-pointer block w-full h-full">
-                        <FolderOpen className="h-10 w-10 mx-auto mb-2 text-emerald-600 animate-pulse" />
-                        <span className="text-xs font-black text-slate-700 block leading-tight">
-                          {localFolderFiles.length > 0 ? `Folder Indexed: ${localFolderName}` : "Choose Local folder Location"}
-                        </span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
-                          {localFolderFiles.length > 0 ? `${localFolderFiles.length} files detected - click to change` : "Select C:\\iodata directory"}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-sans text-[9px] text-slate-400 leading-normal">
-                    <span className="font-extrabold text-[10px] text-slate-500 block mb-1 font-sans">Local Folder Processing:</span>
-                    Browse and select your local <span className="text-slate-600 font-bold">C:\iodata\</span> folder. It will scan and extract datewise files named <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span> progressively for the selected date range.
-                  </div>
-
-                  <Button
-                    onClick={handleLocalFolderScan}
-                    disabled={isProcessingFolderScan || localFolderFiles.length === 0}
-                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                  >
-                    {isProcessingFolderScan ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        Scanning Folder...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw size={12} />
-                        Run User Folder Scan
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
-
-              {/* Console log outputs for folder scans */}
-              {folderScanLogs.length > 0 && (
-                <div className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] tracking-tight leading-relaxed max-h-48 overflow-y-auto space-y-1 border border-slate-800">
-                  <p className="text-emerald-400 font-black uppercase tracking-widest border-b border-emerald-950 pb-1 mb-1 font-sans">Scanner Log Debugger:</p>
-                  {folderScanLogs.map((logLine, logIdx) => (
-                    <p key={logIdx} className={cn(logLine.startsWith("[FAIL]") || logLine.startsWith("[ERROR]") ? "text-red-400" : logLine.startsWith("Folder") || logLine.startsWith("---") ? "text-blue-300" : "text-emerald-400")}>
-                      &gt; {logLine}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
-
-          {/* RFID Importer Logs Table */}
-          <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-            <CardHeader className="border-b border-slate-50 px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
-              <div>
-                <CardTitle className="text-lg font-black text-slate-900 tracking-tight font-sans">Scanner Processing Logs</CardTitle>
-                <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Processed punch reports via sp_ProcessIodataRecord</CardDescription>
-              </div>
-              <div className="flex items-center gap-3">
-                <Input 
-                  type="date" 
-                  value={iodataFilterDate}
-                  onChange={(e) => setIodataFilterDate(e.target.value)}
-                  className="h-9 text-xs rounded-lg border-slate-200 font-bold uppercase tracking-wider w-36 bg-slate-50"
-                />
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={fetchIodataLogs}
-                  className="h-9 w-9 border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 hover:text-slate-800"
-                >
-                  <RefreshCw size={14} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table className="min-w-full">
-                <TableHeader className="bg-slate-50 border-b border-slate-100">
-                  <TableRow>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pl-8">Card RFID ID</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Resolved Person</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Role</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Punch Time</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Status</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pr-8 text-right">Reprocess</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {iodataLogs.map((log: any) => (
-                    <TableRow key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                      <TableCell className="font-mono text-xs text-slate-700 font-bold py-3 pl-8">{log.rfid}</TableCell>
-                      <TableCell className="font-bold text-slate-800 py-3">
-                        {log.matchedName || (
-                          <span className="text-red-500 flex items-center gap-1 font-bold">
-                            <AlertCircle size={12} /> Unknown Card
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {log.matchedName ? (
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
-                            log.role?.toLowerCase() === "student" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
-                          )}>
-                            {log.role || (log.isStudent ? "student" : "staff")}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic font-semibold text-xs">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3 font-semibold text-slate-500 whitespace-nowrap">
-                        <span className="text-slate-800 font-sans">{log.punchDate || log.date?.split("T")[0]}</span>
-                        <span className="text-slate-400 text-xs ml-1.5 font-bold font-sans">({log.punchTime || log.inTime})</span>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap",
-                          log.status === "On-Time" && "bg-emerald-50 text-emerald-755 border border-emerald-200",
-                          log.status === "Early" && "bg-blue-50 text-blue-755 border border-blue-200",
-                          log.status === "Late" && "bg-amber-50 text-amber-755 border border-amber-200",
-                          log.status === "Very Late" && "bg-red-50 text-red-755 border border-red-200",
-                          (!log.status || log.status.toLowerCase() === "error") && "bg-red-100 text-red-800 animate-pulse font-black border border-red-350"
-                        )}>
-                          {log.status || "FAIL / ERROR"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3 pr-8 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReprocessIodata(log.id)}
-                          className="h-8 px-2.5 border-slate-200 hover:border-slate-800 hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ml-auto rounded-lg"
-                        >
-                          <RefreshCw size={11} className="text-slate-400 hover:text-slate-800" />
-                          Reprocess
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {iodataLogs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold">
-                        <Cpu className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                        No parsed raw RFID data records found in buffer for the filtered settings.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-
-            {/* Pagination Footer */}
-            {iodataLogs.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 bg-slate-50/50 border-t border-slate-100 gap-4">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Showing <span className="text-slate-900 font-black">{(iodataPage - 1) * iodataPageSize + 1}</span> to <span className="text-slate-900 font-black">{Math.min(iodataPage * iodataPageSize, iodataTotalCount)}</span> of <span className="text-slate-900 font-black">{iodataTotalCount}</span> entries
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 mr-4">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rows per page</span>
-                    <Select value={iodataPageSize.toString()} onValueChange={(v) => { if (v) { setIodataPageSize(parseInt(v)); setIodataPage(1); } }}>
-                      <SelectTrigger className="w-[70px] h-8 bg-white border-slate-200 rounded-lg text-xs font-bold">
-                        <SelectValue />
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Attendee Type</label>
+                    <Select value={attendeeType} onValueChange={(val) => setAttendeeType(val || "")}>
+                      <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11">
+                        <SelectValue placeholder="Select Attendee Type" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                        {[10, 25, 50, 100].map(size => (
-                          <SelectItem key={size} value={size.toString()} className="text-xs font-bold">{size}</SelectItem>
-                        ))}
+                      <SelectContent className="rounded-xl shadow-2xl border-slate-200 p-2">
+                        <SelectItem value="all" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">All (Students, Teachers, Staff)</SelectItem>
+                        <SelectItem value="student" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Student Body</SelectItem>
+                        <SelectItem value="teacher" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Academic Teachers</SelectItem>
+                        <SelectItem value="staff" className="font-semibold py-2.5 px-3 rounded-lg cursor-pointer focus:bg-blue-50 focus:text-blue-700">Administrative Staff</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
-                      onClick={() => setIodataPage(1)}
-                      disabled={iodataPage === 1}
-                    >
-                      <ChevronsLeft size={14} />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
-                      onClick={() => setIodataPage(prev => Math.max(1, prev - 1))}
-                      disabled={iodataPage === 1}
-                    >
-                      <ChevronLeft size={14} />
-                    </Button>
-
-                    <div className="flex items-center px-3 h-8 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900 mx-1">
-                      Page {iodataPage} of {iodataTotalPages || 1}
+                  {/* Target Status configuration */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Default Status</label>
+                    <div className="flex gap-2">
+                      {["Present", "Absent", "Late"].map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setManualStatusToMark(st)}
+                          className={cn(
+                            "flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all border",
+                            manualStatusToMark === st
+                              ? st === "Present" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                : st === "Absent" ? "bg-red-50 border-red-300 text-red-700"
+                                  : "bg-amber-50 border-amber-300 text-amber-700"
+                              : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+                          )}
+                        >
+                          {st}
+                        </button>
+                      ))}
                     </div>
+                  </div>
 
+                  {/* Drag and Drop File Selection container */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supporting File Attachment (Optional)</label>
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragOver={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "border-2 border-dashed rounded-2xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer",
+                        dragActive ? "border-emerald-500 bg-emerald-50/20" : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/50",
+                        uploadedFile && "border-solid border-emerald-500 bg-emerald-50/30"
+                      )}
+                    >
+                      <input
+                        type="file"
+                        id="manual-file-upload"
+                        className="hidden"
+                        accept=".csv,.xlsx,.txt"
+                        onChange={handleFileChange}
+                      />
+                      <label htmlFor="manual-file-upload" className="w-full h-full cursor-pointer">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <UploadCloud className={cn("h-8 w-8 text-slate-400", uploadedFile && "text-emerald-600 animate-bounce")} />
+                          {uploadedFile ? (
+                            <div>
+                              <p className="text-xs font-black text-emerald-800 tracking-tight leading-tight">{uploadedFile.name}</p>
+                              <p className="text-[10px] font-semibold text-slate-400 mt-1">{(uploadedFile.size / 1024).toFixed(1)} KB - File loaded securely</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs font-black text-slate-700 leading-tight">Drag and drop file or click to browse</p>
+                              <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Supports CSV, XLS or TXT logs</p>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Trigger manual loading */}
+                  <Button
+                    onClick={handleManualUploadSubmit}
+                    disabled={isProcessingUpload || students.length === 0}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl h-12 font-bold tracking-wider text-xs uppercase"
+                  >
+                    {isProcessingUpload ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin mr-2" />
+                        Uploading...
+                      </>
+                    ) : (
+                      "Execute Manual Upload"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Records upload logs with interactive status tracking */}
+              <Card className="lg:col-span-2 shadow-sm border-none rounded-[2rem] bg-white overflow-hidden flex flex-col">
+                <CardHeader className="border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between bg-white pt-8">
+                  <div>
+                    <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Interactive Upload Status</CardTitle>
+                    <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Real-time database loading monitors</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-3 py-1 bg-slate-100/50 rounded-full">
+                    <span className="h-2 w-2 bg-blue-500 rounded-full animate-ping"></span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      Success Rate: {uploadLogs.length === 0 ? "0%" : `${Math.round((uploadLogs.filter(x => x.status === "success").length / uploadLogs.length) * 100)}%`}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 overflow-y-auto max-h-[500px] flex-1">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 hover:bg-slate-50">
+                        <TableHead className="pl-8 text-[9px] font-black uppercase text-slate-400">Date</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-400">Attendee Name</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-400">Role</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-400">Write Status</TableHead>
+                        <TableHead className="text-right pr-8 text-[9px] font-black uppercase text-slate-400">Diagnostics</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {uploadLogs.map((log) => (
+                        <TableRow key={log.id} className="h-14 hover:bg-slate-50/50">
+                          <TableCell className="pl-8 font-mono text-xs text-slate-500">{log.date}</TableCell>
+                          <TableCell className="font-extrabold text-slate-800 text-sm tracking-tight">{log.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider">
+                              {log.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              {log.status === "pending" && (
+                                <Badge variant="secondary" className="bg-slate-100 text-slate-500 gap-1 font-bold">
+                                  <Clock size={10} /> Pending
+                                </Badge>
+                              )}
+                              {log.status === "processing" && (
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 gap-1 font-bold">
+                                  <Loader2 size={10} className="animate-spin" /> Processing
+                                </Badge>
+                              )}
+                              {log.status === "success" && (
+                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 gap-1 font-extrabold">
+                                  <CheckCircle2 size={10} className="text-emerald-600" /> Success
+                                </Badge>
+                              )}
+                              {log.status === "error" && (
+                                <Badge variant="secondary" className="bg-red-100 text-red-800 gap-1 font-extrabold">
+                                  <XCircle size={10} className="text-red-600" /> Failed
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-8">
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {log.status === "success" && "Inserted Identity OK"}
+                              {log.status === "processing" && "Executing MERGE..."}
+                              {log.status === "error" && (log.error || "Execution timeout")}
+                              {log.status === "pending" && "Waiting in Queue..."}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {uploadLogs.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-24 text-center text-slate-400 font-bold">
+                            <UploadCloud className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                            No manual uploads in progress. Select date ranges and click "Execute Manual Upload" to begin streaming active logs.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Render RFID Iodata Auto-Importer Tab */}
+          {manualSubTab === "iodata" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+
+              {/* Unified Local Folder Scanner with Scan Source selection */}
+              <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] bg-white h-fit">
+                <CardHeader className="border-b border-slate-50 px-8 py-6">
+                  <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Local Folder Scanner</CardTitle>
+                  <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Scan & Import stored RFID files cleanly</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-4">
+
+                  {/* Scan Source Select */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Scan Source Location</label>
+                    <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setScanSource("server")}
+                        className={cn(
+                          "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
+                          scanSource === "server"
+                            ? "bg-white text-slate-800 shadow-sm font-black"
+                            : "text-slate-400 hover:text-slate-700 font-bold"
+                        )}
+                      >
+                        Server C:\iodata
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScanSource("local")}
+                        className={cn(
+                          "py-2 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all",
+                          scanSource === "local"
+                            ? "bg-white text-emerald-800 shadow-sm font-black"
+                            : "text-slate-400 hover:text-slate-700 font-bold"
+                        )}
+                      >
+                        User Local Files
+                      </button>
+                    </div>
+                  </div>
+
+                  {scanSource === "server" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
+                          <Input
+                            type="date"
+                            value={ioFolderFromDate}
+                            onChange={(e) => setIoFolderFromDate(e.target.value)}
+                            className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
+                          <Input
+                            type="date"
+                            value={ioFolderToDate}
+                            onChange={(e) => setIoFolderToDate(e.target.value)}
+                            className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-mono text-[9px] text-slate-400 leading-normal">
+                        <p className="font-extrabold text-[10px] text-slate-500 mb-1 font-sans">Folder Convention:</p>
+                        Looks for files matched: <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span><br />
+                        Example: <span className="text-emerald-600 font-black font-sans">Data150526.txt</span> represents May 15th, 2026.
+                      </div>
+
+                      <Button
+                        onClick={handleIoFolderScan}
+                        disabled={isProcessingFolderScan}
+                        className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                      >
+                        {isProcessingFolderScan ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin" />
+                            Scanning Folder Disk...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={12} />
+                            Run Batch Folder Scan
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Dynamic From and To date selection for Local Folder Indexing */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.55">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan From</label>
+                          <Input
+                            type="date"
+                            value={localFolderFromDate}
+                            onChange={(e) => setLocalFolderFromDate(e.target.value)}
+                            className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Scan To</label>
+                          <Input
+                            type="date"
+                            value={localFolderToDate}
+                            onChange={(e) => setLocalFolderToDate(e.target.value)}
+                            className="h-9 text-xs rounded-lg border-slate-200 font-semibold font-sans animate-fade-in"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Local Folder Directory Picker */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select user local C:\iodata Folder</label>
+                        <div className="border-2 border-dashed border-emerald-200 bg-emerald-50/10 hover:bg-emerald-50/20 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-36">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".txt"
+                            onChange={handleLocalFolderFilesSelected}
+                            className="hidden"
+                            id="local-folder-directory-picker"
+                            {...({
+                              webkitdirectory: "",
+                              directory: ""
+                            } as any)}
+                          />
+                          <label htmlFor="local-folder-directory-picker" className="cursor-pointer block w-full h-full">
+                            <FolderOpen className="h-10 w-10 mx-auto mb-2 text-emerald-600 animate-pulse" />
+                            <span className="text-xs font-black text-slate-700 block leading-tight">
+                              {localFolderFiles.length > 0 ? `Folder Indexed: ${localFolderName}` : "Choose Local folder Location"}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+                              {localFolderFiles.length > 0 ? `${localFolderFiles.length} files detected - click to change` : "Select C:\\iodata directory"}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-slate-50 rounded-xl space-y-1 border border-slate-100 font-sans text-[9px] text-slate-400 leading-normal">
+                        <span className="font-extrabold text-[10px] text-slate-500 block mb-1 font-sans">Local Folder Processing:</span>
+                        Browse and select your local <span className="text-slate-600 font-bold">C:\iodata\</span> folder. It will scan and extract datewise files named <span className="text-blue-600 font-black font-sans">DataDDMMYY.txt</span> progressively for the selected date range.
+                      </div>
+
+                      <Button
+                        onClick={handleLocalFolderScan}
+                        disabled={isProcessingFolderScan || localFolderFiles.length === 0}
+                        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                      >
+                        {isProcessingFolderScan ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin" />
+                            Scanning Folder...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={12} />
+                            Run User Folder Scan
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Console log outputs for folder scans */}
+                  {folderScanLogs.length > 0 && (
+                    <div className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] tracking-tight leading-relaxed max-h-48 overflow-y-auto space-y-1 border border-slate-800">
+                      <p className="text-emerald-400 font-black uppercase tracking-widest border-b border-emerald-950 pb-1 mb-1 font-sans">Scanner Log Debugger:</p>
+                      {folderScanLogs.map((logLine, logIdx) => (
+                        <p key={logIdx} className={cn(logLine.startsWith("[FAIL]") || logLine.startsWith("[ERROR]") ? "text-red-400" : logLine.startsWith("Folder") || logLine.startsWith("---") ? "text-blue-300" : "text-emerald-400")}>
+                          &gt; {logLine}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                </CardContent>
+              </Card>
+
+              {/* RFID Importer Logs Table */}
+              <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+                <CardHeader className="border-b border-slate-50 px-8 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
+                  <div>
+                    <CardTitle className="text-lg font-black text-slate-900 tracking-tight font-sans">Scanner Processing Logs</CardTitle>
+                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">Processed punch reports via sp_ProcessIodataRecord</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="date"
+                      value={iodataFilterDate}
+                      onChange={(e) => setIodataFilterDate(e.target.value)}
+                      className="h-9 text-xs rounded-lg border-slate-200 font-bold uppercase tracking-wider w-36 bg-slate-50"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
-                      onClick={() => setIodataPage(prev => Math.min(iodataTotalPages, prev + 1))}
-                      disabled={iodataPage >= iodataTotalPages}
+                      onClick={fetchIodataLogs}
+                      className="h-9 w-9 border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 hover:text-slate-800"
                     >
-                      <ChevronRight size={14} />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
-                      onClick={() => setIodataPage(iodataTotalPages)}
-                      disabled={iodataPage >= iodataTotalPages}
-                    >
-                      <ChevronsRight size={14} />
+                      <RefreshCw size={14} />
                     </Button>
                   </div>
-                </div>
-              </div>
-            )}
-          </Card>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-slate-50 border-b border-slate-100">
+                      <TableRow>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pl-8">Card RFID ID</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Resolved Person</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Role</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Punch Time</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3">Status</TableHead>
+                        <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 py-3 pr-8 text-right">Reprocess</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {iodataLogs.map((log: any) => (
+                        <TableRow key={log.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                          <TableCell className="font-mono text-xs text-slate-700 font-bold py-3 pl-8">{log.rfid}</TableCell>
+                          <TableCell className="font-bold text-slate-800 py-3">
+                            {log.matchedName || (
+                              <span className="text-red-500 flex items-center gap-1 font-bold">
+                                <AlertCircle size={12} /> Unknown Card
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {log.matchedName ? (
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                log.role?.toLowerCase() === "student" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                              )}>
+                                {log.role || (log.isStudent ? "student" : "staff")}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic font-semibold text-xs">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 font-semibold text-slate-500 whitespace-nowrap">
+                            <span className="text-slate-800 font-sans">{log.punchDate || log.date?.split("T")[0]}</span>
+                            <span className="text-slate-400 text-xs ml-1.5 font-bold font-sans">({log.punchTime || log.inTime})</span>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap",
+                              log.status === "On-Time" && "bg-emerald-50 text-emerald-755 border border-emerald-200",
+                              log.status === "Early" && "bg-blue-50 text-blue-755 border border-blue-200",
+                              log.status === "Late" && "bg-amber-50 text-amber-755 border border-amber-200",
+                              log.status === "Very Late" && "bg-red-50 text-red-755 border border-red-200",
+                              (!log.status || log.status.toLowerCase() === "error") && "bg-red-100 text-red-800 animate-pulse font-black border border-red-350"
+                            )}>
+                              {log.status || "FAIL / ERROR"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3 pr-8 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReprocessIodata(log.id)}
+                              className="h-8 px-2.5 border-slate-200 hover:border-slate-800 hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ml-auto rounded-lg"
+                            >
+                              <RefreshCw size={11} className="text-slate-400 hover:text-slate-800" />
+                              Reprocess
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {iodataLogs.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold">
+                            <Cpu className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                            No parsed raw RFID data records found in buffer for the filtered settings.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+
+                {/* Pagination Footer */}
+                {iodataLogs.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between px-8 py-6 bg-slate-50/50 border-t border-slate-100 gap-4">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      Showing <span className="text-slate-900 font-black">{(iodataPage - 1) * iodataPageSize + 1}</span> to <span className="text-slate-900 font-black">{Math.min(iodataPage * iodataPageSize, iodataTotalCount)}</span> of <span className="text-slate-900 font-black">{iodataTotalCount}</span> entries
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 mr-4">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rows per page</span>
+                        <Select value={iodataPageSize.toString()} onValueChange={(v) => { if (v) { setIodataPageSize(parseInt(v)); setIodataPage(1); } }}>
+                          <SelectTrigger className="w-[70px] h-8 bg-white border-slate-200 rounded-lg text-xs font-bold">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                            {[10, 25, 50, 100].map(size => (
+                              <SelectItem key={size} value={size.toString()} className="text-xs font-bold">{size}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                          onClick={() => setIodataPage(1)}
+                          disabled={iodataPage === 1}
+                        >
+                          <ChevronsLeft size={14} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                          onClick={() => setIodataPage(prev => Math.max(1, prev - 1))}
+                          disabled={iodataPage === 1}
+                        >
+                          <ChevronLeft size={14} />
+                        </Button>
+
+                        <div className="flex items-center px-3 h-8 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900 mx-1">
+                          Page {iodataPage} of {iodataTotalPages || 1}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                          onClick={() => setIodataPage(prev => Math.min(iodataTotalPages, prev + 1))}
+                          disabled={iodataPage >= iodataTotalPages}
+                        >
+                          <ChevronRight size={14} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border-slate-200 hover:bg-white hover:text-blue-600 disabled:opacity-30"
+                          onClick={() => setIodataPage(iodataTotalPages)}
+                          disabled={iodataPage >= iodataTotalPages}
+                        >
+                          <ChevronsRight size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
         </div>
       )}
-    </div>
-  )}
 
     </div>
   );
