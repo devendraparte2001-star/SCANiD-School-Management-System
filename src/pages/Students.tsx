@@ -491,53 +491,47 @@ export default function Students({ user }: { user: UserType }) {
 
   const handleExport = async () => {
     try {
-      // Prepare data for export including all important student fields
+      // Prepare data for export including all important student fields utilizing exact aligned headers from the download template
       const exportData = filteredStudents.map(s => ({
-        "GR Number": s.grno,
+        "GrNo": s.grno,
         "Name": s.name || `${s.firstName || ""} ${s.middleName || ""} ${s.lastName || ""}`.trim(),
-        "School": schools.find(sch => sch.id?.toString() === s.schoolId?.toString())?.name || s.schoolId || "",
+        "SchoolName": schools.find(sch => sch.id?.toString() === s.schoolId?.toString())?.name || s.schoolId || "",
         "Status": s.status || "Active",
-        "Roll Number": s.roll || s.rollNumber,
-        "First Name": s.firstName,
-        "Middle Name": s.middleName,
-        "Last Name": s.lastName,
+        "RollNumber": s.roll || s.rollNumber,
+        "FirstName": s.firstName,
+        "MiddleName": s.middleName,
+        "LastName": s.lastName,
         "Gender": s.gender,
         "DateOfBirth": s.birthDate,
         "Address": s.address,
-        "Mother Name": s.motherName,
+        "MotherName": s.motherName,
         "FatherContactNo": s.contactNumber || s.fatherContactNo,
         "MotherContactNo": s.motherContactNo,
-        "Aadhar Card": s.aadharCard,
-        "Uniform ID": s.uniformId,
+        "AadharCard": s.aadharCard,
+        "UniformID": s.uniformId,
         "RFID": s.rfid,
-        "School Section": s.SchoolSectionId ? schoolSections.find(sec => sec.id?.toString() === s.SchoolSectionId?.toString())?.name : "",
-        "Admission Date": s.admissionDate,
+        "SchoolSectionName": s.SchoolSectionId ? schoolSections.find(sec => sec.id?.toString() === s.SchoolSectionId?.toString())?.name : "",
+        "AdmissionDate": s.admissionDate,
         "Email": s.email,
         "Standard": s.standard || (s.standardId ? standardsMaster.find(st => st.id?.toString() === s.standardId?.toString())?.name : ""),
         "Division": s.section || (s.sectionId ? sectionsMaster.find(sec => sec.id?.toString() === s.sectionId?.toString())?.name : ""),
-        "Academic Year": s.joiningAcademicYearId ? academicYears.find(ay => ay.id?.toString() === s.joiningAcademicYearId?.toString())?.name : (s.academicYearId ? academicYears.find(ay => ay.id?.toString() === s.academicYearId?.toString())?.name : ""),
-        "Caste": s.casteId ? (castes.find(c => c.id?.toString() === s.casteId?.toString())?.name || s.casteId) : "",
-        "Sub-Caste": s.subCasteId ? (subCastes.find(sc => sc.id?.toString() === s.subCasteId?.toString())?.name || s.subCasteId) : "",
-        "Religion": s.religionId ? (religions.find(r => r.id?.toString() === s.religionId?.toString())?.name || s.religionId) : "",
-        "Blood Group": s.bloodGroupId ? (bloodGroups.find(bg => bg.id?.toString() === s.bloodGroupId?.toString())?.name || s.bloodGroupId) : "",
-        "House": s.houseId ? (houses.find(h => h.id?.toString() === s.houseId?.toString())?.name || s.houseId) : "",
-        "Admission Type": s.admissionTypeId ? (admissionTypes.find(at => at.id?.toString() === s.admissionTypeId?.toString())?.name || s.admissionTypeId) : "",
-        "City": s.cityId ? (cities.find(c => c.id?.toString() === s.cityId?.toString())?.name || s.cityId) : "",
-        "State": s.stateId ? (states.find(st => st.id?.toString() === s.stateId?.toString())?.name || s.stateId) : "",
-        "Shift Name": s.shiftName || (s.shiftId ? (shifts.find(sh => sh.id?.toString() === s.shiftId?.toString())?.name || s.shiftId) : ""),
-        "Category": s.categoryId ? (categories.find(c => c.id?.toString() === s.categoryId?.toString())?.name || s.categoryId) : "",
-        "Secondary SMS": s.sms ? "Yes" : "No",
-        "Is State Board": s.isStateBoard ? "Yes" : "No",
-        "Profile Photo Path": s.profilePhotoPath,
-        "Digital Uniform": s.digitalUniform ? "Yes" : "No",
-        "Digital Notebook": s.digitalNotebook ? "Yes" : "No",
-        "Opted for Bus": s.optedForBus ? "Yes" : "No",
-        "Is Active": s.isActive !== false ? "Yes" : "No",
-        "Is Deleted": s.isDeleted ? "Yes" : "No",
-        "Created By": s.createdBy,
-        "Created On": s.createdOn,
-        "Modified By": s.modifiedBy,
-        "Modified On": s.modifiedOn
+        "AcademicYear": s.joiningAcademicYearId ? academicYears.find(ay => ay.id?.toString() === s.joiningAcademicYearId?.toString())?.name : (s.academicYearId ? academicYears.find(ay => ay.id?.toString() === s.academicYearId?.toString())?.name : ""),
+        "CasteName": s.casteId ? (castes.find(c => c.id?.toString() === s.casteId?.toString())?.name || s.casteId) : "",
+        "SubCasteName": s.subCasteId ? (subCastes.find(sc => sc.id?.toString() === s.subCasteId?.toString())?.name || s.subCasteId) : "",
+        "ReligionName": s.religionId ? (religions.find(r => r.id?.toString() === s.religionId?.toString())?.name || s.religionId) : "",
+        "BloodGroupName": s.bloodGroupId ? (bloodGroups.find(bg => bg.id?.toString() === s.bloodGroupId?.toString())?.name || s.bloodGroupId) : "",
+        "HouseName": s.houseId ? (houses.find(h => h.id?.toString() === s.houseId?.toString())?.name || s.houseId) : "",
+        "AdmissionType": s.admissionTypeId ? (admissionTypes.find(at => at.id?.toString() === s.admissionTypeId?.toString())?.name || s.admissionTypeId) : "",
+        "CityName": s.cityId ? (cities.find(c => c.id?.toString() === s.cityId?.toString())?.name || s.cityId) : "",
+        "StateName": s.stateId ? (states.find(st => st.id?.toString() === s.stateId?.toString())?.name || s.stateId) : "",
+        "ShiftName": s.shiftName || (s.shiftId ? (shifts.find(sh => sh.id?.toString() === s.shiftId?.toString())?.name || s.shiftId) : ""),
+        "CategoryName": s.categoryId ? (categories.find(c => c.id?.toString() === s.categoryId?.toString())?.name || s.categoryId) : "",
+        "SecondarySMS": s.sms ? "Yes" : "No",
+        "IsStateBoard": s.isStateBoard ? "Yes" : "No",
+        "ProfilePhotoPath": s.profilePhotoPath,
+        "DigitalUniform": s.digitalUniform ? "Yes" : "No",
+        "DigitalNotebook": s.digitalNotebook ? "Yes" : "No",
+        "OptedForBus": s.optedForBus ? "Yes" : "No"
       }));
 
       // Create workbook and worksheet
@@ -792,73 +786,73 @@ export default function Students({ user }: { user: UserType }) {
             )?.id : undefined);
 
             // 2. Class/Grade/Standard Resolution
-            const stdName = getFieldCleanVal(["GradeName", "STD", "standard", "grade"]);
+            const stdName = getFieldCleanVal(["Standard", "GradeName", "STD", "standard", "grade"]);
             const stdMasterId = item.StandardId || (stdName ? standardsMaster.find((s: any) =>
               s.name.toLowerCase().trim() === stdName.toLowerCase()
             )?.id : undefined);
 
             // 3. Section/Division Resolution
-            const divName = getFieldCleanVal(["SectionName", "DIV", "section", "division"]);
+            const divName = getFieldCleanVal(["Division", "SectionName", "DIV", "section", "division"]);
             const divMasterId = item.SectionId || (divName ? sectionsMaster.find((s: any) =>
               s.name.toLowerCase().trim() === divName.toLowerCase()
             )?.id : undefined);
 
             // 4. Shift Resolution
-            const shiftName = getFieldCleanVal(["ShiftName", "SHIFTNAME", "shift"]);
+            const shiftName = getFieldCleanVal(["ShiftName", "Shift Name", "SHIFTNAME", "shift"]);
             const shiftMasterId = item.ShiftId || (shiftName ? shifts.find((s: any) =>
               s.name.toLowerCase().trim() === shiftName.toLowerCase()
             )?.id : undefined);
 
             // 5. Academic Year Resolution
-            const ayName = getFieldCleanVal(["AcademicYear", "academicyear", "academic_year"]);
+            const ayName = getFieldCleanVal(["AcademicYear", "Academic Year", "academicyear", "academic_year"]);
             const ayMasterId = item.AcademicYearId || (ayName ? academicYears.find((s: any) =>
               s.name.toLowerCase().trim() === ayName.toLowerCase()
             )?.id : undefined);
 
             // 6. Blood Group Resolution
-            const bgName = getFieldCleanVal(["BloodGroupName", "BLOODGROUP", "blood_group"]);
+            const bgName = getFieldCleanVal(["BloodGroupName", "Blood Group", "BLOODGROUP", "blood_group"]);
             const bgMasterId = item.BloodGroupId || (bgName ? bloodGroups.find((bg: any) =>
               bg.name.toLowerCase().trim() === bgName.toLowerCase()
             )?.id : undefined);
 
             // 7. Religion Resolution
-            const relName = getFieldCleanVal(["ReligionName", "RELIGION", "religion"]);
+            const relName = getFieldCleanVal(["ReligionName", "Religion", "RELIGION", "religion"]);
             const religionMasterId = item.ReligionId || (relName ? religions.find((r: any) =>
               r.name.toLowerCase().trim() === relName.toLowerCase()
             )?.id : undefined);
 
             // 8. House Resolution
-            const houseName = getFieldCleanVal(["HouseName", "house"]);
+            const houseName = getFieldCleanVal(["HouseName", "House", "house"]);
             const houseMasterId = item.HouseId || (houseName ? houses.find((h: any) =>
               h.name.toLowerCase().trim() === houseName.toLowerCase()
             )?.id : undefined);
 
             // 9. Admission Type Resolution
-            const atName = getFieldCleanVal(["AdmissionType", "admissiontype", "admission_type"]);
+            const atName = getFieldCleanVal(["AdmissionType", "Admission Type", "admissiontype", "admission_type"]);
             const admissionTypeMasterId = item.AdmissionTypeId || (atName ? admissionTypes.find((at: any) =>
               at.name.toLowerCase().trim() === atName.toLowerCase()
             )?.id : undefined);
 
             // 10. Caste Resolution
-            const cName = getFieldCleanVal(["CasteName", "CASTE", "caste"]);
+            const cName = getFieldCleanVal(["CasteName", "Caste", "CASTE", "caste"]);
             const casteMasterId = item.CasteId || (cName ? castes.find((c: any) =>
               c.name.toLowerCase().trim() === cName.toLowerCase()
             )?.id : undefined);
 
             // 11. Category Resolution
-            const catName = getFieldCleanVal(["CategoryName", "CATEGORY", "category"]);
+            const catName = getFieldCleanVal(["CategoryName", "Category", "CATEGORY", "category"]);
             const categoryMasterId = item.CategoryId || (catName ? categories.find((c: any) =>
               c.name.toLowerCase().trim() === catName.toLowerCase()
             )?.id : undefined);
 
             // 12. School Section Resolution
-            const schoolSectionName = getFieldCleanVal(["SchoolSectionName", "SchoolSection", "school_section", "schoolsectionname"]);
+            const schoolSectionName = getFieldCleanVal(["SchoolSectionName", "School Section", "SchoolSection", "school_section", "schoolsectionname"]);
             const schoolSectionId = item.SchoolSectionId || (schoolSectionName ? schoolSections.find((s: any) =>
               s.name.toLowerCase().trim() === schoolSectionName.toLowerCase()
             )?.id : undefined);
 
             // 13. Sub-Caste Resolution
-            const subCasteName = getFieldCleanVal(["SubCasteName", "SubCaste", "sub_caste", "subcastename"]);
+            const subCasteName = getFieldCleanVal(["SubCasteName", "Sub-Caste", "Sub Caste", "SubCaste", "sub_caste", "subcastename"]);
             const subCasteId = item.SubCasteId || (subCasteName ? subCastes.find((sc: any) =>
               sc.name.toLowerCase().trim() === subCasteName.toLowerCase()
             )?.id : undefined);
@@ -930,10 +924,10 @@ export default function Students({ user }: { user: UserType }) {
             };
 
             // Map standard fields for DB persistence
-            const grno = getFieldCleanVal(["GRNO", "GrNo"]);
-            const fName = getFieldCleanVal(["FirstName", "FNAME", "first_name"]);
-            const mName = getFieldCleanVal(["MiddleName", "MNAME", "middle_name"]);
-            const lName = getFieldCleanVal(["LastName", "LNAME", "last_name"]);
+            const grno = getFieldCleanVal(["GrNo", "GR Number", "GRNO"]);
+            const fName = getFieldCleanVal(["FirstName", "First Name", "FNAME", "first_name"]);
+            const mName = getFieldCleanVal(["MiddleName", "Middle Name", "MNAME", "middle_name"]);
+            const lName = getFieldCleanVal(["LastName", "Last Name", "LNAME", "last_name"]);
 
             // Normalize Gender
             let genderVal = getFieldCleanVal(["Gender", "GENDER"]);
@@ -945,7 +939,7 @@ export default function Students({ user }: { user: UserType }) {
               genderVal = "Male"; // Default fallback
             }
 
-            const rawRoll = getFieldCleanVal(["RollNumber", "Roll", "ROLLNO", "roll_number", "roll"]);
+            const rawRoll = getFieldCleanVal(["RollNumber", "Roll Number", "Roll", "ROLLNO", "roll_number", "roll"]);
             let rollNumberValue = parseInt(rawRoll) || 0;
             if (isNaN(rollNumberValue)) rollNumberValue = 0;
 
@@ -954,7 +948,7 @@ export default function Students({ user }: { user: UserType }) {
 
             return {
               GrNo: grno,
-              name: `${fName} ${mName} ${lName}`.trim() || item.Name || `Student ${index + 1}`,
+              name: `${fName} ${mName} ${lName}`.trim() || getFieldCleanVal(["Name"]) || `Student ${index + 1}`,
               schoolId: schoolIdVal,
               rollNumber: rollNumberValue,
               firstName: fName,

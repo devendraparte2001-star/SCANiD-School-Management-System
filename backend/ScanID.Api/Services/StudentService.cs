@@ -436,11 +436,13 @@ namespace ScanID.Api.Services
             var cumulativeRollKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var batchSize = 2500;
-            var connection = (SqlConnection)_context.Database.GetDbConnection();
-            if (connection.State != System.Data.ConnectionState.Open)
+            var connectionString = _context.Database.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
             {
-                await connection.OpenAsync();
+                throw new InvalidOperationException("Database connection string is not configured.");
             }
+            using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
 
             for (int batchOffset = 0; batchOffset < studentListWithIndex.Count; batchOffset += batchSize)
             {
@@ -627,13 +629,12 @@ namespace ScanID.Api.Services
 
                     try
                     {
-                        // Wrap SqlBulkCopy in its own transaction
-                        using var transaction = await _context.Database.BeginTransactionAsync();
-                        var dbTransaction = (SqlTransaction)transaction.GetDbTransaction();
+                        // Wrap SqlBulkCopy in its own transaction on the raw connection
+                        using var transaction = connection.BeginTransaction();
 
                         using var table = BuildStudentDataTable(validStudentsOnly);
 
-                        using (var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, dbTransaction))
+                        using (var bulkCopy = new SqlBulkCopy(connection, SqlBulkCopyOptions.Default, (SqlTransaction)transaction))
                         {
                             bulkCopy.DestinationTableName = "[dbo].[Students]";
                             bulkCopy.BulkCopyTimeout = 600; // 10 minutes limit
@@ -647,7 +648,7 @@ namespace ScanID.Api.Services
                             await bulkCopy.WriteToServerAsync(table);
                         }
 
-                        await transaction.CommitAsync();
+                        transaction.Commit();
 
                         // Add successfully bulk inserted rows
                         foreach (var stWithIdx in batchValidStudentsWithIndex)
