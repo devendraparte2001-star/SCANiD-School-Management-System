@@ -169,7 +169,7 @@ namespace ScanID.Api.Utilities
                 {
                     student.School = new Models.School 
                     { 
-                        Id = student.SchoolId,
+                        Id = student.SchoolId ?? 0,
                         Name = reader["SchoolName"].ToString() ?? string.Empty 
                     };
                 }

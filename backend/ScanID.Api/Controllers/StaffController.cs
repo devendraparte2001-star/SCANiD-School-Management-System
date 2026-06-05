@@ -36,7 +36,7 @@ namespace ScanID.Api.Controllers
         {
             Id = staff.Id,
             UserId = staff.UserId,
-            SchoolId = staff.SchoolId,
+            SchoolId = staff.SchoolId ?? 0,
             EmployeeId = staff.EmployeeId,
             Initials = staff.Initials,
             Department = staff.Department,

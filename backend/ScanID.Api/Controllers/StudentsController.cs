@@ -38,7 +38,7 @@ namespace ScanID.Api.Controllers
         {
             Id = student.Id,
             Name = student.Name,
-            SchoolId = student.SchoolId,
+            SchoolId = student.SchoolId ?? 0,
             Status = student.Status,
             RollNumber = student.RollNumber,
             FirstName = student.FirstName,
@@ -419,16 +419,16 @@ namespace ScanID.Api.Controllers
 
             try
             {
-                if (student.SchoolId <= 0)
+                if ((student.SchoolId ?? 0) <= 0)
                 {
                     var fullStudent = await _studentService.GetStudentByIdAsync(id);
-                    if (fullStudent != null && fullStudent.SchoolId > 0)
+                    if (fullStudent != null && (fullStudent.SchoolId ?? 0) > 0)
                     {
                         student.SchoolId = fullStudent.SchoolId;
                     }
                 }
-                var schoolIdVal = student.SchoolId > 0 ? student.SchoolId.ToString() : (student.School?.Id > 0 ? student.School.Id.ToString() : "1");
-                var schoolID = SanitizeFolderName(schoolIdVal);
+                var schoolIdVal = (student.SchoolId ?? 0) > 0 ? student.SchoolId!.Value.ToString() : (student.School?.Id > 0 ? student.School.Id.ToString() : "1");
+                var schoolID = SanitizeFolderName(schoolIdVal ?? "1");
                 var relativeFolder = Path.Combine("photos", schoolID);
 
                 string webRootPath = _environment.WebRootPath;
