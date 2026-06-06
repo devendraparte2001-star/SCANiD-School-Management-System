@@ -84,6 +84,7 @@ export default function Users({ user }: { user: any }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [schools, setSchools] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -92,7 +93,8 @@ export default function Users({ user }: { user: any }) {
     isActive: true,
     password: "",
     confirmPassword: "",
-    schoolId: ""
+    schoolId: "",
+    academicYearId: ""
   });
 
   const fetchData = useCallback(async () => {
@@ -191,6 +193,13 @@ export default function Users({ user }: { user: any }) {
         setSchools(schoolData);
       })
       .catch(err => console.error("Error fetching schools in Users page:", err));
+
+    apiService.getAcademicYears()
+      .then(res => {
+        const ayData = res.data && Array.isArray(res.data) ? res.data : (res.data && Array.isArray(res.data.data) ? res.data.data : []);
+        setAcademicYears(ayData);
+      })
+      .catch(err => console.error("Error fetching academic years in Users page:", err));
   }, []);
 
   const handleSort = (key: string) => {
@@ -203,20 +212,21 @@ export default function Users({ user }: { user: any }) {
     setPage(1);
   };
 
-  const handleOpenDialog = (user: User | null = null) => {
-    setEditingUser(user);
-    if (user) {
+  const handleOpenDialog = (userItem: User | null = null) => {
+    setEditingUser(userItem);
+    if (userItem) {
       // Normalize role string to lowercase with spaces stripped to match Select dropdown item option values
-      const normalizedRole = user.role ? user.role.toLowerCase().replace(/\s+/g, '') : "student";
+      const normalizedRole = userItem.role ? userItem.role.toLowerCase().replace(/\s+/g, '') : "student";
       setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        username: user.username || "",
+        name: userItem.name || "",
+        email: userItem.email || "",
+        username: userItem.username || "",
         role: normalizedRole,
-        isActive: user.isActive !== false,
+        isActive: userItem.isActive !== false,
         password: "",
         confirmPassword: "",
-        schoolId: (user.schoolId && user.schoolId !== "0") ? user.schoolId.toString() : ""
+        schoolId: (userItem.schoolId && userItem.schoolId !== "0") ? userItem.schoolId.toString() : "",
+        academicYearId: userItem.academicYearId ? userItem.academicYearId.toString() : ""
       });
     } else {
       setFormData({
@@ -227,7 +237,8 @@ export default function Users({ user }: { user: any }) {
         isActive: true,
         password: "",
         confirmPassword: "",
-        schoolId: ""
+        schoolId: "",
+        academicYearId: ""
       });
     }
     setIsDialogOpen(true);
@@ -236,6 +247,16 @@ export default function Users({ user }: { user: any }) {
   const handleSave = async () => {
     if (!formData.name || !formData.email || !formData.username) {
         toast.error("Please fill in all required fields");
+        return;
+    }
+
+    if (!formData.schoolId) {
+        toast.error("Assigned School Branch is a required field");
+        return;
+    }
+
+    if (!formData.academicYearId) {
+        toast.error("Academic Year is a required field");
         return;
     }
 
@@ -276,6 +297,7 @@ export default function Users({ user }: { user: any }) {
         passwordHash: formData.password || undefined,
         PasswordHash: formData.password || undefined, // Support both casings
         schoolId: formData.schoolId ? parseInt(formData.schoolId) : null,
+        academicYearId: formData.academicYearId ? parseInt(formData.academicYearId) : null,
         // Audit fields: Ensure CreatedBy and ModifiedBy are captured for backend audit logging
         CreatedBy: editingUser ? undefined : (user.name || user.email),
         ModifiedBy: user.name || user.email
@@ -696,7 +718,7 @@ export default function Users({ user }: { user: any }) {
                 
                 {/* School dropdown */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned School Branch</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600">Assigned School Branch *</Label>
                     <Select value={formData.schoolId} onValueChange={(v) => setFormData({...formData, schoolId: v})}>
                         <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
                             <SelectValue placeholder="Select Assigned School" />
@@ -705,6 +727,24 @@ export default function Users({ user }: { user: any }) {
                             <SelectItem value="" className="italic text-slate-400">Select Assigned School</SelectItem>
                             {Array.isArray(schools) && schools.map((s) => (
                                 <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Academic Year dropdown */}
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600">Academic Year *</Label>
+                    <Select value={formData.academicYearId} onValueChange={(v) => setFormData({...formData, academicYearId: v})}>
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
+                            <SelectValue placeholder="Select Academic Year" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl shadow-xl max-h-60">
+                            <SelectItem value="" className="italic text-slate-400">Select Academic Year</SelectItem>
+                            {Array.isArray(academicYears) && academicYears.map((ay) => (
+                                <SelectItem key={ay.id} value={ay.id.toString()}>
+                                    {ay.name} {ay.isCurrent && " (Current)"}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

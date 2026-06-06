@@ -643,6 +643,12 @@ export default function Configuration({
       }
     }
 
+    // Mandatory multi-tenancy validation for master forms
+    if (activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment") {
+      if (!formData.schoolId) newErrors.schoolId = true;
+      if (activeTab !== "academic-years" && !formData.academicYearId) newErrors.academicYearId = true;
+    }
+
     setFormErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
@@ -1575,14 +1581,25 @@ export default function Configuration({
             {activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    School Assignment
+                  <Label className={cn(
+                    "text-xs font-black uppercase tracking-wider",
+                    formErrors.schoolId ? "text-red-500" : "text-slate-400"
+                  )}>
+                    School Assignment {formErrors.schoolId && "*"}
                   </Label>
                   <Select
                     value={formData.schoolId || ""}
-                    onValueChange={(val) => setFormData({ ...formData, schoolId: val })}
+                    onValueChange={(val) => {
+                      setFormData({ ...formData, schoolId: val });
+                      if (formErrors.schoolId) {
+                        setFormErrors(prev => ({ ...prev, schoolId: false }));
+                      }
+                    }}
                   >
-                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
+                    <SelectTrigger className={cn(
+                      "h-12 rounded-xl border-slate-200 bg-white font-bold px-4",
+                      formErrors.schoolId && "border-red-500 ring-2 ring-red-500/10"
+                    )}>
                       <SelectValue placeholder="Select School">
                         {formData.schoolId ? (visibleSchools.find((s: any) => s.id?.toString() === formData.schoolId?.toString())?.name || formData.schoolId) : undefined}
                       </SelectValue>
@@ -1597,28 +1614,41 @@ export default function Configuration({
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Academic Year
-                  </Label>
-                  <Select
-                    value={formData.academicYearId || ""}
-                    onValueChange={(val) => setFormData({ ...formData, academicYearId: val })}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold px-4">
-                      <SelectValue placeholder="Select Year">
-                        {formData.academicYearId ? ((dependencies.academicYears || []).find((y: any) => y.id?.toString() === formData.academicYearId?.toString())?.name || formData.academicYearId) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
-                      {(dependencies.academicYears || []).map((y: any) => (
-                        <SelectItem key={y.id} value={y.id.toString()} className="font-semibold py-2">
-                          {y.name} {y.isCurrent && "(Current)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {activeTab !== "academic-years" && (
+                  <div className="space-y-2">
+                    <Label className={cn(
+                      "text-xs font-black uppercase tracking-wider",
+                      formErrors.academicYearId ? "text-red-500" : "text-slate-400"
+                    )}>
+                      Academic Year {formErrors.academicYearId && "*"}
+                    </Label>
+                    <Select
+                      value={formData.academicYearId || ""}
+                      onValueChange={(val) => {
+                        setFormData({ ...formData, academicYearId: val });
+                        if (formErrors.academicYearId) {
+                          setFormErrors(prev => ({ ...prev, academicYearId: false }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={cn(
+                        "h-12 rounded-xl border-slate-200 bg-white font-bold px-4",
+                        formErrors.academicYearId && "border-red-500 ring-2 ring-red-500/10"
+                      )}>
+                        <SelectValue placeholder="Select Year">
+                          {formData.academicYearId ? ((dependencies.academicYears || []).find((y: any) => y.id?.toString() === formData.academicYearId?.toString())?.name || formData.academicYearId) : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
+                        {(dependencies.academicYears || []).map((y: any) => (
+                          <SelectItem key={y.id} value={y.id.toString()} className="font-semibold py-2">
+                            {y.name} {y.isCurrent && "(Current)"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 

@@ -118,6 +118,7 @@ interface StaffMember {
   shiftId?: string;
   shiftName?: string;
   role?: string;
+  academicYearId?: string;
 }
 
 export default function Staff({ user }: { user: any }) {
@@ -167,6 +168,7 @@ export default function Staff({ user }: { user: any }) {
   const [shifts, setShifts] = useState<any[]>([]);
   const [standards, setStandards] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [staffInitials, setStaffInitials] = useState<any[]>([]);
   const [systemRoles, setSystemRoles] = useState<any[]>([]);
 
@@ -187,6 +189,7 @@ export default function Staff({ user }: { user: any }) {
     isClassTeacher: false,
     status: "",
     schoolId: user.schoolId || "",
+    academicYearId: user.academicYearId || "",
     initials: "",
     gender: "",
     dateOfBirth: "",
@@ -211,7 +214,7 @@ export default function Staff({ user }: { user: any }) {
   const fetchMasters = async () => {
     try {
       const [
-        schRes, relRes, bgRes, casRes, subRes, catRes, stRes, ctRes, shRes, stdRes, secRes, iniRes, rolRes
+        schRes, relRes, bgRes, casRes, subRes, catRes, stRes, ctRes, shRes, stdRes, secRes, iniRes, rolRes, ayRes
       ] = await Promise.all([
         apiService.getSchools(),
         apiService.getReligions(),
@@ -225,7 +228,8 @@ export default function Staff({ user }: { user: any }) {
         apiService.getStandards(),
         apiService.getSections(),
         apiService.getStaffInitials(),
-        apiService.getRoles()
+        apiService.getRoles(),
+        apiService.getAcademicYears()
       ]);
 
       setSchools(schRes.data?.data || schRes.data || []);
@@ -241,6 +245,7 @@ export default function Staff({ user }: { user: any }) {
       setSections(secRes.data?.data || secRes.data || []);
       setStaffInitials(iniRes.data?.data || iniRes.data || []);
       setSystemRoles(rolRes.data?.data || rolRes.data || []);
+      setAcademicYears(ayRes.data?.data || ayRes.data || []);
     } catch (error) {
       console.error("Failed to load schema master listings", error);
     }
@@ -764,7 +769,8 @@ export default function Staff({ user }: { user: any }) {
       sectionId: "",
       isClassTeacher: false,
       status: "",
-      schoolId: "",
+      schoolId: user.schoolId || "",
+      academicYearId: user.academicYearId || "",
       initials: "",
       gender: "",
       dateOfBirth: "",
@@ -804,6 +810,7 @@ export default function Staff({ user }: { user: any }) {
     const isRfidValid = rf !== "" && (rf.length === 10 || rf.length === 24) && /^[a-zA-Z0-9]+$/.test(rf);
 
     checkField("schoolId", !formData.schoolId);
+    checkField("academicYearId", !formData.academicYearId);
     checkField("firstName", !formData.firstName?.trim());
     checkField("lastName", !formData.lastName?.trim());
     checkField("gender", !formData.gender);
@@ -838,6 +845,7 @@ export default function Staff({ user }: { user: any }) {
     try {
       const payload: any = {
         schoolId: parseSafeInt(formData.schoolId) || 1,
+        academicYearId: parseSafeInt(formData.academicYearId) || null,
         employeeId: isEditing ? selectedStaff?.employeeId : `EMP-${Date.now()}`,
         initials: formData.initials || "",
         department: formData.subject || "Faculty",
@@ -1044,7 +1052,7 @@ export default function Staff({ user }: { user: any }) {
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Institutional Context</h3>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="space-y-2">
                           <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.schoolId ? "text-red-500" : "text-slate-400")}>Campus Branch {formErrors.schoolId && "*"}</Label>
                           <Select 
@@ -1074,6 +1082,39 @@ export default function Staff({ user }: { user: any }) {
                               {schools.map(s => (
                                 <SelectItem key={s.id} value={s.id.toString()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
                                   <span className="text-sm uppercase tracking-tight">{s.name}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.academicYearId ? "text-red-500" : "text-slate-400")}>Academic Session {formErrors.academicYearId && "*"}</Label>
+                          <Select 
+                            value={formData.academicYearId ? formData.academicYearId.toString() : ""} 
+                            onValueChange={(v) => {
+                              setFormData({...formData, academicYearId: v});
+                              if (formErrors.academicYearId) setFormErrors(prev => ({ ...prev, academicYearId: false }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              ref={el => { inputRefs.current["academicYearId"] = el; }}
+                              className={cn(
+                                "h-12 border-slate-100 bg-slate-50/50 font-black text-slate-800 rounded-2xl px-5 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-sm",
+                                formErrors.academicYearId && "border-red-500 ring-2 ring-red-500/10"
+                              )}
+                            >
+                              <SelectValue placeholder="Select Year">
+                                {formData.academicYearId ? academicYears.find(ay => ay.id.toString() === formData.academicYearId.toString())?.name : undefined}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="max-h-80 rounded-[2rem] shadow-2xl border-slate-100 p-3">
+                              <SelectItem value="" className="font-semibold py-2.5 px-3 rounded-lg focus:bg-slate-50 text-slate-400 italic">
+                                Select Academic Year
+                              </SelectItem>
+                              {academicYears.map(ay => (
+                                <SelectItem key={ay.id} value={ay.id.toString()} className="font-black py-4 px-4 rounded-2xl focus:bg-blue-50 focus:text-blue-700 cursor-pointer">
+                                  <span className="text-sm uppercase tracking-tight">{ay.name} {ay.isCurrent && "(Current)"}</span>
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1984,6 +2025,7 @@ export default function Staff({ user }: { user: any }) {
                                 isClassTeacher: staffObj.isClassTeacher,
                                 status: staffObj.status || "",
                                 schoolId: staffObj.schoolId || user.schoolId || "",
+                                academicYearId: staffObj.academicYearId || user.academicYearId || "",
                                 initials: staffObj.initials || "",
                                 gender: staffObj.gender,
                                 dateOfBirth: staffObj.dateOfBirth,

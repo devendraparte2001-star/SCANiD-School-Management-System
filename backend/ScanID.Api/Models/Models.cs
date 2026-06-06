@@ -33,6 +33,8 @@ namespace ScanID.Api.Models
         public string? NewValues { get; set; }
         public string? AffectedColumns { get; set; }
         public string? PrimaryKey { get; set; }
+        public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
     }
 
     /// <summary>
@@ -46,6 +48,8 @@ namespace ScanID.Api.Models
         public DateTime Timestamp { get; set; }
         public string? Exception { get; set; }
         public string? Properties { get; set; }
+        public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
     }
 
     /// <summary>
@@ -124,7 +128,10 @@ namespace ScanID.Api.Models
         public string? Path { get; set; }
         public int? ParentId { get; set; }
         public int SortOrder { get; set; }
+        public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsDeleted { get; set; } = false;
         public ICollection<NavigationRole> NavigationRoles { get; set; } = new List<NavigationRole>();
     }
 

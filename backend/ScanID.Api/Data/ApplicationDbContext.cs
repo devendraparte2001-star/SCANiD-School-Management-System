@@ -103,6 +103,10 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<SchoolSection>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Weekday>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Holiday>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<NavigationItem>().HasQueryFilter(x => !x.IsDeleted);
+
+            // Configuration to ignore the inherited AcademicYearId column on the AcademicYears master table (already represented by primary key Id)
+            modelBuilder.Entity<AcademicYear>().Ignore(ay => ay.AcademicYearId);
         }
 
         /// <summary>
@@ -215,6 +219,18 @@ namespace ScanID.Api.Data
             audit.OldValues = OldValues.Count == 0 ? null : JsonSerializer.Serialize(OldValues);
             audit.NewValues = NewValues.Count == 0 ? null : JsonSerializer.Serialize(NewValues);
             audit.AffectedColumns = ChangedColumns.Count == 0 ? null : JsonSerializer.Serialize(ChangedColumns);
+
+            // Dynamically propagate SchoolId and AcademicYearId to AuditLogs from the source entity if present
+            if (Entry.Entity is BaseEntity baseEntity)
+            {
+                audit.SchoolId = baseEntity.SchoolId;
+                audit.AcademicYearId = baseEntity.AcademicYearId;
+            }
+            else if (Entry.Entity is NavigationItem navItem)
+            {
+                audit.SchoolId = navItem.SchoolId;
+                audit.AcademicYearId = navItem.AcademicYearId;
+            }
             return audit;
         }
     }

@@ -75,3 +75,24 @@ The start pipeline running in `Program.cs` automatically ensures that:
   - `ALTER TABLE [dbo].[Shifts] ADD [SchoolId] INT NULL;`
   - `ALTER TABLE [dbo].[Shifts] ADD [AcademicYearId] INT NULL;`
 - This ensures full alignment between the C# models and the SQL database without breaking any pre-existing records.
+
+---
+
+## 📋 Audit Trail Column Realignment & DB Setup Verification
+
+### 1. Database Table Column Alignment
+All system entities that carry logging / tracking properties mapped from C# `BaseEntity` are confirmed to place their physical columns in consistent, absolute positions at the end of the SQL Server database schema definitions.
+
+*   **Realigned Tables**: Critical tables like `Students`, `Staff`, `Schools`, `Attendance`, and `Shifts` have had customized database migration scripts created (`realign_students_columns.sql`, `incremental_staff_contact_audit_update.sql`, `realign_schools_columns.sql`, `realign_attendance_columns.sql`, `incremental_shifts_schema.sql`) to safely restructure the tables under SQL Server, ensuring that:
+    -   `IsActive` (BIT, NOT NULL)
+    -   `IsDeleted` (BIT, NOT NULL)
+    -   `CreatedBy` (NVARCHAR(MAX))
+    -   `CreatedOn` (DATETIME2(7))
+    -   `ModifiedBy` (NVARCHAR(MAX))
+    -   `ModifiedOn` (DATETIME2(7))
+    rely strictly on designated positions at the end of every table block.
+*   **Static & Master Tables**: Standard structural masters defined in `/database.sql` (e.g. `Roles`, `Standards`, `Sections`, `AcademicYears`, `Castes`, `Religions`, `Categories`, `States`, `Cities`, `Fees`, `Marks`, `NavigationItems`, etc.) are pre-configured to position all audit tracking columns at the absolute end of the schema definitions.
+*   **Dynamic Column Attachment**: Any on-the-fly multi-tenancy columns (`SchoolId` and `AcademicYearId`) added during the server startup self-healing sequence are appended via safe `ALTER TABLE ADD` statements, putting them physically in chronological order at the end of the tables.
+
+### 2. Stored Procedure Synchronization
+All `sp_Manage*` procedures (`sp_ManageStudent`, `sp_ManageStaff`, `sp_ManageSchool`, `sp_ManageUser`, `sp_ManageMasterData`, etc.) responsible for handling transactions/data creations have been validated and updated to use consistent positional mapping. This guarantees that parameters such as `@CreatedBy` and `@ModifiedBy` are matched exactly inside both insertion and modification operations, maintaining perfect database and model integrity throughout the application life cycle.

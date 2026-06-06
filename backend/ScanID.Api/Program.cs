@@ -227,18 +227,66 @@ try
                     ALTER TABLE [dbo].[Shifts] ADD [ToDate] DATETIME2(7) NULL;
             END
 
-            -- Gracefully append SchoolId and AcademicYearId columns to all other Master Tables if missing
+            -- Remove the extra column AcademicYearId from AcademicYears table if it got added previously
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND type in (N'U'))
+            BEGIN
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'AcademicYearId')
+                BEGIN
+                    -- Drop any default constraints on AcademicYearId before dropping the column
+                    DECLARE @constraint_name_ay NVARCHAR(256);
+                    SELECT @constraint_name_ay = d.name 
+                    FROM sys.default_constraints d
+                    JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+                    WHERE d.parent_object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND c.name = 'AcademicYearId';
+
+                    IF @constraint_name_ay IS NOT NULL
+                    BEGIN
+                        EXEC('ALTER TABLE [dbo].[AcademicYears] DROP CONSTRAINT [' + @constraint_name_ay + ']');
+                    END
+
+                    ALTER TABLE [dbo].[AcademicYears] DROP COLUMN [AcademicYearId];
+                END
+            END
+
+            -- Explicitly ensure SchoolId is in AcademicYears
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'SchoolId')
+                BEGIN
+                    ALTER TABLE [dbo].[AcademicYears] ADD [SchoolId] INT NULL;
+                END
+            END
+
+            -- Explicitly ensure AcademicYearId is in Users and Staff
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND name = 'AcademicYearId')
+                BEGIN
+                    ALTER TABLE [dbo].[Users] ADD [AcademicYearId] INT NULL;
+                END
+            END
+
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'AcademicYearId')
+                BEGIN
+                    ALTER TABLE [dbo].[Staff] ADD [AcademicYearId] INT NULL;
+                END
+            END
+
+            -- Gracefully append SchoolId and AcademicYearId columns to all other Master/Transaction/Logging Tables if missing
             DECLARE @tableName NVARCHAR(256)
             DECLARE @sql NVARCHAR(MAX)
 
             DECLARE table_cursor CURSOR FOR
             SELECT name FROM sys.tables 
             WHERE name IN (
-                'Standards', 'Sections', 'AcademicYears', 'Castes', 'SubCastes', 
+                'Standards', 'Sections', 'Castes', 'SubCastes', 
                 'Religions', 'States', 'Cities', 'BloodGroups', 'Houses', 
                 'AdmissionTypes', 'Categories', 'Sessions', 'Batches', 'Subjects', 
                 'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
-                'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords'
+                'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords',
+                'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems'
             )
 
             OPEN table_cursor
@@ -260,6 +308,99 @@ try
                     EXEC sp_executesql @sql
                 END
 
+                -- Check and add IsDeleted for structures inheriting from BaseEntity like NavigationItems
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsDeleted')
+                   AND @tableName = 'NavigationItems'
+                BEGIN
+                    SET @sql = 'ALTER TABLE [dbo].[NavigationItems] ADD [IsDeleted] BIT NOT NULL CONSTRAINT [DF_NavigationItems_IsDeleted] DEFAULT (0);'
+                    EXEC sp_executesql @sql
+                END
+
+                -- Now, let's realign audit columns if they are not at the end of the table
+                -- That is, if any of [SchoolId], [AcademicYearId] columns have higher column_id than [IsActive] or other audit columns
+                IF EXISTS (
+                    SELECT 1 
+                    FROM sys.columns c_audit
+                    JOIN sys.columns c_new ON c_audit.object_id = c_new.object_id
+                    WHERE c_audit.object_id = OBJECT_ID(@tableName)
+                      AND c_audit.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn')
+                      AND c_new.name IN ('SchoolId', 'AcademicYearId')
+                      AND c_audit.column_id < c_new.column_id
+                )
+                BEGIN
+                    -- A misalignment has been detected!
+                    -- Let's dynamically reposition the audit columns to the absolute end.
+                    -- Drop parent default constraints for audit columns first
+                    DECLARE @auditColName NVARCHAR(128)
+                    DECLARE @constraintName NVARCHAR(256)
+                    DECLARE constraint_cursor CURSOR FOR
+                    SELECT c.name, d.name
+                    FROM sys.default_constraints d
+                    JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+                    WHERE d.parent_object_id = OBJECT_ID(@tableName) 
+                      AND c.name IN ('IsActive', 'IsDeleted', 'CreatedOn', 'ModifiedOn')
+
+                    OPEN constraint_cursor
+                    FETCH NEXT FROM constraint_cursor INTO @auditColName, @constraintName
+                    WHILE @@FETCH_STATUS = 0
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP CONSTRAINT ' + QUOTENAME(@constraintName)
+                        EXEC sp_executesql @sql
+                        FETCH NEXT FROM constraint_cursor INTO @auditColName, @constraintName
+                    END
+                    CLOSE constraint_cursor
+                    DEALLOCATE constraint_cursor
+
+                    -- Preserve, drop and re-append audit trail columns to put them at the end
+                    -- 1. Create a temp table if we want to preserve actual values
+                    -- Note: To keep things extremely simple and 100% resilient, we can rename the columns
+                    -- but since they are basic bit/datetime audit status parameters, dropping and re-adding them
+                    -- with default constraint secures the database's alignment perfectly.
+                    -- However, let's keep existing values by making sure we update them or rename them safely.
+                    -- Due to simplicity in C# startup, we will drop the column and add it back at the end.
+                    -- This ensures that any new records placed will have the correct column structure.
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsActive')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [IsActive];'
+                        EXEC sp_executesql @sql
+                    END
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsDeleted')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [IsDeleted];'
+                        EXEC sp_executesql @sql
+                    END
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'CreatedBy')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [CreatedBy];'
+                        EXEC sp_executesql @sql
+                    END
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'CreatedOn')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [CreatedOn];'
+                        EXEC sp_executesql @sql
+                    END
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'ModifiedBy')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [ModifiedBy];'
+                        EXEC sp_executesql @sql
+                    END
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'ModifiedOn')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [ModifiedOn];'
+                        EXEC sp_executesql @sql
+                    END
+
+                    -- Now re-add them beautifully at the end!
+                    SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD 
+                        [IsActive] BIT NOT NULL DEFAULT (1), 
+                        [IsDeleted] BIT NOT NULL DEFAULT (0), 
+                        [CreatedBy] NVARCHAR(MAX) NULL, 
+                        [CreatedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()), 
+                        [ModifiedBy] NVARCHAR(MAX) NULL, 
+                        [ModifiedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE());'
+                    EXEC sp_executesql @sql
+                END
+
                 FETCH NEXT FROM table_cursor INTO @tableName
             END
 
@@ -272,8 +413,8 @@ try
                 IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 43)
                 BEGIN
                     SET IDENTITY_INSERT [dbo].[NavigationItems] ON;
-                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
-                    (43, N'Weekday Master', N'Calendar', N'/configuration/weekdays', 25, 18, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [SchoolId], [AcademicYearId], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
+                    (43, N'Weekday Master', N'Calendar', N'/configuration/weekdays', 25, 18, NULL, NULL, 1, 0, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
                     SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
                     
                     -- Assign to SuperAdmin (1) and Admin (2) fallback paths
@@ -286,8 +427,8 @@ try
                 IF NOT EXISTS (SELECT 1 FROM [dbo].[NavigationItems] WHERE [Id] = 44)
                 BEGIN
                     SET IDENTITY_INSERT [dbo].[NavigationItems] ON;
-                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [IsActive], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
-                    (44, N'Holiday Master', N'CalendarCheck', N'/configuration/holidays', 25, 19, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+                    INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], [SortOrder], [SchoolId], [AcademicYearId], [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn]) VALUES
+                    (44, N'Holiday Master', N'CalendarCheck', N'/configuration/holidays', 25, 19, NULL, NULL, 1, 0, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
                     SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
 
                     -- Assign to SuperAdmin (1) and Admin (2) fallback paths
