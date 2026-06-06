@@ -1054,7 +1054,7 @@ export default function Staff({ user }: { user: any }) {
                       
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="space-y-2">
-                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.schoolId ? "text-red-500" : "text-slate-400")}>Campus Branch {formErrors.schoolId && "*"}</Label>
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1 flex items-center gap-1", formErrors.schoolId ? "text-red-500" : "text-slate-400")}>Campus Branch <span className="text-red-500 font-bold">*</span></Label>
                           <Select 
                             value={formData.schoolId ? formData.schoolId.toString() : ""} 
                             onValueChange={(v) => {
@@ -1089,7 +1089,7 @@ export default function Staff({ user }: { user: any }) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1", formErrors.academicYearId ? "text-red-500" : "text-slate-400")}>Academic Session {formErrors.academicYearId && "*"}</Label>
+                          <Label className={cn("text-[10px] font-black uppercase tracking-[0.2em] ml-1 flex items-center gap-1", formErrors.academicYearId ? "text-red-500" : "text-slate-400")}>Academic Session <span className="text-red-500 font-bold">*</span></Label>
                           <Select 
                             value={formData.academicYearId ? formData.academicYearId.toString() : ""} 
                             onValueChange={(v) => {

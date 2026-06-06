@@ -248,33 +248,7 @@ try
                 END
             END
 
-            -- Explicitly ensure SchoolId is in AcademicYears
-            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND type in (N'U'))
-            BEGIN
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'SchoolId')
-                BEGIN
-                    ALTER TABLE [dbo].[AcademicYears] ADD [SchoolId] INT NULL;
-                END
-            END
-
-            -- Explicitly ensure AcademicYearId is in Users and Staff
-            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))
-            BEGIN
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND name = 'AcademicYearId')
-                BEGIN
-                    ALTER TABLE [dbo].[Users] ADD [AcademicYearId] INT NULL;
-                END
-            END
-
-            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND type in (N'U'))
-            BEGIN
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Staff]') AND name = 'AcademicYearId')
-                BEGIN
-                    ALTER TABLE [dbo].[Staff] ADD [AcademicYearId] INT NULL;
-                END
-            END
-
-            -- Gracefully append SchoolId and AcademicYearId columns to all other Master/Transaction/Logging Tables if missing
+            -- Gracefully append SchoolId and AcademicYearId columns where required and realign audit columns to the end
             DECLARE @tableName NVARCHAR(256)
             DECLARE @sql NVARCHAR(MAX)
 
@@ -286,7 +260,8 @@ try
                 'AdmissionTypes', 'Categories', 'Sessions', 'Batches', 'Subjects', 
                 'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
                 'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords',
-                'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems'
+                'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems',
+                'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools'
             )
 
             OPEN table_cursor
@@ -294,18 +269,44 @@ try
 
             WHILE @@FETCH_STATUS = 0
             BEGIN
-                -- Check and add SchoolId
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'SchoolId')
+                -- 1. Remove AcademicYearId from AcademicYears table if it got added previously
+                IF @tableName = 'AcademicYears'
                 BEGIN
-                    SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [SchoolId] INT NULL;'
-                    EXEC sp_executesql @sql
+                    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'AcademicYearId')
+                    BEGIN
+                        DECLARE @constraint_ay NVARCHAR(256);
+                        SELECT @constraint_ay = d.name 
+                        FROM sys.default_constraints d
+                        JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+                        WHERE d.parent_object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND c.name = 'AcademicYearId';
+
+                        IF @constraint_ay IS NOT NULL
+                        BEGIN
+                            EXEC('ALTER TABLE [dbo].[AcademicYears] DROP CONSTRAINT [' + @constraint_ay + ']');
+                        END
+
+                        ALTER TABLE [dbo].[AcademicYears] DROP COLUMN [AcademicYearId];
+                    END
                 END
 
-                -- Check and add AcademicYearId
-                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'AcademicYearId')
+                -- 2. Check and add SchoolId to all tables except 'Schools'
+                IF @tableName <> 'Schools'
                 BEGIN
-                    SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [AcademicYearId] INT NULL;'
-                    EXEC sp_executesql @sql
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'SchoolId')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [SchoolId] INT NULL;'
+                        EXEC sp_executesql @sql
+                    END
+                END
+
+                -- 3. Check and add AcademicYearId to all tables except 'Schools' and 'AcademicYears'
+                IF @tableName <> 'Schools' AND @tableName <> 'AcademicYears'
+                BEGIN
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'AcademicYearId')
+                    BEGIN
+                        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [AcademicYearId] INT NULL;'
+                        EXEC sp_executesql @sql
+                    END
                 END
 
                 -- Check and add IsDeleted for structures inheriting from BaseEntity like NavigationItems
@@ -316,20 +317,20 @@ try
                     EXEC sp_executesql @sql
                 END
 
-                -- Now, let's realign audit columns if they are not at the end of the table
-                -- That is, if any of [SchoolId], [AcademicYearId] columns have higher column_id than [IsActive] or other audit columns
+                -- 4. Now, let's realign audit columns if they are not at the end of the table
+                -- That is, if any of [IsActive], [IsDeleted], [CreatedBy], [CreatedOn], [ModifiedBy], [ModifiedOn] columns
+                -- have lower column_id than any non-audit columns (which indicates a misalignment)
                 IF EXISTS (
                     SELECT 1 
                     FROM sys.columns c_audit
                     JOIN sys.columns c_new ON c_audit.object_id = c_new.object_id
                     WHERE c_audit.object_id = OBJECT_ID(@tableName)
                       AND c_audit.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn')
-                      AND c_new.name IN ('SchoolId', 'AcademicYearId')
+                      AND c_new.name NOT IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn', 'Id')
                       AND c_audit.column_id < c_new.column_id
                 )
                 BEGIN
-                    -- A misalignment has been detected!
-                    -- Let's dynamically reposition the audit columns to the absolute end.
+                    -- A misalignment has been detected! Let's dynamically reposition the audit columns to the absolute end.
                     -- Drop parent default constraints for audit columns first
                     DECLARE @auditColName NVARCHAR(128)
                     DECLARE @constraintName NVARCHAR(256)
@@ -351,14 +352,7 @@ try
                     CLOSE constraint_cursor
                     DEALLOCATE constraint_cursor
 
-                    -- Preserve, drop and re-append audit trail columns to put them at the end
-                    -- 1. Create a temp table if we want to preserve actual values
-                    -- Note: To keep things extremely simple and 100% resilient, we can rename the columns
-                    -- but since they are basic bit/datetime audit status parameters, dropping and re-adding them
-                    -- with default constraint secures the database's alignment perfectly.
-                    -- However, let's keep existing values by making sure we update them or rename them safely.
-                    -- Due to simplicity in C# startup, we will drop the column and add it back at the end.
-                    -- This ensures that any new records placed will have the correct column structure.
+                    -- Drop audit trail columns to re-append them at the end
                     IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsActive')
                     BEGIN
                         SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [IsActive];'

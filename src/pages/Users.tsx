@@ -718,7 +718,7 @@ export default function Users({ user }: { user: any }) {
                 
                 {/* School dropdown */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600">Assigned School Branch *</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600 flex items-center gap-1">Assigned School Branch <span className="text-red-500 font-bold">*</span></Label>
                     <Select value={formData.schoolId} onValueChange={(v) => setFormData({...formData, schoolId: v})}>
                         <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
                             <SelectValue placeholder="Select Assigned School" />
@@ -734,7 +734,7 @@ export default function Users({ user }: { user: any }) {
 
                 {/* Academic Year dropdown */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600">Academic Year *</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600 flex items-center gap-1">Academic Year <span className="text-red-500 font-bold">*</span></Label>
                     <Select value={formData.academicYearId} onValueChange={(v) => setFormData({...formData, academicYearId: v})}>
                         <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
                             <SelectValue placeholder="Select Academic Year" />

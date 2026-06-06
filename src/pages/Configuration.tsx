@@ -1582,10 +1582,10 @@ export default function Configuration({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className={cn(
-                    "text-xs font-black uppercase tracking-wider",
+                    "text-xs font-black uppercase tracking-wider flex items-center gap-1",
                     formErrors.schoolId ? "text-red-500" : "text-slate-400"
                   )}>
-                    School Assignment {formErrors.schoolId && "*"}
+                    School Assignment <span className="text-red-500 font-bold">*</span>
                   </Label>
                   <Select
                     value={formData.schoolId || ""}
@@ -1617,10 +1617,10 @@ export default function Configuration({
                 {activeTab !== "academic-years" && (
                   <div className="space-y-2">
                     <Label className={cn(
-                      "text-xs font-black uppercase tracking-wider",
+                      "text-xs font-black uppercase tracking-wider flex items-center gap-1",
                       formErrors.academicYearId ? "text-red-500" : "text-slate-400"
                     )}>
-                      Academic Year {formErrors.academicYearId && "*"}
+                      Academic Year <span className="text-red-500 font-bold">*</span>
                     </Label>
                     <Select
                       value={formData.academicYearId || ""}

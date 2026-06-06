@@ -468,4 +468,185 @@ GO
 -- Drop old constraints, recreate [dbo].[Attendance] with Audit Trail columns (IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn) at the very end, migrate data and restore all FKs and stored procedures.
 GO
 
+-- =========================================================================
+-- 11. GLOBAL SCHEMA ALIGNMENT & SYSTEM RE-KEYS (JUNE 6, 2026)
+-- Purpose:
+--  - Removes the extra AcademicYearId column from the AcademicYears master table.
+--  - Ensures SchoolId and AcademicYearId exist in all master, transaction, and logging tables.
+--  - Re-aligns Audit Trail columns (IsActive, IsDeleted, CreatedBy, CreatedOn, ModifiedBy, ModifiedOn)
+--    to be at the absolute end of all tables across the DB dynamically.
+-- =========================================================================
+
+-- Execute clean-up for AcademicYears first
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND type in (N'U'))
+BEGIN
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'AcademicYearId')
+    BEGIN
+        DECLARE @constraint_name_ay NVARCHAR(256);
+        SELECT @constraint_name_ay = d.name 
+        FROM sys.default_constraints d
+        JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+        WHERE d.parent_object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND c.name = 'AcademicYearId';
+
+        IF @constraint_name_ay IS NOT NULL
+        BEGIN
+            EXEC('ALTER TABLE [dbo].[AcademicYears] DROP CONSTRAINT [' + @constraint_name_ay + ']');
+        END
+
+        ALTER TABLE [dbo].[AcademicYears] DROP COLUMN [AcademicYearId];
+    END
+END
+
+-- Core Cursor looping over every system table to apply the realignment
+DECLARE @tableName NVARCHAR(256)
+DECLARE @sql NVARCHAR(MAX)
+
+DECLARE table_cursor CURSOR FOR
+SELECT name FROM sys.tables 
+WHERE name IN (
+    'Standards', 'Sections', 'Castes', 'SubCastes', 
+    'Religions', 'States', 'Cities', 'BloodGroups', 'Houses', 
+    'AdmissionTypes', 'Categories', 'Sessions', 'Batches', 'Subjects', 
+    'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
+    'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords',
+    'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems',
+    'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools'
+)
+
+OPEN table_cursor
+FETCH NEXT FROM table_cursor INTO @tableName
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- 1. Remove AcademicYearId from AcademicYears table if it got added previously
+    IF @tableName = 'AcademicYears'
+    BEGIN
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND name = 'AcademicYearId')
+        BEGIN
+            DECLARE @constraint_ay NVARCHAR(256);
+            SELECT @constraint_ay = d.name 
+            FROM sys.default_constraints d
+            JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+            WHERE d.parent_object_id = OBJECT_ID(N'[dbo].[AcademicYears]') AND c.name = 'AcademicYearId';
+
+            IF @constraint_ay IS NOT NULL
+            BEGIN
+                EXEC('ALTER TABLE [dbo].[AcademicYears] DROP CONSTRAINT [' + @constraint_ay + ']');
+            END
+
+            ALTER TABLE [dbo].[AcademicYears] DROP COLUMN [AcademicYearId];
+        END
+    END
+
+    -- 2. Check and add SchoolId to all tables except 'Schools'
+    IF @tableName <> 'Schools'
+    BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'SchoolId')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [SchoolId] INT NULL;'
+            EXEC sp_executesql @sql
+        END
+    END
+
+    -- 3. Check and add AcademicYearId to all tables except 'Schools' and 'AcademicYears'
+    IF @tableName <> 'Schools' AND @tableName <> 'AcademicYears'
+    BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'AcademicYearId')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD [AcademicYearId] INT NULL;'
+            EXEC sp_executesql @sql
+        END
+    END
+
+    -- 4. Check and add IsDeleted for structures inheriting from BaseEntity like NavigationItems
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsDeleted')
+       AND @tableName = 'NavigationItems'
+    BEGIN
+        SET @sql = 'ALTER TABLE [dbo].[NavigationItems] ADD [IsDeleted] BIT NOT NULL CONSTRAINT [DF_NavigationItems_IsDeleted] DEFAULT (0);'
+        EXEC sp_executesql @sql
+    END
+
+    -- 5. Now, let's realign audit columns if they are not at the end of the table
+    IF EXISTS (
+        SELECT 1 
+        FROM sys.columns c_audit
+        JOIN sys.columns c_new ON c_audit.object_id = c_new.object_id
+        WHERE c_audit.object_id = OBJECT_ID(@tableName)
+          AND c_audit.name IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn')
+          AND c_new.name NOT IN ('IsActive', 'IsDeleted', 'CreatedBy', 'CreatedOn', 'ModifiedBy', 'ModifiedOn', 'Id')
+          AND c_audit.column_id < c_new.column_id
+    )
+    BEGIN
+        -- Misalignment detected. Reposition to the absolute end.
+        -- Drop parent default constraints for audit columns first
+        DECLARE @auditColName NVARCHAR(128)
+        DECLARE @constraintName NVARCHAR(256)
+        DECLARE constraint_cursor CURSOR FOR
+        SELECT c.name, d.name
+        FROM sys.default_constraints d
+        JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+        WHERE d.parent_object_id = OBJECT_ID(@tableName) 
+          AND c.name IN ('IsActive', 'IsDeleted', 'CreatedOn', 'ModifiedOn')
+
+        OPEN constraint_cursor
+        FETCH NEXT FROM constraint_cursor INTO @auditColName, @constraintName
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP CONSTRAINT ' + QUOTENAME(@constraintName)
+            EXEC sp_executesql @sql
+            FETCH NEXT FROM constraint_cursor INTO @auditColName, @constraintName
+        END
+        CLOSE constraint_cursor
+        DEALLOCATE constraint_cursor
+
+        -- Drop audit trail columns to re-append them at the end
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsActive')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [IsActive];'
+            EXEC sp_executesql @sql
+        END
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'IsDeleted')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [IsDeleted];'
+            EXEC sp_executesql @sql
+        END
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'CreatedBy')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [CreatedBy];'
+            EXEC sp_executesql @sql
+        END
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'CreatedOn')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [CreatedOn];'
+            EXEC sp_executesql @sql
+        END
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'ModifiedBy')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [ModifiedBy];'
+            EXEC sp_executesql @sql
+        END
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(@tableName) AND name = 'ModifiedOn')
+        BEGIN
+            SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' DROP COLUMN [ModifiedOn];'
+            EXEC sp_executesql @sql
+        END
+
+        -- Now re-add them beautifully at the end!
+        SET @sql = 'ALTER TABLE ' + QUOTENAME(@tableName) + ' ADD 
+            [IsActive] BIT NOT NULL DEFAULT (1), 
+            [IsDeleted] BIT NOT NULL DEFAULT (0), 
+            [CreatedBy] NVARCHAR(MAX) NULL, 
+            [CreatedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()), 
+            [ModifiedBy] NVARCHAR(MAX) NULL, 
+            [ModifiedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE());'
+        EXEC sp_executesql @sql
+    END
+
+    FETCH NEXT FROM table_cursor INTO @tableName
+END
+
+CLOSE table_cursor
+DEALLOCATE table_cursor
+GO
+
 
