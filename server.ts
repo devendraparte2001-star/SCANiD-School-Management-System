@@ -598,6 +598,63 @@ async function startServer() {
 
   app.post("/api/students", (req, res) => {
     const body = req.body;
+    const schoolId = body.schoolId ? parseInt(body.schoolId) : null;
+    const academicYearId = body.academicYearId ? parseInt(body.academicYearId) : null;
+    const grNo = (body.grNo || body.GRNO || body.grno || body.registrationNumber || "").toString().trim().toLowerCase();
+    const rfid = (body.rfid || body.RFID || "").toString().trim().toLowerCase().replace(/\s/g, "");
+    const aadharCard = (body.aadharCard || body.aadharcard || "").toString().trim().toLowerCase().replace(/\s/g, "");
+    const uniformId = (body.uniformId || body.uniformid || "").toString().trim().toLowerCase();
+
+    if (grNo) {
+      const exists = students.some(s => 
+        s.schoolId === schoolId && 
+        s.academicYearId === academicYearId && 
+        (s.grNo || s.registrationNumber || "").toString().trim().toLowerCase() === grNo
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Student already exists with Registration Number/GrNo '${body.grNo || body.registrationNumber}' for the selected School and Academic Year.` });
+      }
+    }
+    if (rfid) {
+      if (rfid.length !== 10 && rfid.length !== 24) {
+        return res.status(400).json({ message: `RFID must be exactly 10 or 24 alphanumeric characters.` });
+      }
+      if (!/^[a-zA-Z0-9]+$/.test(rfid)) {
+        return res.status(400).json({ message: `RFID must be alphanumeric.` });
+      }
+      const exists = students.some(s => 
+        s.schoolId === schoolId && 
+        (s.rfid || s.RFID || "").toString().trim().toLowerCase().replace(/\s/g, "") === rfid
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Student with RFID '${body.rfid}' already exists in this School Branch.` });
+      }
+    }
+    if (aadharCard) {
+      if (!/^\d{12}$/.test(aadharCard)) {
+        return res.status(400).json({ message: `Aadhar Card must be exactly 12 numeric digits.` });
+      }
+      const exists = students.some(s => 
+        s.schoolId === schoolId && 
+        (s.aadharCard || s.aadharcard || "").toString().trim().toLowerCase().replace(/\s/g, "") === aadharCard
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Student with Aadhar Card '${body.aadharCard}' already exists in this School Branch.` });
+      }
+    }
+    if (uniformId) {
+      if (uniformId.length < 3 || uniformId.length > 50) {
+        return res.status(400).json({ message: `UniformID must be between 3 and 50 characters.` });
+      }
+      const exists = students.some(s => 
+        s.schoolId === schoolId && 
+        (s.uniformId || s.uniformid || "").toString().trim().toLowerCase() === uniformId
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Student with UniformID '${body.uniformId}' already exists in this School Branch.` });
+      }
+    }
+
     const newStudent = {
       id: students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1,
       grNo: body.grNo || body.GRNO || body.grno || body.registrationNumber || `REG-${Date.now()}`,
@@ -662,30 +719,45 @@ async function startServer() {
       }
 
       // b) AadharCard
-      const aadhar = (s.aadharCard || s.aadharcard || "").toString().trim().toLowerCase();
+      const aadhar = (s.aadharCard || s.aadharcard || "").toString().trim().replace(/\s/g, "");
       if (aadhar) {
-        if (batchAadhars.has(aadhar) || dbAadhars.has(aadhar)) {
+        if (!/^\d{12}$/.test(aadhar)) {
+          return res.status(400).json({ message: `Row ${index}: Invalid Aadhar Card '${s.aadharCard || s.aadharcard}'. It must be exactly 12 numeric digits.` });
+        }
+        const aadharLower = aadhar.toLowerCase();
+        if (batchAadhars.has(aadharLower) || dbAadhars.has(aadharLower)) {
           return res.status(400).json({ message: `Row ${index}: Duplicate Aadhar Card '${s.aadharCard || s.aadharcard}' detected.` });
         }
-        batchAadhars.add(aadhar);
+        batchAadhars.add(aadharLower);
       }
 
       // c) RFID
-      const rfid = (s.rfid || s.RFID || "").toString().trim().toLowerCase();
+      const rfid = (s.rfid || s.RFID || "").toString().trim().replace(/\s/g, "");
       if (rfid) {
-        if (batchRfids.has(rfid) || dbRfids.has(rfid)) {
+        if (rfid.length !== 10 && rfid.length !== 24) {
+          return res.status(400).json({ message: `Row ${index}: Invalid RFID/CardID '${s.rfid || s.RFID}'. It must be exactly 10 or 24 characters.` });
+        }
+        if (!/^[a-zA-Z0-9]+$/.test(rfid)) {
+          return res.status(400).json({ message: `Row ${index}: RFID/CardID must be alphanumeric.` });
+        }
+        const rfidLower = rfid.toLowerCase();
+        if (batchRfids.has(rfidLower) || dbRfids.has(rfidLower)) {
           return res.status(400).json({ message: `Row ${index}: Duplicate RFID/CardID '${s.rfid || s.RFID}' detected.` });
         }
-        batchRfids.add(rfid);
+        batchRfids.add(rfidLower);
       }
 
       // d) UniformID
-      const uniform = (s.uniformId || s.uniformid || "").toString().trim().toLowerCase();
+      const uniform = (s.uniformId || s.uniformid || "").toString().trim();
       if (uniform) {
-        if (batchUniforms.has(uniform) || dbUniforms.has(uniform)) {
+        if (uniform.length < 3 || uniform.length > 50) {
+          return res.status(400).json({ message: `Row ${index}: Invalid UniformID '${s.uniformId || s.uniformid}'. It must be between 3 and 50 characters.` });
+        }
+        const uniformLower = uniform.toLowerCase();
+        if (batchUniforms.has(uniformLower) || dbUniforms.has(uniformLower)) {
           return res.status(400).json({ message: `Row ${index}: Duplicate UniformID '${s.uniformId || s.uniformid}' detected.` });
         }
-        batchUniforms.add(uniform);
+        batchUniforms.add(uniformLower);
       }
     }
 
@@ -704,6 +776,67 @@ async function startServer() {
     const index = students.findIndex(s => s.id === id);
     if (index !== -1) {
       const body = req.body;
+      const schoolId = body.schoolId ? parseInt(body.schoolId) : (students[index].schoolId ? parseInt(students[index].schoolId) : null);
+      const academicYearId = body.academicYearId ? parseInt(body.academicYearId) : (students[index].academicYearId ? parseInt(students[index].academicYearId) : null);
+      const grNo = (body.grNo || body.GRNO || body.grno || body.registrationNumber || "").toString().trim().toLowerCase();
+      const rfid = (body.rfid || body.RFID || "").toString().trim().toLowerCase().replace(/\s/g, "");
+      const aadharCard = (body.aadharCard || body.aadharcard || "").toString().trim().toLowerCase().replace(/\s/g, "");
+      const uniformId = (body.uniformId || body.uniformid || "").toString().trim().toLowerCase();
+
+      if (grNo) {
+        const exists = students.some(s => 
+          s.id !== id &&
+          s.schoolId === schoolId && 
+          s.academicYearId === academicYearId && 
+          (s.grNo || s.registrationNumber || "").toString().trim().toLowerCase() === grNo
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another student already exists with Registration Number/GrNo '${body.grNo || body.registrationNumber}' for the selected School and Academic Year.` });
+        }
+      }
+      if (rfid) {
+        if (rfid.length !== 10 && rfid.length !== 24) {
+          return res.status(400).json({ message: `RFID must be exactly 10 or 24 alphanumeric characters.` });
+        }
+        if (!/^[a-zA-Z0-9]+$/.test(rfid)) {
+          return res.status(400).json({ message: `RFID must be alphanumeric.` });
+        }
+        const exists = students.some(s => 
+          s.id !== id &&
+          s.schoolId === schoolId && 
+          (s.rfid || s.RFID || "").toString().trim().toLowerCase().replace(/\s/g, "") === rfid
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another student with RFID '${body.rfid}' already exists in this School Branch.` });
+        }
+      }
+      if (aadharCard) {
+        if (!/^\d{12}$/.test(aadharCard)) {
+          return res.status(400).json({ message: `Aadhar Card must be exactly 12 numeric digits.` });
+        }
+        const exists = students.some(s => 
+          s.id !== id &&
+          s.schoolId === schoolId && 
+          (s.aadharCard || s.aadharcard || "").toString().trim().toLowerCase().replace(/\s/g, "") === aadharCard
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another student with Aadhar Card '${body.aadharCard}' already exists in this School Branch.` });
+        }
+      }
+      if (uniformId) {
+        if (uniformId.length < 3 || uniformId.length > 50) {
+          return res.status(400).json({ message: `UniformID must be between 3 and 50 characters.` });
+        }
+        const exists = students.some(s => 
+          s.id !== id &&
+          s.schoolId === schoolId && 
+          (s.uniformId || s.uniformid || "").toString().trim().toLowerCase() === uniformId
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another student with UniformID '${body.uniformId}' already exists in this School Branch.` });
+        }
+      }
+
       const updated = {
         ...students[index],
         firstName: body.firstName || body.FNAME || students[index].firstName,
@@ -921,9 +1054,45 @@ async function startServer() {
   });
 
   app.post("/api/teachers", (req, res) => {
+    const body = req.body;
+    const schoolId = body.schoolId ? parseInt(body.schoolId) : null;
+    const empId = body.employeeId ? body.employeeId.toString().trim().toLowerCase() : "";
+    const email = (body.user?.email || body.email) ? (body.user?.email || body.email).toString().trim().toLowerCase() : "";
+    const rfid = body.rfid ? body.rfid.toString().trim().toLowerCase().replace(/\s/g, "") : "";
+
+    if (empId) {
+      const exists = teachers.some((t: any) => 
+        t.schoolId === schoolId && 
+        (t.employeeId || "").toString().trim().toLowerCase() === empId
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Staff with Employee ID '${body.employeeId}' already exists in this School Branch.` });
+      }
+    }
+    if (email) {
+      const exists = teachers.some((t: any) => 
+        ((t.user?.email || t.email) || "").toString().trim().toLowerCase() === email
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Staff/User with Email '${body.user?.email || body.email}' already exists.` });
+      }
+    }
+    if (rfid) {
+      if (rfid.length !== 10 && rfid.length !== 24) {
+        return res.status(400).json({ message: `RFID Tag Number must be exactly 10 or 24 alphanumeric characters.` });
+      }
+      const exists = teachers.some((t: any) => 
+        t.schoolId === schoolId && 
+        (t.rfid || "").toString().trim().toLowerCase().replace(/\s/g, "") === rfid
+      );
+      if (exists) {
+        return res.status(400).json({ message: `Staff with RFID Tag '${body.rfid}' already exists in this School Branch.` });
+      }
+    }
+
     const newItem = {
       id: teachers.length > 0 ? Math.max(...teachers.map((t: any) => t.id)) + 1 : 1,
-      ...req.body
+      ...body
     };
     teachers.push(newItem);
     saveDb();
@@ -934,7 +1103,46 @@ async function startServer() {
     const id = parseInt(req.params.id);
     const index = teachers.findIndex((t: any) => t.id === id);
     if (index !== -1) {
-      teachers[index] = { ...teachers[index], ...req.body };
+      const body = req.body;
+      const schoolId = body.schoolId ? parseInt(body.schoolId) : (teachers[index].schoolId ? parseInt(teachers[index].schoolId) : null);
+      const empId = body.employeeId ? body.employeeId.toString().trim().toLowerCase() : "";
+      const email = (body.user?.email || body.email) ? (body.user?.email || body.email).toString().trim().toLowerCase() : "";
+      const rfid = body.rfid ? body.rfid.toString().trim().toLowerCase().replace(/\s/g, "") : "";
+
+      if (empId) {
+        const exists = teachers.some((t: any) => 
+          t.id !== id &&
+          t.schoolId === schoolId && 
+          (t.employeeId || "").toString().trim().toLowerCase() === empId
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another staff with Employee ID '${body.employeeId}' already exists in this School Branch.` });
+        }
+      }
+      if (email) {
+        const exists = teachers.some((t: any) => 
+          t.id !== id &&
+          ((t.user?.email || t.email) || "").toString().trim().toLowerCase() === email
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another staff/user with Email '${body.user?.email || body.email}' already exists.` });
+        }
+      }
+      if (rfid) {
+        if (rfid.length !== 10 && rfid.length !== 24) {
+          return res.status(400).json({ message: `RFID Tag Number must be exactly 10 or 24 alphanumeric characters.` });
+        }
+        const exists = teachers.some((t: any) => 
+          t.id !== id &&
+          t.schoolId === schoolId && 
+          (t.rfid || "").toString().trim().toLowerCase().replace(/\s/g, "") === rfid
+        );
+        if (exists) {
+          return res.status(400).json({ message: `Another staff with RFID Tag '${body.rfid}' already exists in this School Branch.` });
+        }
+      }
+
+      teachers[index] = { ...teachers[index], ...body };
       saveDb();
       res.json({ data: teachers[index] });
     } else {
@@ -959,6 +1167,21 @@ async function startServer() {
     });
     
     app.post(`/api/masters/${resourceName}`, (req, res) => {
+      const name = req.body.name ? req.body.name.toString().trim().toLowerCase() : "";
+      const schoolId = req.body.schoolId ? parseInt(req.body.schoolId) : null;
+      const academicYearId = req.body.academicYearId ? parseInt(req.body.academicYearId) : null;
+
+      if (name) {
+        const exists = dataArray.some((item: any) => 
+          (item.name ? item.name.toString().trim().toLowerCase() === name : false) &&
+          (schoolId ? parseInt(item.schoolId) === schoolId : true) &&
+          (academicYearId ? parseInt(item.academicYearId) === academicYearId : true)
+        );
+        if (exists) {
+          const formattedResource = resourceName.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          return res.status(400).json({ message: `${formattedResource} '${req.body.name}' already exists for the selected School Branch / Academic Year.` });
+        }
+      }
       const newItem = { id: dataArray.length > 0 ? Math.max(...dataArray.map(item => item.id)) + 1 : 1, ...req.body, isActive: true };
       dataArray.push(newItem);
       saveDb();
@@ -969,6 +1192,22 @@ async function startServer() {
       const id = parseInt(req.params.id);
       const index = dataArray.findIndex(item => item.id === id);
       if (index !== -1) {
+        const name = req.body.name ? req.body.name.toString().trim().toLowerCase() : "";
+        const schoolId = req.body.schoolId ? parseInt(req.body.schoolId) : (dataArray[index].schoolId ? parseInt(dataArray[index].schoolId) : null);
+        const academicYearId = req.body.academicYearId ? parseInt(req.body.academicYearId) : (dataArray[index].academicYearId ? parseInt(dataArray[index].academicYearId) : null);
+
+        if (name) {
+          const exists = dataArray.some((item: any) => 
+            item.id !== id &&
+            (item.name ? item.name.toString().trim().toLowerCase() === name : false) &&
+            (schoolId ? parseInt(item.schoolId) === schoolId : true) &&
+            (academicYearId ? parseInt(item.academicYearId) === academicYearId : true)
+          );
+          if (exists) {
+            const formattedResource = resourceName.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return res.status(400).json({ message: `Another ${formattedResource} with name '${req.body.name}' already exists for the selected School Branch / Academic Year.` });
+          }
+        }
         dataArray[index] = { ...dataArray[index], ...req.body };
         saveDb();
         res.json({ data: dataArray[index] });

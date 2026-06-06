@@ -1139,7 +1139,8 @@ export default function Students({ user }: { user: UserType }) {
     // Uniform ID is mandatory on creation (!isEditMode) as well
     const uniformTrimmed = newStudentFormData.uniformId?.trim() || "";
     const isUniformRequired = !isEditMode && uniformTrimmed === "";
-    checkField("uniformId", isUniformRequired);
+    const isUniformInvalidLength = uniformTrimmed !== "" && (uniformTrimmed.length < 3 || uniformTrimmed.length > 50);
+    checkField("uniformId", isUniformRequired || isUniformInvalidLength);
 
     checkField("schoolSectionId", !newStudentFormData.schoolSectionId);
     checkField("fatherContactNo", !newStudentFormData.fatherContactNo?.trim() || !/^\d{10}$/.test(newStudentFormData.fatherContactNo.replace(/\D/g, "")));
@@ -1178,6 +1179,8 @@ export default function Students({ user }: { user: UserType }) {
         toast.error("RFID must be either 10 or 24 alphanumeric characters.");
       } else if (firstErrorField === "rfid" && isRfidRequired) {
         toast.error("RFID is mandatory on creation.");
+      } else if (firstErrorField === "uniformId" && isUniformInvalidLength) {
+        toast.error("Uniform ID must be between 3 and 50 characters.");
       } else if (firstErrorField === "uniformId" && isUniformRequired) {
         toast.error("Uniform ID is mandatory on creation.");
       } else if (firstErrorField === "fatherContactNo") {

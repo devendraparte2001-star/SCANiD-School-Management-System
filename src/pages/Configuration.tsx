@@ -1605,6 +1605,7 @@ export default function Configuration({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
+                      <SelectItem value="" className="italic text-slate-400 py-2">Select School Branch</SelectItem>
                       {visibleSchools.map((s: any) => (
                         <SelectItem key={s.id} value={s.id.toString()} className="font-semibold py-2">
                           {s.name}
@@ -1635,11 +1636,12 @@ export default function Configuration({
                         "h-12 rounded-xl border-slate-200 bg-white font-bold px-4",
                         formErrors.academicYearId && "border-red-500 ring-2 ring-red-500/10"
                       )}>
-                        <SelectValue placeholder="Select Year">
+                        <SelectValue placeholder="Select Academic Year">
                           {formData.academicYearId ? ((dependencies.academicYears || []).find((y: any) => y.id?.toString() === formData.academicYearId?.toString())?.name || formData.academicYearId) : undefined}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60">
+                        <SelectItem value="" className="italic text-slate-400 py-2">Select Academic Year</SelectItem>
                         {(dependencies.academicYears || []).map((y: any) => (
                           <SelectItem key={y.id} value={y.id.toString()} className="font-semibold py-2">
                             {y.name} {y.isCurrent && "(Current)"}

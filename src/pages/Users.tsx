@@ -216,7 +216,7 @@ export default function Users({ user }: { user: any }) {
     setEditingUser(userItem);
     if (userItem) {
       // Normalize role string to lowercase with spaces stripped to match Select dropdown item option values
-      const normalizedRole = userItem.role ? userItem.role.toLowerCase().replace(/\s+/g, '') : "student";
+      const normalizedRole = userItem.role ? userItem.role.toLowerCase().replace(/\s+/g, '') : "";
       setFormData({
         name: userItem.name || "",
         email: userItem.email || "",
@@ -233,7 +233,7 @@ export default function Users({ user }: { user: any }) {
         name: "",
         email: "",
         username: "",
-        role: "student",
+        role: "",
         isActive: true,
         password: "",
         confirmPassword: "",
@@ -247,6 +247,11 @@ export default function Users({ user }: { user: any }) {
   const handleSave = async () => {
     if (!formData.name || !formData.email || !formData.username) {
         toast.error("Please fill in all required fields");
+        return;
+    }
+
+    if (!formData.role) {
+        toast.error("System Role is a required field");
         return;
     }
 
@@ -691,12 +696,13 @@ export default function Users({ user }: { user: any }) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Role</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">System Role <span className="text-red-500 font-bold">*</span></Label>
                         <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
                             <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
-                                <SelectValue />
+                                <SelectValue placeholder="Select System Role" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl shadow-xl">
+                                <SelectItem value="" className="italic text-slate-400">Select System Role</SelectItem>
                                 <SelectItem value="superadmin">Super Admin</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
                                 <SelectItem value="teacher">Teacher</SelectItem>
@@ -721,10 +727,10 @@ export default function Users({ user }: { user: any }) {
                     <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600 flex items-center gap-1">Assigned School Branch <span className="text-red-500 font-bold">*</span></Label>
                     <Select value={formData.schoolId} onValueChange={(v) => setFormData({...formData, schoolId: v})}>
                         <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
-                            <SelectValue placeholder="Select Assigned School" />
+                            <SelectValue placeholder="Select School Branch" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl shadow-xl max-h-60">
-                            <SelectItem value="" className="italic text-slate-400">Select Assigned School</SelectItem>
+                            <SelectItem value="" className="italic text-slate-400">Select School Branch</SelectItem>
                             {Array.isArray(schools) && schools.map((s) => (
                                 <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
                             ))}
