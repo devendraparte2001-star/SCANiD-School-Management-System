@@ -286,6 +286,19 @@ async function startServer() {
   let schoolSections = dbData.schoolSections || [{ id: 1, name: "Primary" }, { id: 2, name: "Secondary" }, { id: 3, name: "Higher Secondary" }];
   let staffInitials = dbData.staffInitials || [{ id: 1, name: "Mr." }, { id: 2, name: "Mrs." }, { id: 3, name: "Dr." }, { id: 4, name: "Ms." }];
   let roles = dbData.roles || [{ id: 1, name: "superadmin" }, { id: 2, name: "admin" }, { id: 3, name: "teacher" }];
+  let weekdays = dbData.weekdays || [
+    { id: 1, name: "Monday", isActive: true },
+    { id: 2, name: "Tuesday", isActive: true },
+    { id: 3, name: "Wednesday", isActive: true },
+    { id: 4, name: "Thursday", isActive: true },
+    { id: 5, name: "Friday", isActive: true },
+    { id: 6, name: "Saturday", isActive: false },
+    { id: 7, name: "Sunday", isActive: false }
+  ];
+  let holidays = dbData.holidays || [
+    { id: 1, name: "Independence Day", fromDate: "2026-08-15", toDate: "2026-08-15", description: "National Holiday", schoolId: 1, academicYearId: 2, isActive: true },
+    { id: 2, name: "Christmas", fromDate: "2026-12-25", toDate: "2026-12-25", description: "Winter Holiday", schoolId: 1, academicYearId: 2, isActive: true }
+  ];
 
   let attendance = dbData.attendance || [
     { id: 1, studentId: 1, date: new Date().toISOString().split('T')[0], status: "Present" },
@@ -355,6 +368,8 @@ async function startServer() {
     { id: 33, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 25, sortOrder: 8, roleIds: [1, 2] },
     { id: 34, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 25, sortOrder: 9, roleIds: [1, 2] },
     { id: 35, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 25, sortOrder: 10, roleIds: [1, 2] },
+    { id: 43, title: "Weekday Master", icon: "Calendar", path: "/configuration/weekdays", parentId: 25, sortOrder: 18, roleIds: [1, 2] },
+    { id: 44, title: "Holiday Master", icon: "CalendarCheck", path: "/configuration/holidays", parentId: 25, sortOrder: 19, roleIds: [1, 2] },
  
     // System Audit (23)
     { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] },
@@ -374,6 +389,8 @@ async function startServer() {
     "sessions": sessions,
     "batches": batches,
     "shifts": shifts,
+    "weekdays": weekdays,
+    "holidays": holidays,
     "subjects": subjects,
     "exam-types": examTypes,
     "designations": designations,
@@ -429,6 +446,8 @@ async function startServer() {
         sessions,
         batches,
         shifts,
+        weekdays,
+        holidays,
         subjects,
         examTypes,
         designations,

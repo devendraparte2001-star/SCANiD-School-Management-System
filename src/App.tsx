@@ -133,6 +133,8 @@ export default function App() {
                     <Route path="/configuration/sessions" element={<Configuration user={user} defaultTab="sessions" />} />
                     <Route path="/configuration/batches" element={<Configuration user={user} defaultTab="batches" />} />
                     <Route path="/configuration/shifts" element={<Configuration user={user} defaultTab="shifts" />} />
+                    <Route path="/configuration/weekdays" element={<Configuration user={user} defaultTab="weekdays" />} />
+                    <Route path="/configuration/holidays" element={<Configuration user={user} defaultTab="holidays" />} />
                     <Route path="/configuration/subjects" element={<Configuration user={user} defaultTab="subjects" />} />
                     <Route path="/configuration/exam-types" element={<Configuration user={user} defaultTab="exam-types" />} />
                     <Route path="/configuration/designations" element={<Configuration user={user} defaultTab="designations" />} />

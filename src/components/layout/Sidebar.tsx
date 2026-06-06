@@ -140,6 +140,8 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 40, title: "Designation Master", icon: "Briefcase", path: "/configuration/designations", parentId: 25, sortOrder: 15, roleIds: adminRoles },
             { id: 41, title: "Occupation Master", icon: "Hammer", path: "/configuration/occupations", parentId: 25, sortOrder: 16, roleIds: adminRoles },
             { id: 42, title: "Staff Initials", icon: "UserRound", path: "/configuration/staff-initials", parentId: 25, sortOrder: 17, roleIds: adminRoles },
+            { id: 43, title: "Weekday Master", icon: "Calendar", path: "/configuration/weekdays", parentId: 25, sortOrder: 18, roleIds: adminRoles },
+            { id: 44, title: "Holiday Master", icon: "CalendarCheck", path: "/configuration/holidays", parentId: 25, sortOrder: 19, roleIds: adminRoles },
 
             { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
           ];
@@ -371,6 +373,58 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
               sortOrder: 17,
               roleIds: adminRoles
             });
+          }
+
+          // 12. Ensure Weekday Master (ID 43) is present under General Masters
+          const hasWeekdays = rawData.some((item: any) => 
+            item.title === "Weekday Master" || 
+            (item.path && item.path.includes("/weekdays"))
+          );
+          if (!hasWeekdays) {
+            rawData.push({
+              id: 43,
+              title: "Weekday Master",
+              icon: "Calendar",
+              path: "/configuration/weekdays",
+              parentId: generalMastersId,
+              sortOrder: 18,
+              roleIds: adminRoles
+            });
+          } else {
+            // Correct parentId if mismatch or external DB set it to null/something else
+            const weekdaysItem = rawData.find((item: any) => 
+              item.title === "Weekday Master" || 
+              (item.path && item.path.includes("/weekdays"))
+            );
+            if (weekdaysItem && Number(weekdaysItem.parentId) !== generalMastersId) {
+              weekdaysItem.parentId = generalMastersId;
+            }
+          }
+
+          // 13. Ensure Holiday Master (ID 44) is present under General Masters
+          const hasHolidays = rawData.some((item: any) => 
+            item.title === "Holiday Master" || 
+            (item.path && item.path.includes("/holidays"))
+          );
+          if (!hasHolidays) {
+            rawData.push({
+              id: 44,
+              title: "Holiday Master",
+              icon: "CalendarCheck",
+              path: "/configuration/holidays",
+              parentId: generalMastersId,
+              sortOrder: 19,
+              roleIds: adminRoles
+            });
+          } else {
+            // Correct parentId if mismatch or external DB set it to null/something else
+            const holidaysItem = rawData.find((item: any) => 
+              item.title === "Holiday Master" || 
+              (item.path && item.path.includes("/holidays"))
+            );
+            if (holidaysItem && Number(holidaysItem.parentId) !== generalMastersId) {
+              holidaysItem.parentId = generalMastersId;
+            }
           }
         }
 
