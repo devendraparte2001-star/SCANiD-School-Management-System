@@ -254,13 +254,16 @@ async function startServer() {
   ];
 
   let auditLogs = [
-    { id: 1, userId: "1", type: "Update", tableName: "Students", dateTime: new Date().toISOString(), primaryKey: "1" },
-    { id: 2, userId: "1", type: "Create", tableName: "Attendance", dateTime: new Date().toISOString(), primaryKey: "50" }
+    { id: 1, userId: "1", type: "Update", tableName: "Students", dateTime: new Date().toISOString(), primaryKey: "1", schoolId: 1, academicYearId: 2 },
+    { id: 2, userId: "1", type: "Create", tableName: "Attendance", dateTime: new Date().toISOString(), primaryKey: "50", schoolId: 1, academicYearId: 2 },
+    { id: 3, userId: "2", type: "Update", tableName: "Staff", dateTime: new Date(Date.now() - 400000).toISOString(), primaryKey: "12", schoolId: 1, academicYearId: 1 },
+    { id: 4, userId: "3", type: "Create", tableName: "Holidays", dateTime: new Date(Date.now() - 800000).toISOString(), primaryKey: "1", schoolId: 2, academicYearId: 2 }
   ];
 
   let errorLogs: any[] = [
-    { id: 1, message: "Database connection timeout", level: "Error", timestamp: new Date(Date.now() - 7200000).toISOString(), exception: "SqlException", properties: "Path: /api/students" },
-    { id: 2, message: "Invalid session", level: "Warning", timestamp: new Date(Date.now() - 3600000).toISOString(), exception: null, properties: "User: 5" }
+    { id: 1, message: "Database connection timeout", level: "Error", timestamp: new Date(Date.now() - 7200000).toISOString(), exception: "SqlException", properties: "Path: /api/students", schoolId: 1, academicYearId: 2 },
+    { id: 2, message: "Invalid session", level: "Warning", timestamp: new Date(Date.now() - 3600000).toISOString(), exception: null, properties: "User: 5", schoolId: 1, academicYearId: 1 },
+    { id: 3, message: "Constraint violation on RFID duplicate entry", level: "Critical", timestamp: new Date(Date.now() - 10000000).toISOString(), exception: "ConstraintException", properties: "Path: /api/students", schoolId: 2, academicYearId: 2 }
   ];
   
   // Master Data Mock Arrays
@@ -521,15 +524,39 @@ async function startServer() {
 
   // Audit Logs
   app.get("/api/auditlogs", (req, res) => {
-    res.json(applySortingAndPagination(auditLogs, req.query));
+    let filtered = [...auditLogs];
+    const { schoolId, academicYearId } = req.query;
+    if (schoolId && schoolId !== "all") {
+      filtered = filtered.filter(item => !item.schoolId || item.schoolId.toString() === schoolId.toString());
+    }
+    if (academicYearId) {
+      filtered = filtered.filter(item => !item.academicYearId || item.academicYearId.toString() === academicYearId.toString());
+    }
+    res.json(applySortingAndPagination(filtered, req.query));
   });
 
   // Error Logs
   app.get("/api/errorlogs", (req, res) => {
-    res.json(applySortingAndPagination(errorLogs, req.query));
+    let filtered = [...errorLogs];
+    const { schoolId, academicYearId } = req.query;
+    if (schoolId && schoolId !== "all") {
+      filtered = filtered.filter(item => !item.schoolId || item.schoolId.toString() === schoolId.toString());
+    }
+    if (academicYearId) {
+      filtered = filtered.filter(item => !item.academicYearId || item.academicYearId.toString() === academicYearId.toString());
+    }
+    res.json(applySortingAndPagination(filtered, req.query));
   });
   app.get("/api/errorlogs/filesystem", (req, res) => {
-    res.json(applySortingAndPagination(errorLogs, req.query));
+    let filtered = [...errorLogs];
+    const { schoolId, academicYearId } = req.query;
+    if (schoolId && schoolId !== "all") {
+      filtered = filtered.filter(item => !item.schoolId || item.schoolId.toString() === schoolId.toString());
+    }
+    if (academicYearId) {
+      filtered = filtered.filter(item => !item.academicYearId || item.academicYearId.toString() === academicYearId.toString());
+    }
+    res.json(applySortingAndPagination(filtered, req.query));
   });
   app.delete("/api/errorlogs/clear", (req, res) => {
     errorLogs = [];
@@ -1370,12 +1397,18 @@ async function startServer() {
   });
 
   app.post("/api/navigation", (req, res) => {
+    const rolesMap: Record<string, number> = { superadmin: 1, admin: 2, teacher: 3, student: 4, parent: 5 };
+    const roles = Array.isArray(req.body.roles) ? req.body.roles : ["superadmin"];
+    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map(r => rolesMap[r]).filter(Boolean);
+
     const newItem = { 
       id: navigationItems.length > 0 ? Math.max(...navigationItems.map((n: any) => n.id)) + 1 : 1, 
       ...req.body,
-      roles: Array.isArray(req.body.roles) ? req.body.roles : ["superadmin"]
+      roles,
+      roleIds: roleIds.length > 0 ? roleIds : [1]
     };
     navigationItems.push(newItem);
+    saveDb();
     res.status(201).json({ data: newItem });
   });
 
@@ -1383,7 +1416,17 @@ async function startServer() {
     const id = parseInt(req.params.id);
     const index = navigationItems.findIndex((n: any) => n.id === id);
     if (index !== -1) {
-      navigationItems[index] = { ...navigationItems[index], ...req.body };
+      const rolesMap: Record<string, number> = { superadmin: 1, admin: 2, teacher: 3, student: 4, parent: 5 };
+      const roles = Array.isArray(req.body.roles) ? req.body.roles : (navigationItems[index].roles || ["superadmin"]);
+      const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map(r => rolesMap[r]).filter(Boolean);
+
+      navigationItems[index] = { 
+        ...navigationItems[index], 
+        ...req.body,
+        roles,
+        roleIds: roleIds.length > 0 ? roleIds : [1]
+      };
+      saveDb();
       res.json({ data: navigationItems[index] });
     } else {
       res.status(404).json({ message: "Navigation item not found" });
@@ -1395,6 +1438,7 @@ async function startServer() {
     const index = navigationItems.findIndex((n: any) => n.id === id);
     if (index !== -1) {
       navigationItems.splice(index, 1);
+      saveDb();
       res.status(204).send();
     } else {
       res.status(404).json({ message: "Navigation item not found" });

@@ -56,13 +56,17 @@ export default function SystemLogs({ user }: SystemLogsProps) {
           page: auditPage,
           pageSize: auditPageSize,
           sortBy: auditSortBy,
-          sortOrder: auditSortOrder
+          sortOrder: auditSortOrder,
+          schoolId: user.schoolId,
+          academicYearId: user.academicYearId
         }),
         apiService.getErrorLogs({
           page: errorPage,
           pageSize: errorPageSize,
           sortBy: errorSortBy,
-          sortOrder: errorSortOrder
+          sortOrder: errorSortOrder,
+          schoolId: user.schoolId,
+          academicYearId: user.academicYearId
         }),
         apiService.getDbScript(),
         apiService.getFileSystemLogs(),
@@ -122,7 +126,18 @@ export default function SystemLogs({ user }: SystemLogsProps) {
 
   useEffect(() => {
     fetchData();
-  }, [auditPage, auditPageSize, auditSortBy, auditSortOrder, errorPage, errorPageSize, errorSortBy, errorSortOrder]);
+  }, [
+    auditPage,
+    auditPageSize,
+    auditSortBy,
+    auditSortOrder,
+    errorPage,
+    errorPageSize,
+    errorSortBy,
+    errorSortOrder,
+    user.schoolId,
+    user.academicYearId
+  ]);
 
   const handleAuditSort = (key: string) => {
     if (auditSortBy === key) {

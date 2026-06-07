@@ -537,7 +537,18 @@ export default function Configuration({
       icon: item?.icon || "",
       parentId: item?.parentId?.toString() || "",
       sortOrder: item?.sortOrder || 0,
-      roles: item?.roles || ["superadmin"],
+      roles: Array.isArray(item?.roles) && item.roles.length > 0
+        ? item.roles
+        : (Array.isArray(item?.roleIds)
+          ? item.roleIds.map((id: number) => {
+              if (id === 1) return "superadmin";
+              if (id === 2) return "admin";
+              if (id === 3) return "teacher";
+              if (id === 4) return "student";
+              if (id === 5) return "parent";
+              return null;
+            }).filter(Boolean)
+          : ["superadmin"]),
       profilePhotoPath: item?.profilePhotoPath || item?.ProfilePhotoPath || "",
       username: item?.username || "",
       password: "",
@@ -674,6 +685,10 @@ export default function Configuration({
       };
 
       if (activeTab === "navigation") {
+        const rolesMapStr: Record<string, number> = { superadmin: 1, admin: 2, teacher: 3, student: 4, parent: 5 };
+        const payloadRoles = Array.isArray(formData.roles) ? formData.roles : ["superadmin"];
+        const payloadRoleIds = payloadRoles.map(r => rolesMapStr[r]).filter(Boolean);
+
         payload = {
           ...payload,
           title: formData.title,
@@ -681,7 +696,8 @@ export default function Configuration({
           icon: formData.icon,
           parentId: formData.parentId ? parseSafeInt(formData.parentId) : null,
           sortOrder: parseSafeInt(formData.sortOrder) || 0,
-          roles: formData.roles,
+          roles: payloadRoles,
+          roleIds: payloadRoleIds,
         };
       } else {
         payload.name = formData.name;
@@ -1341,15 +1357,28 @@ export default function Configuration({
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1 max-w-[150px]">
-                                {Array.isArray(item.roles) &&
-                                  item.roles.map((r: string) => (
+                                {(() => {
+                                  const displayRoles: string[] = Array.isArray(item.roles) && item.roles.length > 0
+                                    ? item.roles
+                                    : (Array.isArray(item.roleIds)
+                                      ? item.roleIds.map((id: number) => {
+                                          if (id === 1) return "superadmin";
+                                          if (id === 2) return "admin";
+                                          if (id === 3) return "teacher";
+                                          if (id === 4) return "student";
+                                          if (id === 5) return "parent";
+                                          return "";
+                                        }).filter(Boolean)
+                                      : ["superadmin"]);
+                                  return displayRoles.map((r: string) => (
                                     <Badge
                                       key={r}
                                       className="bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase px-1.5 py-0.5"
                                     >
                                       {r}
                                     </Badge>
-                                  ))}
+                                  ));
+                                })()}
                               </div>
                             </TableCell>
                             <TableCell className="text-xs font-black text-slate-400">

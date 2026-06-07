@@ -49,23 +49,27 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [navigationItems, setNavigationItems] = useState<any[]>([]);
 
   const fetchLookups = useCallback(async () => {
     try {
-      const [schoolsRes, yearsRes, notifsRes] = await Promise.all([
+      const [schoolsRes, yearsRes, notifsRes, navsRes] = await Promise.all([
         apiService.getSchools(),
         apiService.getAcademicYears(),
-        apiService.getNotifications()
+        apiService.getNotifications(),
+        apiService.getNavigations(user.roleId || 0)
       ]);
       
       const schoolData = schoolsRes.data && Array.isArray(schoolsRes.data) ? schoolsRes.data : (schoolsRes.data && Array.isArray(schoolsRes.data.data) ? schoolsRes.data.data : []);
       const yearData = yearsRes.data && Array.isArray(yearsRes.data) ? yearsRes.data : (yearsRes.data && Array.isArray(yearsRes.data.data) ? yearsRes.data.data : []);
       const notifData = notifsRes.data && Array.isArray(notifsRes.data) ? notifsRes.data : (notifsRes.data && Array.isArray(notifsRes.data.data) ? notifsRes.data.data : []);
+      const navData = navsRes.data?.data || navsRes.data || [];
       
       setSchools(schoolData);
       setAcademicYears(yearData);
       setNotifications(notifData);
       setUnreadCount(Array.isArray(notifData) ? notifData.filter((n: any) => !n.isRead).length : 0);
+      setNavigationItems(Array.isArray(navData) ? navData : []);
 
       // Auto-initialize school if not set
       if (!user.schoolId && schoolData.length > 0) {
@@ -78,8 +82,9 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
 
       // Auto-initialize academic year if not set or invalid (always default to current academic year as per user requirements)
       if (yearData.length > 0) {
-        const currentYear = yearData.find((y: any) => y.isCurrent || y.isCurrentYear) || yearData[0];
-        if (!user.academicYearId || !yearData.some((y: any) => y.id?.toString() === user.academicYearId?.toString())) {
+        const currentYear = yearData.find((y: any) => y.IsCurrent || y.isCurrent || y.isCurrentYear) || yearData[0];
+        const isUserAdminOrSuperAdmin = user.role === "superadmin" || user.role === "admin";
+        if (!user.academicYearId || !isUserAdminOrSuperAdmin || !yearData.some((y: any) => y.id?.toString() === user.academicYearId?.toString())) {
           onUserUpdate({
             ...user,
             academicYearId: currentYear.id.toString(),
@@ -136,18 +141,112 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
     }
   };
 
+  const FALLBACK_MENUS = [
+    { id: 1, title: "Dashboard", path: "/" },
+    { id: 3, title: "Student Registry", path: "/students" },
+    { id: 4, title: "Attendance Tracking", path: "/attendance" },
+    { id: 5, title: "Examination & Marks", path: "/marks" },
+    { id: 7, title: "Staff Directory", path: "/staff" },
+    { id: 24, title: "Manage Users", path: "/configuration/users" },
+    { id: 9, title: "Fee Management", path: "/fees" },
+    { id: 10, title: "Communication Hub", path: "/messages" },
+    { id: 11, title: "Masters & Config", path: "/configuration" },
+    { id: 12, title: "Global Schools", path: "/configuration/schools" },
+    { id: 14, title: "Role Master", path: "/configuration/role-master" },
+    { id: 15, title: "User Accounts", path: "/configuration/role-assignment" },
+    { id: 17, title: "Navigation Builder", path: "/configuration/navigation" },
+    { id: 19, title: "Standards & Grades", path: "/configuration/standards" },
+    { id: 20, title: "Divisions/Sections", path: "/configuration/sections" },
+    { id: 21, title: "Academic Years", path: "/configuration/academic-years" },
+    { id: 22, title: "Subject Registry", path: "/configuration/subjects" },
+    { id: 26, title: "Religions", path: "/configuration/religions" },
+    { id: 27, title: "Blood Group", path: "/configuration/blood-groups" },
+    { id: 28, title: "Caste Category", path: "/configuration/castes" },
+    { id: 29, title: "Sub-Caste", path: "/configuration/sub-castes" },
+    { id: 30, title: "School House", path: "/configuration/houses" },
+    { id: 31, title: "Admission Types", path: "/configuration/admission-types" },
+    { id: 32, title: "States Master", path: "/configuration/states" },
+    { id: 33, title: "Cities Master", path: "/configuration/cities" },
+    { id: 34, title: "School Sections", path: "/configuration/school-sections" },
+    { id: 35, title: "Shift Timetable", path: "/configuration/shifts" },
+    { id: 36, title: "Category Master", path: "/configuration/categories" },
+    { id: 37, title: "Session Master", path: "/configuration/sessions" },
+    { id: 38, title: "Batch Master", path: "/configuration/batches" },
+    { id: 39, title: "Exam Type Master", path: "/configuration/exam-types" },
+    { id: 40, title: "Designation Master", path: "/configuration/designations" },
+  ];
+
   useEffect(() => {
-    if (search.trim()) {
-      const results = searchItems.filter(item => 
-        item.title.toLowerCase().includes(search.toLowerCase()) ||
-        item.subtitle.toLowerCase().includes(search.toLowerCase())
-      ).slice(0, 5);
-      setFilteredResults(results);
-      setShowResults(true);
-    } else {
+    if (!search.trim()) {
+      setFilteredResults([]);
       setShowResults(false);
+      return;
     }
-  }, [search]);
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const queryTerm = search.trim();
+        
+        // 1. Sidebar menu matching
+        const activeNavs = navigationItems.length > 0 ? navigationItems : FALLBACK_MENUS;
+        const matchingMenus = activeNavs
+          .filter((nav: any) => nav && nav.path && nav.path.startsWith("/") && nav.title.toLowerCase().includes(queryTerm.toLowerCase()))
+          .map((nav: any) => ({
+            id: `menu-${nav.id}`,
+            title: nav.title,
+            subtitle: `Sidebar Menu`,
+            type: "page" as const,
+            link: nav.path
+          }));
+
+        // 2. Fetch students dynamically if search target looks like index/name/GR
+        const parsedSchoolId = user.schoolId && user.schoolId !== "all" ? parseInt(user.schoolId) : undefined;
+        const parsedYearId = user.academicYearId ? parseInt(user.academicYearId) : undefined;
+        
+        const [studentsRes, staffRes] = await Promise.all([
+          apiService.getStudents(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 }),
+          apiService.getStaff(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 })
+        ]);
+
+        const rawStudents = studentsRes.data?.data || studentsRes.data || [];
+        const rawStaff = staffRes.data?.data || staffRes.data || [];
+
+        const matchingStudents = (Array.isArray(rawStudents) ? rawStudents : []).map((s: any) => {
+          const grNoStr = s.grNo || s.grno || s.GRNO || s.registrationNumber || "N/A";
+          const classStr = s.standardName || s.Standard || s.class || "";
+          const secStr = s.sectionName || s.Section || "";
+          const detailStr = classStr ? `${classStr}${secStr ? " - " + secStr : ""}` : "Student";
+          return {
+            id: `student-${s.id}`,
+            title: s.fullName || s.name || "Unknown Student",
+            subtitle: `GR: ${grNoStr} • ${detailStr}`,
+            type: "student" as const,
+            link: `/students?search=${encodeURIComponent(s.fullName || s.name)}`
+          };
+        });
+
+        const matchingStaff = (Array.isArray(rawStaff) ? rawStaff : []).map((st: any) => {
+          const designationStr = st.designationName || st.designation || st.role || "Staff Member";
+          return {
+            id: `staff-${st.id}`,
+            title: st.fullName || st.name || "Unknown Staff",
+            subtitle: `${st.phone || ""} • ${designationStr}`,
+            type: "staff" as const,
+            link: `/staff?search=${encodeURIComponent(st.fullName || st.name)}`
+          };
+        });
+
+        // Combine everything
+        const combined = [...matchingMenus, ...matchingStudents, ...matchingStaff];
+        setFilteredResults(combined.slice(0, 10)); // return top 10 matches
+        setShowResults(true);
+      } catch (err) {
+        console.error("Global search error:", err);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [search, navigationItems, user.schoolId, user.academicYearId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -262,11 +361,14 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
         </SelectTrigger>
         <SelectContent className="rounded-xl border-slate-100 shadow-xl">
           <SelectItem value="" className="text-xs italic text-slate-400">Select Academic Year</SelectItem>
-                {Array.isArray(academicYears) && academicYears.map(y => (
-                  <SelectItem key={y.id || Math.random()} value={y.id ? y.id.toString() : ""} className="text-xs font-bold">
-                    {y.name} {y.isCurrent ? "★" : ""}
-                  </SelectItem>
-                ))}
+                {Array.isArray(academicYears) && academicYears
+                  .filter(y => (user.role === "superadmin" || user.role === "admin") || y.IsCurrent || y.isCurrent || y.isCurrentYear)
+                  .map(y => (
+                    <SelectItem key={y.id || Math.random()} value={y.id ? y.id.toString() : ""} className="text-xs font-bold">
+                      {y.name} {(y.isCurrent || y.IsCurrent) ? "★" : ""}
+                    </SelectItem>
+                  ))
+                }
               </SelectContent>
             </Select>
           </div>

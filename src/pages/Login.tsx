@@ -54,8 +54,8 @@ export default function Login({ onLogin }: LoginProps) {
       setSchools(schoolData);
       setAcademicYears(yearData);
       
-      // Find the current academic year (isCurrent === true) by default as per user request
-      const currentYear = yearData.find((y: any) => y.isCurrent || y.isCurrentYear);
+      // Find the current academic year (IsCurrent === true) by default as per user request
+      const currentYear = yearData.find((y: any) => y.IsCurrent || y.isCurrent || y.isCurrentYear);
       if (currentYear) {
         setSelectedYear(currentYear.id.toString());
       } else if (yearData.length > 0) {
@@ -94,6 +94,18 @@ export default function Login({ onLogin }: LoginProps) {
       setRole("admin");
     }
   }, [username]);
+
+  
+  // Auto-enforce current academic year if role switches to a non-admin role
+  useEffect(() => {
+    if (academicYears.length > 0) {
+      const isRoleAdminOrSuperAdmin = role === "superadmin" || role === "admin";
+      if (!isRoleAdminOrSuperAdmin) {
+        const currentYear = academicYears.find((y: any) => y.IsCurrent || y.isCurrent || y.isCurrentYear) || academicYears[0];
+        setSelectedYear(currentYear.id.toString());
+      }
+    }
+  }, [role, academicYears]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -414,9 +426,14 @@ export default function Login({ onLogin }: LoginProps) {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-800 text-white">
                       <SelectItem value="" className="text-xs italic text-slate-400">Select Academic Year</SelectItem>
-                        {Array.isArray(academicYears) && academicYears.map(y => (
-                          <SelectItem key={y.id || Math.random()} value={y.id ? y.id.toString() : ""} className="text-xs">{y.name}</SelectItem>
-                        ))}
+                        {Array.isArray(academicYears) && academicYears
+                          .filter(y => (role === "superadmin" || role === "admin") || y.IsCurrent || y.isCurrent || y.isCurrentYear)
+                          .map(y => (
+                            <SelectItem key={y.id || Math.random()} value={y.id ? y.id.toString() : ""} className="text-xs">
+                              {y.name} {(y.IsCurrent || y.isCurrent || y.isCurrentYear) ? "★" : ""}
+                            </SelectItem>
+                          ))
+                        }
                     </SelectContent>
                   </Select>
                 </div>

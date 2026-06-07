@@ -121,13 +121,23 @@ interface StaffMember {
   academicYearId?: string;
 }
 
+import { useSearchParams } from "react-router-dom";
+
 export default function Staff({ user }: { user: any }) {
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const canManage = isAdmin;
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") || "");
+
+  useEffect(() => {
+    const s = searchParams.get("search");
+    if (s !== null) {
+      setSearchQuery(s);
+    }
+  }, [searchParams]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState<{ id: string; name: string } | null>(null);

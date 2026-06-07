@@ -71,15 +71,24 @@ import {
   SelectValue
 } from "@/components/ui/select";
 
+import { useSearchParams } from "react-router-dom";
 import { User as UserType } from "@/types";
 import { cn, parseSafeInt, resolvePhotoUrl } from "@/lib/utils";
 
 export default function Students({ user }: { user: UserType }) {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [standardFilter, setStandardFilter] = useState("all");
   const [sectionFilter, setSectionFilter] = useState("all");
+
+  useEffect(() => {
+    const s = searchParams.get("search");
+    if (s !== null) {
+      setSearch(s);
+    }
+  }, [searchParams]);
 
   // Pagination & Sorting State
   const [page, setPage] = useState(1);
