@@ -100,6 +100,7 @@ export default function App() {
                 <Route path="/attendance" element={<Attendance user={user} />} />
                 <Route path="/fees" element={<Fees user={user} />} />
                 <Route path="/messages" element={<Messages user={user} />} />
+                <Route path="/notifications" element={<Notifications user={user} />} />
                 <Route path="/staff" element={<Staff user={user} />} />
                 <Route path="/profile" element={<Profile user={user} />} />
                 <Route path="/settings" element={<Settings user={user} />} />

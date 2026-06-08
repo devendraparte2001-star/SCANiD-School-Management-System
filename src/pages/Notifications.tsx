@@ -27,7 +27,29 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-export default function Notifications() {
+interface NotificationsProps {
+  user?: any;
+}
+
+export default function Notifications({ user: propUser }: NotificationsProps = {}) {
+  const [currentUser, setCurrentUser] = useState<any>(propUser || null);
+
+  useEffect(() => {
+    if (!currentUser) {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          setCurrentUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.error("Error parsing user from localStorage in Notifications:", e);
+        }
+      }
+    }
+  }, [currentUser, propUser]);
+
+  const userRole = currentUser?.role?.toLowerCase() || "";
+  const isAdmin = userRole === "superadmin" || userRole === "admin";
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -164,14 +186,16 @@ export default function Notifications() {
           <p className="text-slate-500 font-medium">Manage your system alerts and messages</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={() => setIsCreateModalOpen(true)}
-            className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-            size="sm"
-          >
-            <Plus size={16} className="mr-1.5" />
-            Add Notification
-          </Button>
+          {isAdmin && (
+            <Button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+              size="sm"
+            >
+              <Plus size={16} className="mr-1.5" />
+              Add Notification
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -287,14 +311,16 @@ export default function Notifications() {
                               <CheckCircle2 size={16} />
                             </Button>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
-                            onClick={() => handleDelete(notification.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
+                          {isAdmin && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
+                              onClick={() => handleDelete(notification.id)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <p className="text-sm text-slate-600 mt-2 leading-relaxed">

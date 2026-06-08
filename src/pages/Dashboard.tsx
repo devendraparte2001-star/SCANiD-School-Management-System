@@ -2,6 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiService } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, 
   GraduationCap, 
@@ -9,7 +11,11 @@ import {
   TrendingUp, 
   ArrowUpRight, 
   BookOpen,
-  IndianRupee
+  IndianRupee,
+  Calendar,
+  Bell as BellIcon,
+  X,
+  ExternalLink
 } from "lucide-react";
 import { 
   LineChart, 
@@ -53,6 +59,8 @@ export default function Dashboard({ user }: DashboardProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
   useEffect(() => {
     const fetchAnnouncementsAndEvents = async () => {
@@ -322,8 +330,16 @@ export default function Dashboard({ user }: DashboardProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
         <Card className="border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
-          <CardHeader className="bg-white border-b border-slate-50 px-8 py-6">
+          <CardHeader className="bg-white border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold text-slate-900">Recent Announcements</CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8"
+              onClick={() => navigate("/notifications")}
+            >
+              View All
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-0 divide-y divide-slate-50">
@@ -333,6 +349,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   title={item.title} 
                   date={item.date} 
                   desc={item.desc}
+                  onClick={() => setSelectedAnnouncement(item)}
                 />
               ))}
             </div>
@@ -340,8 +357,18 @@ export default function Dashboard({ user }: DashboardProps) {
         </Card>
 
         <Card className="border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
-          <CardHeader className="bg-white border-b border-slate-50 px-8 py-6">
+          <CardHeader className="bg-white border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold text-slate-900">Upcoming Events</CardTitle>
+            {isAdmin && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8"
+                onClick={() => navigate("/configuration/holidays")}
+              >
+                Manage
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
@@ -352,12 +379,153 @@ export default function Dashboard({ user }: DashboardProps) {
                   label={item.label} 
                   type={item.type} 
                   color={item.color} 
+                  onClick={() => setSelectedEvent(item)}
                 />
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <AnimatePresence>
+        {selectedAnnouncement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setSelectedAnnouncement(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl shadow-slate-900/10 overflow-hidden z-10"
+            >
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50/20 px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                    <BellIcon size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-blue-600/70 tracking-widest">{selectedAnnouncement.date}</span>
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Announcement Details</h4>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setSelectedAnnouncement(null)}
+                  className="rounded-xl h-9 w-9 text-slate-400 hover:text-slate-900"
+                >
+                  <X size={18} />
+                </Button>
+              </div>
+              <div className="p-8 space-y-4">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight leading-snug">{selectedAnnouncement.title}</h3>
+                <p className="text-slate-500 font-medium whitespace-pre-wrap text-[15px] leading-relaxed">{selectedAnnouncement.desc}</p>
+                
+                <div className="pt-6 border-t border-slate-100 flex gap-3">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedAnnouncement(null);
+                      navigate("/notifications");
+                    }}
+                    className="w-full rounded-2xl font-bold border-slate-200 text-slate-700 h-11 hover:bg-slate-50 gap-2"
+                  >
+                    <ExternalLink size={16} />
+                    Notification Center
+                  </Button>
+                  <Button 
+                    onClick={() => setSelectedAnnouncement(null)}
+                    className="w-full rounded-2xl font-bold bg-slate-900 text-white h-11 hover:bg-slate-800"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {selectedEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setSelectedEvent(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl shadow-slate-900/10 overflow-hidden z-10"
+            >
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50/20 px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-indigo-600/70 tracking-widest">{selectedEvent.time}</span>
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Event Details</h4>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setSelectedEvent(null)}
+                  className="rounded-xl h-9 w-9 text-slate-400 hover:text-slate-900"
+                >
+                  <X size={18} />
+                </Button>
+              </div>
+              <div className="p-8 space-y-4">
+                <div className="space-y-2">
+                  <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", selectedEvent.color)}>
+                    {selectedEvent.type}
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight leading-snug pt-1">{selectedEvent.label}</h3>
+                </div>
+                
+                <p className="text-slate-500 font-medium text-sm leading-relaxed">
+                  {selectedEvent.type === "Holiday" 
+                    ? "This holiday is part of the official academic school calendar. School offices and classes will remain closed during this day." 
+                    : "This event is scheduled on the student timeline. Please check with coordinators for full updates."}
+                </p>
+                
+                <div className="pt-6 border-t border-slate-100 flex gap-3">
+                  {isAdmin && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedEvent(null);
+                        navigate("/configuration/holidays");
+                      }}
+                      className="w-full rounded-2xl font-bold border-slate-200 text-slate-700 h-11 hover:bg-slate-50 gap-2"
+                    >
+                      <ExternalLink size={16} />
+                      Academic Calendar
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => setSelectedEvent(null)}
+                    className="w-full rounded-2xl font-bold bg-slate-900 text-white h-11 hover:bg-slate-800"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -394,9 +562,12 @@ function StatCard({ title, value, trend, icon: Icon, color, onClick }: any) {
   );
 }
 
-function AnnouncementItem({ title, date, desc }: any) {
+function AnnouncementItem({ title, date, desc, onClick }: any) {
   return (
-    <div className="group flex gap-5 p-6 sm:p-8 transition-colors hover:bg-slate-50/50">
+    <div 
+      className="group flex gap-5 p-6 sm:p-8 transition-colors hover:bg-slate-50/50 cursor-pointer active:scale-[0.99] origin-left"
+      onClick={onClick}
+    >
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{title}</h3>
@@ -408,9 +579,12 @@ function AnnouncementItem({ title, date, desc }: any) {
   );
 }
 
-function EventItem({ time, label, type, color }: any) {
+function EventItem({ time, label, type, color, onClick }: any) {
   return (
-    <div className="group flex items-center gap-6 p-5 sm:p-6 hover:bg-slate-50/50 transition-colors">
+    <div 
+      className="group flex items-center gap-6 p-5 sm:p-6 hover:bg-slate-50/50 transition-colors cursor-pointer active:scale-[0.99] origin-left"
+      onClick={onClick}
+    >
       <div className="flex flex-col items-center justify-center shrink-0 w-16">
         <span className="text-xs font-black text-slate-900 tracking-tight">{time.split(' ')[0]}</span>
         <span className="text-[9px] font-black text-slate-400 uppercase">{time.split(' ')[1]}</span>
