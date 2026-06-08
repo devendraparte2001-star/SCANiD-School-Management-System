@@ -44,6 +44,23 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
   const [filteredResults, setFilteredResults] = useState<SearchItem[]>([]);
   const navigate = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Global keydown keyboard shortcut event listener to bind Cmd/Ctrl + K to focus the search input, and Escape to dismiss it.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        inputRef.current?.blur();
+        setShowResults(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [schools, setSchools] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
@@ -378,17 +395,22 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
           <form onSubmit={handleSearch} className="flex items-center bg-slate-100/80 rounded-xl px-2 sm:px-4 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:bg-white transition-all duration-300 border border-transparent focus-within:border-blue-500/20 group">
           <Search size={16} className="text-slate-400 shrink-0 transition-colors group-focus-within:text-blue-500" />
           <Input 
+            ref={inputRef}
             placeholder="Search students, classes..." 
             className="border-none bg-transparent focus-visible:ring-0 shadow-none text-xs sm:text-sm h-8 font-medium placeholder:text-slate-400"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => search.trim() && setShowResults(true)}
           />
-          <div className="hidden sm:flex items-center gap-1">
-            <kbd className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-400 shadow-sm">
+          <div 
+            onClick={() => inputRef.current?.focus()}
+            className="hidden sm:flex items-center gap-1 cursor-pointer select-none"
+            title="Search Shortcut (Cmd+K or Ctrl+K)"
+          >
+            <kbd className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-400 shadow-sm transition-colors hover:bg-slate-50 active:scale-95">
               ⌘
             </kbd>
-            <kbd className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-400 shadow-sm">
+            <kbd className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-400 shadow-sm transition-colors hover:bg-slate-50 active:scale-95">
               K
             </kbd>
           </div>

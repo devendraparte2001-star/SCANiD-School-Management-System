@@ -370,6 +370,8 @@ export const apiService = {
   createStaff: (data: ApiObject) => api.post("/staff", data),
   updateStaff: (id: number, data: ApiObject) => api.put(`/staff/${id}`, data),
   deleteStaff: (id: number) => api.delete(`/staff/${id}`),
+  bulkUploadStaff: (data: any[], schoolId: number, academicYearId: number, createdBy?: string) =>
+    api.post("/staff/bulk-upload", data, { params: { schoolId, academicYearId, createdBy } }),
   uploadStaffPhoto: (id: number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

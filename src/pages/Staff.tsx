@@ -160,6 +160,7 @@ export default function Staff({ user }: { user: any }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadResults, setUploadResults] = useState<any[]>([]);
+  const [bulkUploadErrors, setBulkUploadErrors] = useState<any[]>([]);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -442,35 +443,58 @@ export default function Staff({ user }: { user: any }) {
   };
 
   // Generates and downloads a custom Excel blueprint spreadsheet for staff bulk upload
+  // Headers perfectly match client-side Export to Excel schemas
   const downloadSampleExcel = () => {
     try {
       const headers = [
-        "Initials", "FirstName", "MiddleName", "LastName", "Gender", "Email", "Phone", "EmergencyContact",
-        "Qualification", "Experience", "Subject", "Standard", "Division", "RFID", "BioID", "Shift",
-        "Status", "Address", "Role"
+        "Employee ID",
+        "Initials",
+        "Name",
+        "Email",
+        "Core Expertise",
+        "Credentials",
+        "Status",
+        "Personal Contact",
+        "Emergency Contact",
+        "Gender",
+        "Class Teacher",
+        "State",
+        "City",
+        "RFID Tag"
       ];
 
       const sampleData = [
         {
-          Initials: "MR",
-          FirstName: "John",
-          MiddleName: "Robert",
-          LastName: "Smith",
-          Gender: "Male",
-          Email: "john.smith@school.com",
-          Phone: "9876543210",
-          EmergencyContact: "9876543211",
-          Qualification: "MA B.Ed",
-          Experience: "5+ Years",
-          Subject: "Mathematics",
-          Standard: standards[0]?.name || "10th Standard",
-          Division: sections[0]?.name || "A",
-          RFID: "12345678901",
-          BioID: "BIO-101",
-          Shift: shifts[0]?.name || "MORNING",
-          Status: "Active",
-          Address: "123 Education Lane",
-          Role: "teacher"
+          "Employee ID": "EMP001",
+          "Initials": "MR",
+          "Name": "John Smith",
+          "Email": "john.smith@school.com",
+          "Core Expertise": "Mathematics",
+          "Credentials": "M.Sc B.Ed",
+          "Status": "Active",
+          "Personal Contact": "9876543210",
+          "Emergency Contact": "9876543211",
+          "Gender": "Male",
+          "Class Teacher": "Yes",
+          "State": "California",
+          "City": "Los Angeles",
+          "RFID Tag": "RFID998877"
+        },
+        {
+          "Employee ID": "EMP002",
+          "Initials": "MRS",
+          "Name": "Sarah Connor",
+          "Email": "sarah.connor@school.com",
+          "Core Expertise": "Physics",
+          "Credentials": "Ph.D",
+          "Status": "Active",
+          "Personal Contact": "9876543212",
+          "Emergency Contact": "9876543213",
+          "Gender": "Female",
+          "Class Teacher": "No",
+          "State": "California",
+          "City": "Los Angeles",
+          "RFID Tag": "RFID887766"
         }
       ];
 
@@ -485,10 +509,39 @@ export default function Staff({ user }: { user: any }) {
     }
   };
 
+  // Exports bulk staff upload error rows to Excel file with matching headers & error descriptions
+  const exportErrorsToExcel = () => {
+    try {
+      if (bulkUploadErrors.length === 0) {
+        toast.error("No error logs available to export.");
+        return;
+      }
+
+      const exportData = bulkUploadErrors.map((r: any) => ({
+        "Excel Row Line": r.rowIndex || "",
+        "Employee ID": r.employeeId || "",
+        "Name": r.name || "",
+        "Email": r.email || "",
+        "Error Reason": r.errorMessage || ""
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(wb, ws, "Upload Failures");
+
+      XLSX.writeFile(wb, `Staff_Upload_Errors_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success("Bulk upload error logs exported to Excel successfully!");
+    } catch (e) {
+      console.error("Error exporting bulk upload logs:", e);
+      toast.error("Failed to export error log to Excel.");
+    }
+  };
+
   // Parses Excel staff templates, validates data integrity, and processes via APIs
   const processBulkSpreadsheet = async (file: File) => {
     setIsProcessing(true);
     setUploadResults([]);
+    setBulkUploadErrors([]);
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -506,198 +559,99 @@ export default function Staff({ user }: { user: any }) {
         }
 
         // Setup immediate pending log status rows
-        const initialResults = rawData.map((item: any, index: number) => ({
-          id: index,
-          name: `${item.FirstName || ""} ${item.LastName || ""}`.trim() || `Row ${index + 1}`,
-          status: 'pending',
+        setUploadResults(rawData.map((item: any, index: number) => ({
+          id: index + 2, // Excel row index is 1-based + 1 for header row = index + 2
+          name: item["Name"] || item["name"] || `Line ${index + 2}`,
+          status: "processing",
           error: null
-        }));
-        setUploadResults(initialResults);
+        })));
 
-        const processedStaffList = rawData.map((item: any, index: number) => {
-          try {
-            const getFieldCleanVal = (keysToSearch: string[]): string => {
-              for (const key of keysToSearch) {
-                const matchKey = Object.keys(item).find(k => k.toLowerCase() === key.toLowerCase());
-                if (matchKey && item[matchKey] !== undefined && item[matchKey] !== null) {
-                  return item[matchKey].toString().trim();
-                }
-              }
-              return "";
-            };
-
-            const fName = getFieldCleanVal(["FirstName", "first_name", "name"]);
-            const lName = getFieldCleanVal(["LastName", "last_name"]);
-            const mName = getFieldCleanVal(["MiddleName", "middle_name"]);
-            const email = getFieldCleanVal(["Email", "email", "mail"]);
-            const phone = getFieldCleanVal(["Phone", "phone", "contact", "personal_contact"]);
-            const initials = getFieldCleanVal(["Initials", "initials"]);
-            const parsedInitials = initials 
-              ? (staffInitials.find(x => x.name.toLowerCase().trim() === initials.toLowerCase().trim())?.id.toString() || initials)
-              : "";
-            const gender = getFieldCleanVal(["Gender", "gender"]) || "Male";
-            const qualification = getFieldCleanVal(["Qualification", "qualification", "degree"]);
-            const experience = getFieldCleanVal(["Experience", "experience"]);
-            const subject = getFieldCleanVal(["Subject", "subject", "expertise", "department"]);
-            const rfid = getFieldCleanVal(["RFID", "rfid", "cardid", "card_id"]);
-            const bioId = getFieldCleanVal(["BioID", "bio_id", "bioid"]);
-            const address = getFieldCleanVal(["Address", "address"]);
-            const status = getFieldCleanVal(["Status", "status"]) || "Active";
-            const role = getFieldCleanVal(["Role", "role"]) || "teacher";
-
-            // Resolve Standard ID from DB list
-            const stdName = getFieldCleanVal(["Standard", "standard", "grade", "class"]);
-            const stdMasterId = stdName ? standards.find(s => s.name?.toString().toLowerCase().trim() === stdName.toLowerCase())?.id : undefined;
-
-            // Resolve Section/Division ID from DB list
-            const divName = getFieldCleanVal(["Division", "division", "section"]);
-            const divMasterId = divName ? sections.find(s => s.name?.toString().toLowerCase().trim() === divName.toLowerCase())?.id : undefined;
-
-            // Resolve Shift ID from DB list
-            const shName = getFieldCleanVal(["Shift", "shift", "shiftname"]);
-            const shiftMasterId = shName ? shifts.find(s => s.name?.toString().toLowerCase().trim() === shName.toLowerCase())?.id : undefined;
-
-            // Resolve School ID
-            const schName = getFieldCleanVal(["SchoolName", "School"]);
-            const schoolId = schName ? (schools.find(s => s.name?.toString().toLowerCase().trim() === schName.toLowerCase())?.id || user.schoolId || 1) : (user.schoolId || 1);
-
-            return {
-              firstName: fName,
-              lastName: lName,
-              middleName: mName,
-              schoolId: parseSafeInt(schoolId) || 1,
-              employeeId: `EMP-${Date.now()}-${index}`,
-              initials: parsedInitials || "",
-              department: subject || "Faculty",
-              qualification: qualification || "",
-              personalContact: phone || "",
-              emergencyContact: getFieldCleanVal(["EmergencyContact", "emergency_contact", "contact2"]) || "",
-              status: status,
-              profilePhotoPath: "",
-              experience: experience || "",
-              subject: subject || "",
-              standardId: parseSafeInt(stdMasterId) || null,
-              sectionId: parseSafeInt(divMasterId) || null,
-              isClassTeacher: false,
-              gender: gender,
-              dateOfBirth: null,
-              bloodGroupId: null,
-              retirementDate: null,
-              religionId: null,
-              casteId: null,
-              subCasteId: null,
-              categoryId: null,
-              dateOfJoining: new Date().toISOString().split('T')[0],
-              address: address,
-              cityId: null,
-              stateId: null,
-              bioId: bioId,
-              rfid: rfid,
-              shiftId: parseSafeInt(shiftMasterId) || null,
-              user: {
-                username: (email ? email.split('@')[0] : "user") + Date.now().toString().slice(-4) + index,
-                name: `${fName} ${lName}`.trim(),
-                passwordHash: "DefaultPass123!",
-                email: email || `user.${index}@example.com`,
-                role: role,
-                schoolId: parseSafeInt(schoolId) || 1
-              }
-            };
-          } catch (e) {
-            console.error(`Row ${index + 1} processing error:`, e);
-            return null;
+        // Helper to extract values resiliently and case-sensitively / case-insensitively
+        const getFieldCleanVal = (item: any, keysToSearch: string[]): string => {
+          for (const key of keysToSearch) {
+            const matchKey = Object.keys(item).find(k => k.trim().toLowerCase() === key.toLowerCase());
+            if (matchKey && item[matchKey] !== undefined && item[matchKey] !== null) {
+              return item[matchKey].toString().trim();
+            }
           }
+          return "";
+        };
+
+        // Build list of BulkStaffUploadRow objects to send to the .NET API
+        const payload: any[] = rawData.map((item: any, index: number) => {
+          return {
+            rowIndex: index + 2, // 1-based row index in Excel
+            employeeId: getFieldCleanVal(item, ["Employee ID", "EmployeeID", "ID", "Employee ID Code", "employee_id"]),
+            initials: getFieldCleanVal(item, ["Initials", "initials", "title"]),
+            name: getFieldCleanVal(item, ["Name", "name", "Full Name", "fullname"]),
+            email: getFieldCleanVal(item, ["Email", "email", "Mail", "mail"]),
+            subject: getFieldCleanVal(item, ["Core Expertise", "CoreExpertise", "Subject", "subject"]), // mapping core expertise
+            qualification: getFieldCleanVal(item, ["Credentials", "Credentials", "Qualification", "qualification"]), // mapping credentials
+            status: getFieldCleanVal(item, ["Status", "status"]) || "Active",
+            personalContact: getFieldCleanVal(item, ["Personal Contact", "PersonalContact", "Phone", "phone", "contact"]),
+            emergencyContact: getFieldCleanVal(item, ["Emergency Contact", "EmergencyContact", "contact2"]),
+            gender: getFieldCleanVal(item, ["Gender", "gender"]),
+            isClassTeacher: getFieldCleanVal(item, ["Class Teacher", "ClassTeacher", "isClassTeacher"]),
+            state: getFieldCleanVal(item, ["State", "state"]),
+            city: getFieldCleanVal(item, ["City", "city"]),
+            rfid: getFieldCleanVal(item, ["RFID Tag", "RFIDTag", "RFID", "rfid"])
+          };
         });
 
-        // Loop constraints/validation
-        let failCount = 0;
-        const chunkSize = 2; // balanced chunk size for UI responsiveness
-        for (let i = 0; i < processedStaffList.length; i += chunkSize) {
-          const chunk = processedStaffList.slice(i, i + chunkSize);
-          const chunkIndices = Array.from({ length: chunk.length }, (_, k) => i + k);
+        const activeSchoolId = parseSafeInt(user?.schoolId) || 1;
+        const activeAcademicYearId = parseSafeInt(user?.academicYearId) || 1;
 
-          setUploadResults(prev => prev.map(res =>
-            chunkIndices.includes(res.id) ? { ...res, status: 'processing' } : res
-          ));
+        // Perform the robust production-grade single bulk API request
+        const res = await apiService.bulkUploadStaff(
+          payload,
+          activeSchoolId,
+          activeAcademicYearId,
+          user?.username || "System UI Upload"
+        );
 
-          await Promise.all(chunk.map(async (staffRecord, idx) => {
-            const actualIndex = chunkIndices[idx];
-            if (!staffRecord) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'Invalid record alignment' } : res
-              ));
-              failCount++;
-              return;
-            }
+        const apiResult = res.data; // { insertedCount, errorCount, errorRows, insertedRows }
+        const errRows = apiResult.errorRows || [];
+        const successRows = apiResult.insertedRows || [];
 
-            // Require fields checks (First Name, Email, Standard, Section, RFID)
-            if (!staffRecord.firstName?.trim()) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'First Name is a mandatory field' } : res
-              ));
-              failCount++;
-              return;
-            }
+        // Track errors for Excel export later
+        setBulkUploadErrors(errRows);
 
-            if (!staffRecord.user?.email?.trim()) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'Email is a mandatory field' } : res
-              ));
-              failCount++;
-              return;
-            }
+        // Map status results back to UI Stream Monitor
+        setUploadResults(prev => prev.map(resRow => {
+          // Find if this row had an error
+          const rowErr = errRows.find((e: any) => e.rowIndex === resRow.id);
+          if (rowErr) {
+            return {
+              ...resRow,
+              status: "error",
+              error: rowErr.errorMessage
+            };
+          }
 
-            if (!staffRecord.standardId) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'Academic Grade/Standard is a mandatory field' } : res
-              ));
-              failCount++;
-              return;
-            }
+          // Check if this row was successfully inserted
+          const isSuccess = successRows.some((s: any) => s.rowIndex === resRow.id);
+          if (isSuccess) {
+            return {
+              ...resRow,
+              status: "success",
+              error: null
+            };
+          }
 
-            if (!staffRecord.sectionId) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'Grade Division/Section is a mandatory field' } : res
-              ));
-              failCount++;
-              return;
-            }
+          // Otherwise return original
+          return resRow;
+        }));
 
-            // RFID alphanumeric length (10 or 24)
-            const rfVal = staffRecord.rfid?.trim() || "";
-            const isRfidValid = rfVal !== "" && (rfVal.length === 10 || rfVal.length === 24) && /^[a-zA-Z0-9]+$/.test(rfVal);
-            if (!isRfidValid) {
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: 'RFID Tag is a mandatory field and must be alphanumeric with exactly 10 or 24 characters' } : res
-              ));
-              failCount++;
-              return;
-            }
-
-            try {
-              // Call API service directly to create
-              await apiService.createStaff(staffRecord as any);
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'success' } : res
-              ));
-            } catch (err: any) {
-              const errorMessage = err?.response?.data?.message || err?.message || "Integration error";
-              setUploadResults(prev => prev.map(res =>
-                res.id === actualIndex ? { ...res, status: 'error', error: errorMessage } : res
-              ));
-              failCount++;
-            }
-          }));
-        }
-
-        if (failCount === 0) {
-          toast.success(`Successfully uploaded all ${rawData.length} staff records!`);
+        if (apiResult.errorCount === 0) {
+          toast.success(`Successfully uploaded and saved all ${apiResult.insertedCount} staff records!`);
         } else {
-          toast.warning(`Uploaded completed. ${rawData.length - failCount} success, ${failCount} failed.`);
+          toast.warning(`Bulk loading complete. Successfully inserted ${apiResult.insertedCount} records. ${apiResult.errorCount} failures detected.`);
         }
+
+        // Reload data grid
         fetchStaffData();
       } catch (err: any) {
-        toast.error("An error occurred during file parsing.");
+        toast.error("Failed to execute high-performance bulk upload API session.");
         console.error(err);
       } finally {
         setIsProcessing(false);
@@ -1857,12 +1811,22 @@ export default function Staff({ user }: { user: any }) {
                 )}
               </div>
 
-              <DialogFooter className="bg-slate-50 px-10 py-6 shrink-0 border-t border-slate-100">
+              <DialogFooter className="bg-slate-50 px-10 py-6 shrink-0 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                {bulkUploadErrors.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50 font-black rounded-2xl h-12 text-[10px] uppercase tracking-[0.2em]"
+                    onClick={exportErrorsToExcel}
+                  >
+                    <Download size={14} className="mr-2" /> Export Errors to Excel
+                  </Button>
+                )}
                 <Button
-                  className="w-full bg-slate-900 hover:bg-black font-black rounded-2xl h-12 text-[10px] uppercase tracking-[0.2em]"
+                  className={cn("bg-slate-900 hover:bg-black font-black rounded-2xl h-12 text-[10px] uppercase tracking-[0.2em]", bulkUploadErrors.length > 0 ? "flex-1" : "w-full")}
                   onClick={() => {
                     setIsBulkUploadOpen(false);
                     setUploadResults([]);
+                    setBulkUploadErrors([]);
                   }}
                   disabled={isProcessing}
                 >

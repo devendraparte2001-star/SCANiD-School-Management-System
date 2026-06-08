@@ -26,5 +26,6 @@ namespace ScanID.Api.Interfaces
         Task<bool> UpdateStaffAsync(Staff staff);
         Task<bool> DeleteStaffAsync(int id);
         Task<bool> SavePhotoPathAsync(int id, string path);
+        Task<BulkStaffUploadResult> BulkUploadStaffAsync(IEnumerable<BulkStaffUploadRow> rows, int schoolId, int academicYearId, string createdBy);
     }
 }

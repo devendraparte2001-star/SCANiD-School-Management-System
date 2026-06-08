@@ -142,6 +142,63 @@ namespace ScanID.Api.Models
     }
 
     /// <summary>
+    /// Represents a single row in a bulk staff upload operation.
+    /// Perfectly maps to the required export/import excel structure.
+    /// </summary>
+    public class BulkStaffUploadRow
+    {
+        public int RowIndex { get; set; }
+        public string? EmployeeId { get; set; } // "Employee ID"
+        public string? Initials { get; set; } // "Initials"
+        public string? Name { get; set; } // "Name"
+        public string? Email { get; set; } // "Email"
+        public string? Subject { get; set; } // "Core Expertise"
+        public string? Qualification { get; set; } // "Credentials"
+        public string? Status { get; set; } // "Status"
+        public string? PersonalContact { get; set; } // "Personal Contact"
+        public string? EmergencyContact { get; set; } // "Emergency Contact"
+        public string? Gender { get; set; } // "Gender"
+        public string? IsClassTeacher { get; set; } // "Class Teacher" (Yes/No)
+        public string? State { get; set; } // "State"
+        public string? City { get; set; } // "City"
+        public string? Rfid { get; set; } // "RFID Tag"
+    }
+
+    /// <summary>
+    /// Represents the total results of a bulk staff upload session.
+    /// </summary>
+    public class BulkStaffUploadResult
+    {
+        public int InsertedCount { get; set; }
+        public int ErrorCount { get; set; }
+        public List<BulkStaffUploadErrorRow> ErrorRows { get; set; } = new();
+        public List<BulkStaffUploadSuccessRow> InsertedRows { get; set; } = new();
+    }
+
+    /// <summary>
+    /// DTO for displaying back validation and processing failures per-row.
+    /// </summary>
+    public class BulkStaffUploadErrorRow
+    {
+        public int RowIndex { get; set; }
+        public string? EmployeeId { get; set; }
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO indicating successfully processed and saved staff accounts.
+    /// </summary>
+    public class BulkStaffUploadSuccessRow
+    {
+        public int RowIndex { get; set; }
+        public string? EmployeeId { get; set; }
+        public string? Name { get; set; }
+        public string? Email { get; set; }
+    }
+
+    /// <summary>
     /// Student response DTO for directory/API consumers. It preserves the existing camelCase contract
     /// while avoiding direct EF navigation serialization.
     /// </summary>

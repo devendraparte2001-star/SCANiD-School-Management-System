@@ -200,6 +200,28 @@ namespace ScanID.Api.Controllers
         }
 
         /// <summary>
+        /// High-Performance production-grade bulk staff and account creation endpoint.
+        /// Handles lakhs of records safely with chunking and per-row partial-success failure recovery.
+        /// </summary>
+        [HttpPost("bulk-upload")]
+        public async Task<ActionResult<BulkStaffUploadResult>> PostBulkUpload(
+            [FromBody] List<BulkStaffUploadRow> request,
+            [FromQuery] int schoolId,
+            [FromQuery] int academicYearId,
+            [FromQuery] string? createdBy = null)
+        {
+            if (request == null || !request.Any())
+            {
+                return BadRequest("No records provided in the bulk upload request payload.");
+            }
+
+            var creator = createdBy ?? "System Bulk Upload";
+            var result = await _staffService.BulkUploadStaffAsync(request, schoolId, academicYearId, creator);
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Updates a staff profile.
         /// </summary>
         [HttpPut("{id}")]
