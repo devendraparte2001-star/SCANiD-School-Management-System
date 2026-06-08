@@ -59,6 +59,16 @@ export default function Notifications() {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      await apiService.markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      toast.error("Failed to update all notifications");
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await apiService.deleteNotification(id);
@@ -105,10 +115,7 @@ export default function Notifications() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => {
-              const unread = notifications.filter(n => !n.isRead);
-              unread.forEach(n => handleMarkAsRead(n.id));
-            }}
+            onClick={handleMarkAllAsRead}
             className="rounded-xl font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50"
             disabled={!notifications.some(n => !n.isRead)}
           >

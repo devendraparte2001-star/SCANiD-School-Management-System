@@ -18,11 +18,68 @@ namespace ScanID.Api.Controllers
 
         // GET: api/Notifications
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Notification>>> GetNotifications()
+        public async Task<ActionResult<IEnumerable<Notification>>> GetNotifications(
+            [FromQuery] int? userId = null,
+            [FromQuery] int? roleId = null,
+            [FromQuery] int? schoolId = null)
         {
-            return await _context.Notifications
+            var query = _context.Notifications
+                .Where(n => !n.IsDeleted);
+
+            if (userId.HasValue)
+            {
+                query = query.Where(n => n.UserId == userId.Value || n.UserId == null);
+            }
+
+            if (roleId.HasValue)
+            {
+                query = query.Where(n => n.RoleId == roleId.Value || n.RoleId == null);
+            }
+
+            if (schoolId.HasValue)
+            {
+                query = query.Where(n => n.SchoolId == schoolId.Value || n.SchoolId == null);
+            }
+
+            return await query
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync();
+        }
+
+        // PUT: api/Notifications/read-all
+        [HttpPut("read-all")]
+        public async Task<IActionResult> MarkAllAsRead(
+            [FromQuery] int? userId = null,
+            [FromQuery] int? roleId = null,
+            [FromQuery] int? schoolId = null)
+        {
+            var query = _context.Notifications
+                .Where(n => !n.IsDeleted && !n.IsRead);
+
+            if (userId.HasValue)
+            {
+                query = query.Where(n => n.UserId == userId.Value || n.UserId == null);
+            }
+
+            if (roleId.HasValue)
+            {
+                query = query.Where(n => n.RoleId == roleId.Value || n.RoleId == null);
+            }
+
+            if (schoolId.HasValue)
+            {
+                query = query.Where(n => n.SchoolId == schoolId.Value || n.SchoolId == null);
+            }
+
+            var unread = await query.ToListAsync();
+            foreach (var n in unread)
+            {
+                n.IsRead = true;
+                _context.Entry(n).State = EntityState.Modified;
+            }
+
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
         // GET: api/Notifications/5

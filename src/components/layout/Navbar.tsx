@@ -301,6 +301,20 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      const uId = user.id ? parseInt(user.id) : undefined;
+      const sId = user.schoolId ? parseInt(user.schoolId) : undefined;
+      const rId = user.roleId;
+      await apiService.markAllNotificationsRead({ userId: uId, schoolId: sId, roleId: rId });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      toast.success("All notifications marked as read!");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+    }
+  };
+
   const deleteNotification = async (id: number) => {
     try {
       await apiService.deleteNotification(id);
@@ -478,7 +492,7 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
               </div>
               {unreadCount > 0 && (
                 <button 
-                  onClick={() => notifications.forEach(n => !n.isRead && handleMarkAsRead(n.id))}
+                  onClick={handleMarkAllAsRead}
                   className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase"
                 >
                   Mark all as read
