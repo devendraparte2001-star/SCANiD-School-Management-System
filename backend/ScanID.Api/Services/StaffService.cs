@@ -466,17 +466,19 @@ namespace ScanID.Api.Services
                 .AsNoTracking()
                 .ToDictionaryAsync(c => c.Name.Trim().ToLower(), c => c.Id);
 
-            var existingEmployeeIds = await _context.Staff
+            var existingEmployeeIdsList = await _context.Staff
                 .AsNoTracking()
                 .Where(s => !s.IsDeleted)
                 .Select(s => s.EmployeeId.Trim().ToLower())
-                .ToHashSetAsync();
+                .ToListAsync();
+            var existingEmployeeIds = new HashSet<string>(existingEmployeeIdsList, StringComparer.OrdinalIgnoreCase);
 
-            var existingEmails = await _context.Users
+            var existingEmailsList = await _context.Users
                 .AsNoTracking()
                 .Where(u => !u.IsDeleted && u.Email != null)
                 .Select(u => u.Email!.Trim().ToLower())
-                .ToHashSetAsync();
+                .ToListAsync();
+            var existingEmails = new HashSet<string>(existingEmailsList, StringComparer.OrdinalIgnoreCase);
 
             // Track file-level duplicates to catch duplicates within the Excel sheet itself
             var fileEmployeeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
