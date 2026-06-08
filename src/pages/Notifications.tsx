@@ -9,7 +9,8 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Plus
+  Plus,
+  Pencil
 } from "lucide-react";
 import { 
   Card, 
@@ -66,6 +67,17 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [creating, setCreating] = useState(false);
+
+  // States for editing a notification
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingNotification, setEditingNotification] = useState<any>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editType, setEditType] = useState<"info" | "success" | "warning" | "error">("info");
+  const [editRoleId, setEditRoleId] = useState<string>("all");
+  const [editSchoolId, setEditSchoolId] = useState<string>("all");
+  const [editUserId, setEditUserId] = useState<string>("all");
+  const [updating, setUpdating] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -207,6 +219,61 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
       toast.error("Failed to create notification.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditClick = (notification: any) => {
+    setEditingNotification(notification);
+    setEditTitle(notification.title || notification.Title || "");
+    setEditMessage(notification.message || notification.Message || "");
+    setEditType(notification.type || notification.Type || "info");
+    setEditRoleId(notification.roleId ? String(notification.roleId) : (notification.RoleId ? String(notification.RoleId) : "all"));
+    setEditSchoolId(notification.schoolId ? String(notification.schoolId) : (notification.SchoolId ? String(notification.SchoolId) : "all"));
+    setEditUserId(notification.userId ? String(notification.userId) : (notification.UserId ? String(notification.UserId) : "all"));
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNotification) return;
+
+    if (!editTitle.trim() || !editMessage.trim()) {
+      toast.error("Please fill out all required fields.");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const modifierName = currentUser?.name || currentUser?.username || currentUser?.email || "System";
+      
+      const payload = {
+        ...editingNotification,
+        title: editTitle.trim(),
+        Title: editTitle.trim(),
+        message: editMessage.trim(),
+        Message: editMessage.trim(),
+        type: editType,
+        Type: editType,
+        roleId: editRoleId === "all" ? null : parseInt(editRoleId),
+        RoleId: editRoleId === "all" ? null : parseInt(editRoleId),
+        schoolId: editSchoolId === "all" ? null : parseInt(editSchoolId),
+        SchoolId: editSchoolId === "all" ? null : parseInt(editSchoolId),
+        userId: editUserId === "all" ? null : parseInt(editUserId),
+        UserId: editUserId === "all" ? null : parseInt(editUserId),
+        modifiedBy: modifierName,
+        ModifiedBy: modifierName
+      };
+
+      await apiService.updateNotification(editingNotification.id, payload);
+      toast.success("Notification updated successfully!");
+      setIsEditModalOpen(false);
+      setEditingNotification(null);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to update notification:", error);
+      toast.error("Failed to update notification.");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -360,14 +427,26 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                             </Button>
                           )}
                           {isAdmin && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
-                              onClick={() => handleDelete(notification.id)}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                onClick={() => handleEditClick(notification)}
+                                title="Edit Notification"
+                              >
+                                <Pencil size={15} />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                onClick={() => handleDelete(notification.id)}
+                                title="Delete Notification"
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -512,6 +591,148 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                   className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
                 >
                   {creating ? "Sending..." : "Send Announcement"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Notification Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-800">Edit Notification</h2>
+              <button 
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingNotification(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateNotification} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                  Title *
+                </label>
+                <Input 
+                  required
+                  placeholder="e.g. Scheduled System Maintenance"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Alert Type
+                  </label>
+                  <select 
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as any)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="info">Info (Blue)</option>
+                    <option value="success">Success (Green)</option>
+                    <option value="warning">Warning (Amber)</option>
+                    <option value="error">Error (Red)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    School Scope
+                  </label>
+                  <select 
+                    value={editSchoolId}
+                    onChange={(e) => setEditSchoolId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Schools (Global)</option>
+                    {schools.map(s => (
+                      <option key={s.id} value={s.id}>{s.name || s.Name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Recipient Role Scope
+                  </label>
+                  <select 
+                    value={editRoleId}
+                    onChange={(e) => setEditRoleId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="1">Super Admin</option>
+                    <option value="2">Admin</option>
+                    <option value="3">Teacher</option>
+                    <option value="4">Student</option>
+                    <option value="5">Parent</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Recipient User Scope
+                  </label>
+                  <select 
+                    value={editUserId}
+                    onChange={(e) => setEditUserId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Users (Broadcast)</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.Name || u.username || u.Username} ({u.role || u.Role || "User"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                  Message Content *
+                </label>
+                <textarea 
+                  required
+                  rows={4}
+                  placeholder="Type the notification details here..."
+                  value={editMessage}
+                  onChange={(e) => setEditMessage(e.target.value)}
+                  className="w-full p-3 text-sm font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-50">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingNotification(null);
+                  }}
+                  className="rounded-xl font-bold border-slate-200"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={updating}
+                  className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
+                >
+                  {updating ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </form>

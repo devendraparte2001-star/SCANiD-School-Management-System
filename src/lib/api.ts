@@ -574,6 +574,7 @@ export const apiService = {
   // Notifications
   getNotifications: (params?: { userId?: number; roleId?: number; role?: string; schoolId?: number } & PaginatedParams) => api.get("/notifications", { params }),
   createNotification: (data: any) => api.post("/notifications", data),
+  updateNotification: (id: number, data: any) => api.put(`/notifications/${id}`, data),
   markNotificationRead: (id: number) => api.put(`/notifications/${id}/read`),
   markAllNotificationsRead: (params?: { userId?: number; roleId?: number; schoolId?: number }) => api.put("/notifications/read-all", null, { params }),
   deleteNotification: (id: number) => api.delete(`/notifications/${id}`),

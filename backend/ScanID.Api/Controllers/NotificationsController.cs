@@ -128,6 +128,54 @@ namespace ScanID.Api.Controllers
             return NoContent();
         }
 
+        // PUT: api/Notifications/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutNotification(int id, Notification notification)
+        {
+            if (id != notification.Id)
+            {
+                return BadRequest();
+            }
+
+            var existing = await _context.Notifications.FindAsync(id);
+            if (existing == null)
+            {
+                return NotFound();
+            }
+
+            // Update editable properties
+            existing.Title = notification.Title;
+            existing.Message = notification.Message;
+            existing.Type = notification.Type;
+            existing.UserId = notification.UserId;
+            existing.RoleId = notification.RoleId;
+            existing.SchoolId = notification.SchoolId;
+            existing.IsRead = notification.IsRead;
+            existing.IsActive = notification.IsActive;
+            existing.ModifiedBy = notification.ModifiedBy;
+            existing.ModifiedOn = DateTime.Now;
+
+            _context.Entry(existing).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!NotificationExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
         // POST: api/Notifications
         [HttpPost]
         public async Task<ActionResult<Notification>> PostNotification(Notification notification)
