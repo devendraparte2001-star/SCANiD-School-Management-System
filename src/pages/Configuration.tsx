@@ -560,8 +560,8 @@ export default function Configuration({
       academicYearId: (item?.academicYearId ?? item?.AcademicYearId) ? (item?.academicYearId ?? item?.AcademicYearId).toString() : (user.academicYearId ? user.academicYearId.toString() : ""),
       weekdays: item?.weekdays ?? item?.Weekdays ?? "",
       isSpecialShift: !!(item?.isSpecialShift ?? item?.IsSpecialShift ?? false),
-      fromDate: (item?.fromDate ?? item?.FromDate) ? (item?.fromDate ?? item?.FromDate).split('T')[0] : "",
-      toDate: (item?.toDate ?? item?.ToDate) ? (item?.toDate ?? item?.ToDate).split('T')[0] : "",
+      fromDate: (item?.fromDate ?? item?.FromDate) ? String(item?.fromDate ?? item?.FromDate).split('T')[0] : "",
+      toDate: (item?.toDate ?? item?.ToDate) ? String(item?.toDate ?? item?.ToDate).split('T')[0] : "",
       // Extended school parameters for comprehensive UI form support
       shortName: item?.shortName ?? item?.ShortName ?? "",
       cityId: (item?.cityId ?? item?.CityId ?? "")?.toString() || "",
@@ -681,7 +681,8 @@ export default function Configuration({
 
       // Prepare payload based on the active master type to avoid sending irrelevant data
       let payload: any = {
-        isActive: formData.isActive,
+        isActive: formData.isActive !== false,
+        IsActive: formData.isActive !== false,
       };
 
       if (activeTab === "navigation") {
@@ -692,30 +693,43 @@ export default function Configuration({
         payload = {
           ...payload,
           title: formData.title,
+          Title: formData.title,
           path: formData.path,
+          Path: formData.path,
           icon: formData.icon,
+          Icon: formData.icon,
           parentId: formData.parentId ? parseSafeInt(formData.parentId) : null,
+          ParentId: formData.parentId ? parseSafeInt(formData.parentId) : null,
           sortOrder: parseSafeInt(formData.sortOrder) || 0,
+          SortOrder: parseSafeInt(formData.sortOrder) || 0,
           roles: payloadRoles,
+          Roles: payloadRoles,
           roleIds: payloadRoleIds,
+          RoleIds: payloadRoleIds,
         };
       } else {
         payload.name = formData.name;
+        payload.Name = formData.name;
         payload.description = formData.description;
+        payload.Description = formData.description;
       }
 
       // Add global school and academic year selection, except when dealing with schools or navigations
       if (activeTab !== "schools" && activeTab !== "navigation") {
         if (formData.schoolId) {
           payload.schoolId = parseSafeInt(formData.schoolId);
+          payload.SchoolId = parseSafeInt(formData.schoolId);
         } else if (user.schoolId && user.schoolId !== "all") {
           payload.schoolId = parseSafeInt(user.schoolId);
+          payload.SchoolId = parseSafeInt(user.schoolId);
         }
         
         if (formData.academicYearId) {
           payload.academicYearId = parseSafeInt(formData.academicYearId);
+          payload.AcademicYearId = parseSafeInt(formData.academicYearId);
         } else if (user.academicYearId) {
           payload.academicYearId = parseSafeInt(user.academicYearId);
+          payload.AcademicYearId = parseSafeInt(user.academicYearId);
         }
       }
 
@@ -733,8 +747,11 @@ export default function Configuration({
         payload.toDate = formData.isSpecialShift && formData.toDate ? formData.toDate : null;
       } else if (activeTab === "holidays") {
         payload.fromDate = formData.fromDate;
+        payload.FromDate = formData.fromDate;
         payload.toDate = formData.toDate;
+        payload.ToDate = formData.toDate;
         payload.description = formData.description;
+        payload.Description = formData.description;
       } else if (activeTab === "academic-years") {
         payload.isCurrent = formData.isCurrent;
       } else if (activeTab === "houses") {
@@ -1426,7 +1443,7 @@ export default function Configuration({
                                   {item.isSpecialShift && (
                                     <div className="text-[10.5px] font-bold text-orange-600 bg-orange-50 border border-orange-100 flex items-center gap-1.5 px-2 py-0.5 rounded mt-1 max-w-max">
                                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                                      <span>Special: {item.fromDate ? item.fromDate.split('T')[0] : "Start"} to {item.toDate ? item.toDate.split('T')[0] : "End"}</span>
+                                      <span>Special: {item.fromDate ? String(item.fromDate).split('T')[0] : "Start"} to {item.toDate ? String(item.toDate).split('T')[0] : "End"}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1435,7 +1452,7 @@ export default function Configuration({
                                   <div className="text-slate-700 font-extrabold text-[12px] flex items-center gap-1.5">
                                     <CalendarCheck size={13} className="text-purple-500 shrink-0" />
                                     <span>
-                                      {(item.fromDate ?? item.FromDate) ? (item.fromDate ?? item.FromDate).split('T')[0] : "N/A"} to {(item.toDate ?? item.ToDate) ? (item.toDate ?? item.ToDate).split('T')[0] : "N/A"}
+                                      {(item.fromDate ?? item.FromDate) ? String(item.fromDate ?? item.FromDate).split('T')[0] : "N/A"} to {(item.toDate ?? item.ToDate) ? String(item.toDate ?? item.ToDate).split('T')[0] : "N/A"}
                                     </span>
                                     {(item.toDate ?? item.ToDate) && new Date(item.toDate ?? item.ToDate) < new Date() ? (
                                       <Badge className="bg-slate-200 text-slate-500 rounded text-[8px] font-black uppercase border-none px-1.5 py-0.2 ml-1">
