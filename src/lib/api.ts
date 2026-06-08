@@ -572,7 +572,7 @@ export const apiService = {
   deleteNavigation: (id: number) => api.delete(`/navigation/${id}`),
 
   // Notifications
-  getNotifications: (params?: { userId?: number; role?: string; schoolId?: number } & PaginatedParams) => api.get("/notifications", { params }),
+  getNotifications: (params?: { userId?: number; roleId?: number; role?: string; schoolId?: number } & PaginatedParams) => api.get("/notifications", { params }),
   createNotification: (data: any) => api.post("/notifications", data),
   markNotificationRead: (id: number) => api.put(`/notifications/${id}/read`),
   markAllNotificationsRead: (params?: { userId?: number; roleId?: number; schoolId?: number }) => api.put("/notifications/read-all", null, { params }),

@@ -58,17 +58,38 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
   // States for creating a notification
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [schools, setSchools] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<"info" | "success" | "warning" | "error">("info");
   const [selectedRoleId, setSelectedRoleId] = useState<string>("all");
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
+  const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [creating, setCreating] = useState(false);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await apiService.getUsers();
+      const rawUsers = response.data?.data || response.data || [];
+      setUsers(Array.isArray(rawUsers) ? rawUsers : []);
+    } catch (error) {
+      console.error("Error fetching users in Notifications center:", error);
+    }
+  };
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const response = await apiService.getNotifications();
+      const params: any = {};
+      
+      // If NOT an admin/superadmin, apply strict filtering to current user's scopes
+      if (!isAdmin && currentUser) {
+        if (currentUser.id) params.userId = parseInt(currentUser.id) || undefined;
+        if (currentUser.roleId) params.roleId = currentUser.roleId;
+        if (currentUser.schoolId && currentUser.schoolId !== "all") params.schoolId = parseInt(currentUser.schoolId) || undefined;
+      }
+      
+      const response = await apiService.getNotifications(params);
       setNotifications(response.data.data || response.data || []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -90,7 +111,8 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
   useEffect(() => {
     fetchNotifications();
     fetchSchools();
-  }, []);
+    fetchUsers();
+  }, [currentUser]);
 
   const handleMarkAsRead = async (id: number) => {
     try {
@@ -104,7 +126,13 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await apiService.markAllNotificationsRead();
+      const params: any = {};
+      if (!isAdmin && currentUser) {
+        if (currentUser.id) params.userId = parseInt(currentUser.id) || undefined;
+        if (currentUser.roleId) params.roleId = currentUser.roleId;
+        if (currentUser.schoolId && currentUser.schoolId !== "all") params.schoolId = parseInt(currentUser.schoolId) || undefined;
+      }
+      await apiService.markAllNotificationsRead(params);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       toast.success("All notifications marked as read");
     } catch (error) {
@@ -131,14 +159,33 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
 
     setCreating(true);
     try {
+      const creatorName = currentUser?.name || currentUser?.username || currentUser?.email || "System";
+      const academicYearValue = currentUser?.academicYearId ? parseInt(currentUser.academicYearId) : null;
+      
       const payload = {
         title: newTitle.trim(),
         message: newMessage.trim(),
         type: newType,
         roleId: selectedRoleId === "all" ? null : parseInt(selectedRoleId),
+        RoleId: selectedRoleId === "all" ? null : parseInt(selectedRoleId),
         schoolId: selectedSchoolId === "all" ? null : parseInt(selectedSchoolId),
+        SchoolId: selectedSchoolId === "all" ? null : parseInt(selectedSchoolId),
+        userId: selectedUserId === "all" ? null : parseInt(selectedUserId),
+        UserId: selectedUserId === "all" ? null : parseInt(selectedUserId),
         isRead: false,
-        createdAt: new Date().toISOString()
+        IsRead: false,
+        createdAt: new Date().toISOString(),
+        CreatedAt: new Date().toISOString(),
+        createdBy: creatorName,
+        CreatedBy: creatorName,
+        modifiedBy: creatorName,
+        ModifiedBy: creatorName,
+        academicYearId: academicYearValue,
+        AcademicYearId: academicYearValue,
+        isActive: true,
+        IsActive: true,
+        isDeleted: false,
+        IsDeleted: false
       };
 
       await apiService.createNotification(payload);
@@ -151,6 +198,7 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
       setNewType("info");
       setSelectedRoleId("all");
       setSelectedSchoolId("all");
+      setSelectedUserId("all");
       
       // Refresh list
       fetchNotifications();
@@ -397,22 +445,42 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
-                  Recipient Role Scope
-                </label>
-                <select 
-                  value={selectedRoleId}
-                  onChange={(e) => setSelectedRoleId(e.target.value)}
-                  className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="1">Super Admin</option>
-                  <option value="2">Admin</option>
-                  <option value="3">Teacher</option>
-                  <option value="4">Student</option>
-                  <option value="5">Parent</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Recipient Role Scope
+                  </label>
+                  <select 
+                    value={selectedRoleId}
+                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="1">Super Admin</option>
+                    <option value="2">Admin</option>
+                    <option value="3">Teacher</option>
+                    <option value="4">Student</option>
+                    <option value="5">Parent</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Recipient User Scope
+                  </label>
+                  <select 
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Users (Broadcast)</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.Name || u.username || u.Username} ({u.role || u.Role || "User"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-1.5">

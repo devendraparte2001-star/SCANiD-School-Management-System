@@ -65,7 +65,17 @@ export default function Dashboard({ user }: DashboardProps) {
   useEffect(() => {
     const fetchAnnouncementsAndEvents = async () => {
       try {
-        const notifRes = await apiService.getNotifications();
+        const notifParams: any = {};
+        const userRoleLower = user.role?.toLowerCase() || "";
+        const isUserAdmin = userRoleLower === "superadmin" || userRoleLower === "admin";
+        
+        if (!isUserAdmin) {
+          if (user.id) notifParams.userId = parseInt(user.id) || undefined;
+          if (user.roleId) notifParams.roleId = user.roleId;
+          if (user.schoolId && user.schoolId !== "all") notifParams.schoolId = parseInt(user.schoolId) || undefined;
+        }
+
+        const notifRes = await apiService.getNotifications(notifParams);
         const rawNotifs = notifRes.data?.data || notifRes.data || [];
         setAnnouncements(Array.isArray(rawNotifs) ? rawNotifs : []);
       } catch (error) {

@@ -70,10 +70,20 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
 
   const fetchLookups = useCallback(async () => {
     try {
+      const notifParams: any = {};
+      const userRoleLower = user.role?.toLowerCase() || "";
+      const isUserAdmin = userRoleLower === "superadmin" || userRoleLower === "admin";
+      
+      if (!isUserAdmin) {
+        if (user.id) notifParams.userId = parseInt(user.id) || undefined;
+        if (user.roleId) notifParams.roleId = user.roleId;
+        if (user.schoolId && user.schoolId !== "all") notifParams.schoolId = parseInt(user.schoolId) || undefined;
+      }
+
       const [schoolsRes, yearsRes, notifsRes, navsRes] = await Promise.all([
         apiService.getSchools(),
         apiService.getAcademicYears(),
-        apiService.getNotifications(),
+        apiService.getNotifications(notifParams),
         apiService.getNavigations(user.roleId || 0)
       ]);
       
@@ -220,10 +230,20 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
         const parsedSchoolId = user.schoolId && user.schoolId !== "all" ? parseInt(user.schoolId) : undefined;
         const parsedYearId = user.academicYearId ? parseInt(user.academicYearId) : undefined;
         
+        const searchNotifParams: any = {};
+        const userRoleLowerSearch = user.role?.toLowerCase() || "";
+        const isUserAdminSearch = userRoleLowerSearch === "superadmin" || userRoleLowerSearch === "admin";
+        
+        if (!isUserAdminSearch) {
+          if (user.id) searchNotifParams.userId = parseInt(user.id) || undefined;
+          if (user.roleId) searchNotifParams.roleId = user.roleId;
+          if (user.schoolId && user.schoolId !== "all") searchNotifParams.schoolId = parseInt(user.schoolId) || undefined;
+        }
+
         const [studentsRes, staffRes, notificationsRes] = await Promise.all([
           apiService.getStudents(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 }),
           apiService.getStaff(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 }),
-          apiService.getNotifications()
+          apiService.getNotifications(searchNotifParams)
         ]);
 
         const rawStudents = studentsRes.data?.data || studentsRes.data || [];
