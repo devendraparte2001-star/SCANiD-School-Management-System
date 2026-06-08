@@ -80,6 +80,19 @@ const mockFallbacks: Record<string, any> = {
   "/masters/cities": [
     { id: 1, stateId: 1, name: "Mumbai", isActive: true },
   ],
+  "/masters/weekdays": [
+    { id: 1, name: "Monday", isActive: true },
+    { id: 2, name: "Tuesday", isActive: true },
+    { id: 3, name: "Wednesday", isActive: true },
+    { id: 4, name: "Thursday", isActive: true },
+    { id: 5, name: "Friday", isActive: true },
+    { id: 6, name: "Saturday", isActive: false },
+    { id: 7, name: "Sunday", isActive: false }
+  ],
+  "/masters/holidays": [
+    { id: 1, name: "Independence Day", fromDate: "2026-08-15T00:00:00Z", toDate: "2026-08-15T00:00:00Z", description: "National Holiday", isActive: true },
+    { id: 2, name: "Christmas", fromDate: "2026-12-25T00:00:00Z", toDate: "2026-12-25T00:00:00Z", description: "Winter Holiday", isActive: true }
+  ],
   "/masters/shifts": [
     { id: 1, name: "MORNING", isActive: true },
     { id: 2, name: "AFTERNOON", isActive: true },
@@ -560,6 +573,7 @@ export const apiService = {
 
   // Notifications
   getNotifications: (params?: { userId?: number; role?: string; schoolId?: number } & PaginatedParams) => api.get("/notifications", { params }),
+  createNotification: (data: any) => api.post("/notifications", data),
   markNotificationRead: (id: number) => api.put(`/notifications/${id}/read`),
   markAllNotificationsRead: (params?: { userId?: number; roleId?: number; schoolId?: number }) => api.put("/notifications/read-all", null, { params }),
   deleteNotification: (id: number) => api.delete(`/notifications/${id}`),

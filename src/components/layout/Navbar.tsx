@@ -220,13 +220,15 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
         const parsedSchoolId = user.schoolId && user.schoolId !== "all" ? parseInt(user.schoolId) : undefined;
         const parsedYearId = user.academicYearId ? parseInt(user.academicYearId) : undefined;
         
-        const [studentsRes, staffRes] = await Promise.all([
+        const [studentsRes, staffRes, notificationsRes] = await Promise.all([
           apiService.getStudents(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 }),
-          apiService.getStaff(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 })
+          apiService.getStaff(parsedSchoolId, parsedYearId, { search: queryTerm, pageSize: 20 }),
+          apiService.getNotifications()
         ]);
 
         const rawStudents = studentsRes.data?.data || studentsRes.data || [];
         const rawStaff = staffRes.data?.data || staffRes.data || [];
+        const rawNotifs = notificationsRes.data?.data || notificationsRes.data || [];
 
         const matchingStudents = (Array.isArray(rawStudents) ? rawStudents : []).map((s: any) => {
           const grNoStr = s.grNo || s.grno || s.GRNO || s.registrationNumber || "N/A";
@@ -253,8 +255,23 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
           };
         });
 
+        const matchingNotifications = (Array.isArray(rawNotifs) ? rawNotifs : [])
+          .filter((n: any) => 
+            n && n.title && (
+              n.title.toLowerCase().includes(queryTerm.toLowerCase()) || 
+              (n.message && n.message.toLowerCase().includes(queryTerm.toLowerCase()))
+            )
+          )
+          .map((n: any) => ({
+            id: `notif-${n.id}`,
+            title: n.title,
+            subtitle: n.message || "",
+            type: "notification" as const,
+            link: "/notifications"
+          }));
+
         // Combine everything
-        const combined = [...matchingMenus, ...matchingStudents, ...matchingStaff];
+        const combined = [...matchingMenus, ...matchingStudents, ...matchingStaff, ...matchingNotifications];
         setFilteredResults(combined.slice(0, 10)); // return top 10 matches
         setShowResults(true);
       } catch (err) {
@@ -445,10 +462,11 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
                   <div className={cn(
                     "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
                     item.type === "student" ? "bg-blue-100 text-blue-600" :
-                    item.type === "teacher" ? "bg-emerald-100 text-emerald-600" :
+                    item.type === "teacher" || item.type === "staff" ? "bg-emerald-100 text-emerald-600" :
+                    item.type === "notification" ? "bg-amber-100 text-amber-600" :
                     "bg-slate-100 text-slate-600"
                   )}>
-                    <Search size={14} />
+                    {item.type === "notification" ? <Bell size={14} /> : <Search size={14} />}
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-semibold text-slate-900 leading-none mb-1 group-hover:text-blue-600 transition-colors">

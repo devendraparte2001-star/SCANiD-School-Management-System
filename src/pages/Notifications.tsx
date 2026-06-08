@@ -8,7 +8,8 @@ import {
   X,
   RefreshCw,
   Search,
-  Filter
+  Filter,
+  Plus
 } from "lucide-react";
 import { 
   Card, 
@@ -31,6 +32,16 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  
+  // States for creating a notification
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [schools, setSchools] = useState<any[]>([]);
+  const [newTitle, setNewTitle] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [newType, setNewType] = useState<"info" | "success" | "warning" | "error">("info");
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("all");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>("all");
+  const [creating, setCreating] = useState(false);
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -45,8 +56,18 @@ export default function Notifications() {
     }
   };
 
+  const fetchSchools = async () => {
+    try {
+      const response = await apiService.getSchools();
+      setSchools(response.data.data || response.data || []);
+    } catch (error) {
+      console.error("Error fetching schools in Notification Center:", error);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
+    fetchSchools();
   }, []);
 
   const handleMarkAsRead = async (id: number) => {
@@ -79,6 +100,46 @@ export default function Notifications() {
     }
   };
 
+  const handleCreateNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newMessage.trim()) {
+      toast.error("Please fill out all required fields.");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const payload = {
+        title: newTitle.trim(),
+        message: newMessage.trim(),
+        type: newType,
+        roleId: selectedRoleId === "all" ? null : parseInt(selectedRoleId),
+        schoolId: selectedSchoolId === "all" ? null : parseInt(selectedSchoolId),
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+
+      await apiService.createNotification(payload);
+      toast.success("Notification sent successfully!");
+      setIsCreateModalOpen(false);
+      
+      // Reset form
+      setNewTitle("");
+      setNewMessage("");
+      setNewType("info");
+      setSelectedRoleId("all");
+      setSelectedSchoolId("all");
+      
+      // Refresh list
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to create notification:", error);
+      toast.error("Failed to create notification.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'success': return <CheckCircle2 className="text-emerald-500" size={18} />;
@@ -103,6 +164,14 @@ export default function Notifications() {
           <p className="text-slate-500 font-medium">Manage your system alerts and messages</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+            size="sm"
+          >
+            <Plus size={16} className="mr-1.5" />
+            Add Notification
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -239,6 +308,122 @@ export default function Notifications() {
           </div>
         </div>
       </div>
+
+      {/* Create Notification Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-slate-800">Add New Notification</h2>
+              <button 
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNotification} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                  Title *
+                </label>
+                <Input 
+                  required
+                  placeholder="e.g. Scheduled System Maintenance"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Alert Type
+                  </label>
+                  <select 
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value as any)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="info">Info (Blue)</option>
+                    <option value="success">Success (Green)</option>
+                    <option value="warning">Warning (Amber)</option>
+                    <option value="error">Error (Red)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    School Scope
+                  </label>
+                  <select 
+                    value={selectedSchoolId}
+                    onChange={(e) => setSelectedSchoolId(e.target.value)}
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                  >
+                    <option value="all">All Schools (Global)</option>
+                    {schools.map(s => (
+                      <option key={s.id} value={s.id}>{s.name || s.Name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                  Recipient Role Scope
+                </label>
+                <select 
+                  value={selectedRoleId}
+                  onChange={(e) => setSelectedRoleId(e.target.value)}
+                  className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="1">Super Admin</option>
+                  <option value="2">Admin</option>
+                  <option value="3">Teacher</option>
+                  <option value="4">Student</option>
+                  <option value="5">Parent</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                  Message Content *
+                </label>
+                <textarea 
+                  required
+                  rows={4}
+                  placeholder="Type the notification details here..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="w-full p-3 text-sm font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-50">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="rounded-xl font-bold border-slate-200"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={creating}
+                  className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
+                >
+                  {creating ? "Sending..." : "Send Announcement"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -100,6 +100,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: allRoles },
             { id: 9, title: "Fee Management", icon: "CreditCard", path: "/fees", parentId: 8, sortOrder: 1, roleIds: [1, 2, 5] },
             { id: 10, title: "Communication Hub", icon: "MessageSquare", path: "/messages", parentId: 8, sortOrder: 2, roleIds: allRoles },
+            { id: 45, title: "Notification Center", icon: "Bell", path: "/notifications", parentId: 8, sortOrder: 3, roleIds: allRoles },
             
             // Masters & Config Group
             { id: 11, title: "Masters & Config", icon: "Database", path: "/configuration", parentId: null, sortOrder: 5, roleIds: adminRoles },

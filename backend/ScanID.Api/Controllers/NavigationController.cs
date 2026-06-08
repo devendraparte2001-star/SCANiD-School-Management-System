@@ -50,6 +50,26 @@ namespace ScanID.Api.Controllers
                     return Ok(new { data = GetDefaultNavigationItems() });
                 }
 
+                // Dynamically ensure Notification Center is present
+                if (!items.Any(n => n.Path == "/notifications"))
+                {
+                    var notifMenu = new NavigationItem
+                    {
+                        Id = 444,
+                        Title = "Notification Center",
+                        Icon = "Bell",
+                        Path = "/notifications",
+                        ParentId = 8, // Administrative group
+                        SortOrder = 3,
+                        IsActive = true
+                    };
+                    notifMenu.NavigationRoles = new List<NavigationRole>
+                    {
+                        new NavigationRole { NavigationItemId = 444, RoleId = 0 } // All roles
+                    };
+                    items = new List<NavigationItem>(items) { notifMenu };
+                }
+
                 // Map to a format the frontend expects (using RoleId)
                 var result = items.Select(i => {
                     var roleIdList = i.NavigationRoles?
@@ -146,6 +166,7 @@ namespace ScanID.Api.Controllers
                 new { id = 8, title = "Administrative", icon = "ShieldCheck", path = (string?)null, parentId = (int?)null, sortOrder = 4, roleIds = all },
                 new { id = 9, title = "Fee Management", icon = "CreditCard", path = "/fees", parentId = 8, sortOrder = 1, roleIds = new[] { 1, 2, 5 } },
                 new { id = 10, title = "Communication Hub", icon = "MessageSquare", path = "/messages", parentId = 8, sortOrder = 2, roleIds = all },
+                new { id = 444, title = "Notification Center", icon = "Bell", path = "/notifications", parentId = 8, sortOrder = 3, roleIds = all },
                 
                 // Masters & Config Group
                 new { id = 11, title = "Masters & Config", icon = "Database", path = "/configuration", parentId = (int?)null, sortOrder = 5, roleIds = adminOnly },

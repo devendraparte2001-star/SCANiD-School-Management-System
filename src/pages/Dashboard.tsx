@@ -51,6 +51,82 @@ export default function Dashboard({ user }: DashboardProps) {
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAnnouncementsAndEvents = async () => {
+      try {
+        const notifRes = await apiService.getNotifications();
+        const rawNotifs = notifRes.data?.data || notifRes.data || [];
+        setAnnouncements(Array.isArray(rawNotifs) ? rawNotifs : []);
+      } catch (error) {
+        console.error("Error fetching announcements on dashboard:", error);
+      }
+
+      try {
+        const holidayRes = await apiService.getHolidays();
+        const rawHolidays = holidayRes.data?.data || holidayRes.data || [];
+        setEvents(Array.isArray(rawHolidays) ? rawHolidays : []);
+      } catch (error) {
+        console.error("Error fetching events on dashboard:", error);
+      }
+    };
+    fetchAnnouncementsAndEvents();
+  }, []);
+
+  const defaultAnnouncements = [
+    { title: "Annual Sports Day 2024", date: "May 15, 2024", desc: "Registration open for all tracks and field events." },
+    { title: "Parent-Teacher Meeting", date: "May 20, 2024", desc: "Final term progress discussion for Standard 5-10." },
+    { title: "Summer Break Notice", date: "June 1, 2024", desc: "School will remain closed from June 1st to July 5th." }
+  ];
+
+  const mappedAnnouncements = announcements.map((n: any) => {
+    const rawDate = n.createdAt || n.CreatedAt || new Date().toISOString();
+    const dateObj = new Date(rawDate);
+    const dayStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return {
+      title: n.title || n.Title,
+      date: dayStr,
+      desc: n.message || n.Message
+    };
+  });
+
+  const displayAnnouncements = [...mappedAnnouncements, ...defaultAnnouncements].slice(0, 3);
+
+  const defaultEvents = [
+    { time: "09:00 AM", label: "Math Finals - Standard 8", type: "Exam", color: "bg-red-50 text-red-600" },
+    { time: "11:30 AM", label: "Choir Practice - Auditorium", type: "Activity", color: "bg-indigo-50 text-indigo-600" },
+    { time: "02:00 PM", label: "Staff Briefing - Room 402", type: "Meeting", color: "bg-slate-50 text-slate-600" },
+    { time: "04:15 PM", label: "Football Match - Away", type: "Sports", color: "bg-blue-50 text-blue-600" },
+  ];
+
+  const mappedEvents = events.map((e: any) => {
+    const rawDate = e.fromDate || e.FromDate || new Date().toISOString();
+    const dateObj = new Date(rawDate);
+    // Formats e.g. "Jun 12"
+    let dayStr = "Holiday";
+    try {
+      dayStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    } catch (e) {}
+    const nameStr = e.name || e.Name || "School Holiday";
+    
+    const colors = [
+      "bg-amber-50 text-amber-600",
+      "bg-red-50 text-red-600",
+      "bg-indigo-50 text-indigo-600",
+      "bg-emerald-50 text-emerald-600"
+    ];
+    const colorIndex = (e.id || 0) % colors.length;
+    return {
+      time: dayStr,
+      label: nameStr,
+      type: "Holiday",
+      color: colors[colorIndex]
+    };
+  });
+
+  const displayEvents = [...mappedEvents, ...defaultEvents].slice(0, 4);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 500); // Increased delay for layout stability
@@ -250,22 +326,15 @@ export default function Dashboard({ user }: DashboardProps) {
             <CardTitle className="text-lg font-bold text-slate-900">Recent Announcements</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-4">
-              <AnnouncementItem 
-                title="Annual Sports Day 2024" 
-                date="May 15, 2024" 
-                desc="Registration open for all tracks and field events."
-              />
-              <AnnouncementItem 
-                title="Parent-Teacher Meeting" 
-                date="May 20, 2024" 
-                desc="Final term progress discussion for Standard 5-10."
-              />
-              <AnnouncementItem 
-                title="Summer Break Notice" 
-                date="June 1, 2024" 
-                desc="School will remain closed from June 1st to July 5th."
-              />
+            <div className="space-y-0 divide-y divide-slate-50">
+              {displayAnnouncements.map((item, index) => (
+                <AnnouncementItem 
+                  key={index}
+                  title={item.title} 
+                  date={item.date} 
+                  desc={item.desc}
+                />
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -276,10 +345,15 @@ export default function Dashboard({ user }: DashboardProps) {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
-              <EventItem time="09:00 AM" label="Math Finals - Standard 8" type="Exam" color="bg-red-50 text-red-600" />
-              <EventItem time="11:30 AM" label="Choir Practice - Auditorium" type="Activity" color="bg-indigo-50 text-indigo-600" />
-              <EventItem time="02:00 PM" label="Staff Briefing - Room 402" type="Meeting" color="bg-slate-50 text-slate-600" />
-              <EventItem time="04:15 PM" label="Football Match - Away" type="Sports" color="bg-blue-50 text-blue-600" />
+              {displayEvents.map((item, index) => (
+                <EventItem 
+                  key={index}
+                  time={item.time} 
+                  label={item.label} 
+                  type={item.type} 
+                  color={item.color} 
+                />
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -2,7 +2,7 @@ export interface SearchItem {
   id: string;
   title: string;
   subtitle: string;
-  type: "student" | "teacher" | "staff" | "page";
+  type: "student" | "teacher" | "staff" | "page" | "notification";
   link: string;
 }
 
