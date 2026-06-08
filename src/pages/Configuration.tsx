@@ -522,25 +522,25 @@ export default function Configuration({
       setLocalPhotoPreview(null);
     }
     setFormData({
-      name: item?.name || item?.fullName || "",
-      description: item?.description || "",
-      isCurrent: item?.isCurrent || false,
-      isActive: item?.isActive !== false, // Default to true if undefined
-      color: item?.color || "#3b82f6",
-      casteId: item?.casteId?.toString() || "",
-      stateId: item?.stateId?.toString() || "",
-      address: item?.address || "",
-      phone: item?.phone || "",
-      email: item?.email || "",
-      title: item?.title || "",
-      path: item?.path || "",
-      icon: item?.icon || "",
-      parentId: item?.parentId?.toString() || "",
-      sortOrder: item?.sortOrder || 0,
-      roles: Array.isArray(item?.roles) && item.roles.length > 0
-        ? item.roles
-        : (Array.isArray(item?.roleIds)
-          ? item.roleIds.map((id: number) => {
+      name: item?.name ?? item?.Name ?? item?.fullName ?? item?.FullName ?? "",
+      description: item?.description ?? item?.Description ?? "",
+      isCurrent: item?.isCurrent ?? item?.IsCurrent ?? false,
+      isActive: item?.isActive !== false && item?.IsActive !== false, // Default to true if undefined
+      color: item?.color ?? item?.Color ?? "#3b82f6",
+      casteId: (item?.casteId ?? item?.CasteId ?? "")?.toString() || "",
+      stateId: (item?.stateId ?? item?.StateId ?? "")?.toString() || "",
+      address: item?.address ?? item?.Address ?? "",
+      phone: item?.phone ?? item?.Phone ?? "",
+      email: item?.email ?? item?.Email ?? "",
+      title: item?.title ?? item?.Title ?? "",
+      path: item?.path ?? item?.Path ?? "",
+      icon: item?.icon ?? item?.Icon ?? "",
+      parentId: (item?.parentId ?? item?.ParentId ?? "")?.toString() || "",
+      sortOrder: item?.sortOrder ?? item?.SortOrder ?? 0,
+      roles: Array.isArray(item?.roles ?? item?.Roles) && (item?.roles ?? item?.Roles).length > 0
+        ? (item?.roles ?? item?.Roles)
+        : (Array.isArray(item?.roleIds ?? item?.RoleIds)
+          ? (item?.roleIds ?? item?.RoleIds).map((id: number) => {
               if (id === 1) return "superadmin";
               if (id === 2) return "admin";
               if (id === 3) return "teacher";
@@ -549,43 +549,43 @@ export default function Configuration({
               return null;
             }).filter(Boolean)
           : ["superadmin"]),
-      profilePhotoPath: item?.profilePhotoPath || item?.ProfilePhotoPath || "",
-      username: item?.username || "",
+      profilePhotoPath: item?.profilePhotoPath ?? item?.ProfilePhotoPath ?? "",
+      username: item?.username ?? item?.Username ?? "",
       password: "",
       confirmPassword: "",
-      role: item?.role
-        ? item.role.toLowerCase().replace(/\s+/g, "")
+      role: (item?.role ?? item?.Role)
+        ? (item?.role ?? item?.Role).toLowerCase().replace(/\s+/g, "")
         : "student",
-      schoolId: item?.schoolId ? item.schoolId.toString() : (user.schoolId && user.schoolId !== "all" ? user.schoolId.toString() : ""),
-      academicYearId: item?.academicYearId ? item.academicYearId.toString() : (user.academicYearId ? user.academicYearId.toString() : ""),
-      weekdays: item?.weekdays || "",
-      isSpecialShift: item?.isSpecialShift || false,
-      fromDate: item?.fromDate ? item.fromDate.split('T')[0] : "",
-      toDate: item?.toDate ? item.toDate.split('T')[0] : "",
+      schoolId: (item?.schoolId ?? item?.SchoolId) ? (item?.schoolId ?? item?.SchoolId).toString() : (user.schoolId && user.schoolId !== "all" ? user.schoolId.toString() : ""),
+      academicYearId: (item?.academicYearId ?? item?.AcademicYearId) ? (item?.academicYearId ?? item?.AcademicYearId).toString() : (user.academicYearId ? user.academicYearId.toString() : ""),
+      weekdays: item?.weekdays ?? item?.Weekdays ?? "",
+      isSpecialShift: !!(item?.isSpecialShift ?? item?.IsSpecialShift ?? false),
+      fromDate: (item?.fromDate ?? item?.FromDate) ? (item?.fromDate ?? item?.FromDate).split('T')[0] : "",
+      toDate: (item?.toDate ?? item?.ToDate) ? (item?.toDate ?? item?.ToDate).split('T')[0] : "",
       // Extended school parameters for comprehensive UI form support
-      shortName: item?.shortName || "",
-      cityId: item?.cityId?.toString() || "",
-      pincode: item?.pincode || "",
-      smsLimit: item?.smsLimit?.toString() || "",
-      totalSMSSent: item?.totalSMSSent || 0,
-      smsBalance: item?.smsBalance || 0,
-      enableSMS: item?.enableSMS || false,
-      enablePresenteeSMS: item?.enablePresenteeSMS || false,
-      automaticBirthdaySMS: item?.automaticBirthdaySMS || false,
-      enableWhatsapp: item?.enableWhatsapp || false,
-      websiteUrl: item?.websiteUrl || "",
-      smsSenderID: item?.smsSenderID || "",
-      busNumbers: item?.busNumbers || "",
-      scanIDContact: item?.scanIDContact || "",
-      scanIDEmail: item?.scanIDEmail || "",
-      inChargeContact: item?.inChargeContact || "",
-      status: item?.status || "Active",
-      startTime: item?.startTime || "",
-      endTime: item?.endTime || "",
-      graceInTime: item?.graceInTime || "",
-      spanInTime: item?.spanInTime || "",
-      lunchStart: item?.lunchStart || "",
-      lunchEnd: item?.lunchEnd || "",
+      shortName: item?.shortName ?? item?.ShortName ?? "",
+      cityId: (item?.cityId ?? item?.CityId ?? "")?.toString() || "",
+      pincode: item?.pincode ?? item?.Pincode ?? "",
+      smsLimit: (item?.smsLimit ?? item?.SmsLimit ?? "")?.toString() || "",
+      totalSMSSent: item?.totalSMSSent ?? item?.TotalSMSSent ?? 0,
+      smsBalance: item?.smsBalance ?? item?.SmsBalance ?? 0,
+      enableSMS: !!(item?.enableSMS ?? item?.EnableSMS ?? false),
+      enablePresenteeSMS: !!(item?.enablePresenteeSMS ?? item?.EnablePresenteeSMS ?? false),
+      automaticBirthdaySMS: !!(item?.automaticBirthdaySMS ?? item?.AutomaticBirthdaySMS ?? false),
+      enableWhatsapp: !!(item?.enableWhatsapp ?? item?.EnableWhatsapp ?? false),
+      websiteUrl: item?.websiteUrl ?? item?.WebsiteUrl ?? "",
+      smsSenderID: item?.smsSenderID ?? item?.SmsSenderID ?? "",
+      busNumbers: item?.busNumbers ?? item?.BusNumbers ?? "",
+      scanIDContact: item?.scanIDContact ?? item?.ScanIDContact ?? "",
+      scanIDEmail: item?.scanIDEmail ?? item?.ScanIDEmail ?? "",
+      inChargeContact: item?.inChargeContact ?? item?.InChargeContact ?? "",
+      status: item?.status ?? item?.Status ?? "Active",
+      startTime: item?.startTime ?? item?.StartTime ?? "",
+      endTime: item?.endTime ?? item?.EndTime ?? "",
+      graceInTime: item?.graceInTime ?? item?.GraceInTime ?? "",
+      spanInTime: item?.spanInTime ?? item?.SpanInTime ?? "",
+      lunchStart: item?.lunchStart ?? item?.LunchStart ?? "",
+      lunchEnd: item?.lunchEnd ?? item?.LunchEnd ?? "",
     });
     setIsDialogOpen(true);
   };
@@ -870,13 +870,14 @@ export default function Configuration({
 
   const filteredData = masterData.filter((item) => {
     // 1. Text Search Filter
+    const itemName = item.name ?? item.Name ?? item.title ?? item.Title ?? item.fullName ?? item.FullName ?? "";
+    const itemDescription = item.description ?? item.Description ?? item.path ?? item.Path ?? "";
+    
     const matchesSearch =
-      (item.name || item.title || item.fullName)
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      (item.description || item.path)
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase());
+      !searchQuery ? true : (
+        itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        itemDescription.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
     if (!matchesSearch) return false;
 
@@ -1157,7 +1158,7 @@ export default function Configuration({
                               </span>
                             )}
                             <span className="truncate">
-                              {item.name || item.title || item.fullName}
+                              {item.name ?? item.Name ?? item.title ?? item.Title ?? item.fullName ?? item.FullName}
                             </span>
                           </div>
                         </TableCell>
@@ -1434,9 +1435,9 @@ export default function Configuration({
                                   <div className="text-slate-700 font-extrabold text-[12px] flex items-center gap-1.5">
                                     <CalendarCheck size={13} className="text-purple-500 shrink-0" />
                                     <span>
-                                      {item.fromDate ? item.fromDate.split('T')[0] : "N/A"} to {item.toDate ? item.toDate.split('T')[0] : "N/A"}
+                                      {(item.fromDate ?? item.FromDate) ? (item.fromDate ?? item.FromDate).split('T')[0] : "N/A"} to {(item.toDate ?? item.ToDate) ? (item.toDate ?? item.ToDate).split('T')[0] : "N/A"}
                                     </span>
-                                    {item.toDate && new Date(item.toDate) < new Date() ? (
+                                    {(item.toDate ?? item.ToDate) && new Date(item.toDate ?? item.ToDate) < new Date() ? (
                                       <Badge className="bg-slate-200 text-slate-500 rounded text-[8px] font-black uppercase border-none px-1.5 py-0.2 ml-1">
                                         Passed Holiday
                                       </Badge>
@@ -1446,9 +1447,9 @@ export default function Configuration({
                                       </Badge>
                                     )}
                                   </div>
-                                  {item.description && (
+                                  {(item.description ?? item.Description) && (
                                     <span className="text-[10px] text-slate-400 font-bold block italic truncate max-w-[260px] pl-4.5">
-                                      "{item.description}"
+                                      "{(item.description ?? item.Description)}"
                                     </span>
                                   )}
                                 </div>

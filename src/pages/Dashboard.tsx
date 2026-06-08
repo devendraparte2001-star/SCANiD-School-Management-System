@@ -166,6 +166,14 @@ export default function Dashboard({ user }: DashboardProps) {
     return () => clearTimeout(timer);
   }, [user.schoolId, user.academicYearId]);
 
+  const activePerformanceData = stats?.performanceData && stats.performanceData.length > 0
+    ? stats.performanceData
+    : performanceData;
+    
+  const activeAttendanceTrend = stats?.attendanceTrend && stats.attendanceTrend.length > 0
+    ? stats.attendanceTrend
+    : attendanceData;
+
   return (
     <div className="space-y-4 sm:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -248,7 +256,7 @@ export default function Dashboard({ user }: DashboardProps) {
             {isMounted ? (
               <div className="h-[300px] w-full" style={{ minHeight: '300px' }}>
                 <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                  <LineChart data={stats?.performanceData || performanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <LineChart data={activePerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
                     <XAxis 
                       dataKey="name" 
@@ -308,7 +316,7 @@ export default function Dashboard({ user }: DashboardProps) {
             {isMounted ? (
               <div className="h-[300px] w-full" style={{ minHeight: '300px' }}>
                 <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                  <BarChart data={stats?.attendanceTrend || attendanceData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <BarChart data={activeAttendanceTrend} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
                     <XAxis 
                       dataKey="day" 

@@ -20,6 +20,19 @@ const mockFallbacks: Record<string, any> = {
     feeCollection: "₹45,200",
     attendanceRate: "92%",
     performanceTrend: "+2.4%",
+    performanceData: [
+      { name: "Term 1", avg: 72, top: 94 },
+      { name: "Term 2", avg: 78, top: 96 },
+      { name: "Term 3", avg: 75, top: 93 },
+      { name: "Term 4", avg: 82, top: 98 },
+    ],
+    attendanceTrend: [
+      { day: "Mon", attendance: 92 },
+      { day: "Tue", attendance: 95 },
+      { day: "Wed", attendance: 88 },
+      { day: "Thu", attendance: 94 },
+      { day: "Fri", attendance: 91 },
+    ],
   },
   "/students": [
     {
@@ -288,7 +301,34 @@ api.interceptors.response.use(
       }
 
       if (mockKey) {
-        const mockData = mockFallbacks[mockKey];
+        let mockData = mockFallbacks[mockKey];
+        
+        // Apply local filtering for notifications fallback to filter by roleId, userId or schoolId
+        if (cleanUrl.startsWith("/notifications") && Array.isArray(mockData)) {
+          const queryString = (error.config.url || "").split("?")[1] || "";
+          const urlParams = new URLSearchParams(queryString);
+          const roleIdParam = urlParams.get("roleId");
+          const userIdParam = urlParams.get("userId");
+          
+          mockData = mockData.filter((item: any) => {
+            if (roleIdParam) {
+              const roleIdVal = parseInt(roleIdParam);
+              const itemRoleId = item.roleId ?? item.RoleId;
+              if (itemRoleId !== undefined && itemRoleId !== null && itemRoleId !== roleIdVal) {
+                return false;
+              }
+            }
+            if (userIdParam) {
+              const userIdVal = parseInt(userIdParam);
+              const itemUserId = item.userId ?? item.UserId;
+              if (itemUserId !== undefined && itemUserId !== null && itemUserId !== userIdVal) {
+                return false;
+              }
+            }
+            return true;
+          });
+        }
+        
         // Wrap in { data: [...] } for specific paths
         const needsDataWrap = cleanUrl.includes("/masters/") || 
                             ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/attendance", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));

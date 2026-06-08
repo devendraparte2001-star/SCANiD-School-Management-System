@@ -150,10 +150,19 @@ namespace ScanID.Api.Controllers
             existing.UserId = notification.UserId;
             existing.RoleId = notification.RoleId;
             existing.SchoolId = notification.SchoolId;
+            existing.AcademicYearId = notification.AcademicYearId;
             existing.IsRead = notification.IsRead;
             existing.IsActive = notification.IsActive;
             existing.ModifiedBy = notification.ModifiedBy;
             existing.ModifiedOn = DateTime.Now;
+
+            // Preserve original created auditing information if not sent from client
+            if (!string.IsNullOrEmpty(notification.CreatedBy)) {
+                existing.CreatedBy = notification.CreatedBy;
+            }
+            if (notification.CreatedOn != default(DateTime)) {
+                existing.CreatedOn = notification.CreatedOn;
+            }
 
             _context.Entry(existing).State = EntityState.Modified;
 

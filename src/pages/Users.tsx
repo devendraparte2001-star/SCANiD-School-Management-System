@@ -100,6 +100,22 @@ export default function Users({ user }: { user: any }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Map selected string-based role (e.g., 'superadmin') to numeric ID for backend API integration
+      let apiRoleId: any = undefined;
+      if (selectedRole !== "all") {
+        const isNumeric = /^\d+$/.test(selectedRole);
+        if (isNumeric) {
+          apiRoleId = parseInt(selectedRole);
+        } else {
+          // Hardcoded role ID mapping for robust fallback
+          if (selectedRole === "superadmin") apiRoleId = 1;
+          else if (selectedRole === "admin") apiRoleId = 2;
+          else if (selectedRole === "teacher") apiRoleId = 3;
+          else if (selectedRole === "student") apiRoleId = 4;
+          else if (selectedRole === "parent") apiRoleId = 5;
+        }
+      }
+
       const [usersRes, rolesRes] = await Promise.all([
         apiService.getUsers({
           page,
@@ -107,7 +123,7 @@ export default function Users({ user }: { user: any }) {
           sortBy,
           sortOrder,
           search: searchQuery,
-          roleId: selectedRole === "all" ? undefined : selectedRole
+          roleId: apiRoleId
         }),
         apiService.getRoles()
       ]);
@@ -137,8 +153,18 @@ export default function Users({ user }: { user: any }) {
         // Selected Role Filter
         if (selectedRole !== "all") {
           filtered = filtered.filter(item => {
-            const roleVal = item.roleId?.toString() || item.role?.toString() || "";
-            return roleVal === selectedRole;
+            const roleIdVal = item.roleId?.toString() || "";
+            const roleNameVal = item.role?.toString().toLowerCase().replace(/\s+/g, "") || "";
+            
+            // Map selectedRole string to its numeric ID for matching if the item uses numeric role ID
+            let targetRoleId = "";
+            if (selectedRole === "superadmin") targetRoleId = "1";
+            else if (selectedRole === "admin") targetRoleId = "2";
+            else if (selectedRole === "teacher") targetRoleId = "3";
+            else if (selectedRole === "student") targetRoleId = "4";
+            else if (selectedRole === "parent") targetRoleId = "5";
+
+            return roleIdVal === selectedRole || roleNameVal === selectedRole || (targetRoleId && roleIdVal === targetRoleId);
           });
         }
         
