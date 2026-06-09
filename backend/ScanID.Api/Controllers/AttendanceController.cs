@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using ScanID.Api.Interfaces;
 using ScanID.Api.Models;
+using ScanID.Api.Data;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -16,10 +18,12 @@ namespace ScanID.Api.Controllers
     public class AttendanceController : ControllerBase
     {
         private readonly IAttendanceService _attendanceService;
+        private readonly ApplicationDbContext _context;
 
-        public AttendanceController(IAttendanceService attendanceService)
+        public AttendanceController(IAttendanceService attendanceService, ApplicationDbContext context)
         {
             _attendanceService = attendanceService;
+            _context = context;
         }
 
         /// <summary>
@@ -260,6 +264,115 @@ namespace ScanID.Api.Controllers
             {
                 return StatusCode(500, $"Error reading database folder scans: {ex.Message}");
             }
+        }
+
+        // --- Enterprise: Monthly Payroll Locks ---
+        [HttpGet("locked-status")]
+        public async Task<IActionResult> GetLockStatus([FromQuery] DateTime date)
+        {
+            var isLocked = await _attendanceService.IsAttendanceMonthLockedAsync(date);
+            return Ok(new { isLocked, year = date.Year, month = date.Month });
+        }
+
+        [HttpPost("lock")]
+        public async Task<IActionResult> LockMonth([FromQuery] int year, [FromQuery] int month, [FromQuery] string lockedBy = "Admin")
+        {
+            var success = await _attendanceService.LockAttendanceMonthAsync(year, month, lockedBy);
+            if (!success) return BadRequest("Failed to lock/unlock month.");
+            return Ok(new { Message = $"Attendance for {year}-{month:D2} locked successfully post-payroll computation." });
+        }
+
+        // --- Enterprise: Leave applications integration ---
+        [HttpGet("leaves")]
+        public async Task<IActionResult> GetLeaves([FromQuery] int? studentId, [FromQuery] int? staffId, [FromQuery] int? schoolId)
+        {
+            var leaves = await _attendanceService.GetLeavesAsync(studentId, staffId, schoolId);
+            return Ok(leaves);
+        }
+
+        [HttpPost("leaves")]
+        public async Task<IActionResult> PostLeave([FromBody] LeaveApplication leave)
+        {
+            if (leave == null) return BadRequest("Invalid leave payload.");
+            var success = await _attendanceService.SubmitLeaveAsync(leave);
+            if (!success) return StatusCode(500, "Failed to submit leave application.");
+            return Ok(leave);
+        }
+
+        // --- Enterprise: Audit Trail logs ---
+        [HttpGet("audit-logs")]
+        public async Task<IActionResult> GetAuditLogs()
+        {
+            var logs = await _attendanceService.GetAuditLogsAsync();
+            return Ok(logs);
+        }
+
+        // --- Enterprise: Bulk calculation and reprocessing range ---
+        public class ReprocessRangeRequest
+        {
+            public DateTime FromDate { get; set; }
+            public DateTime ToDate { get; set; }
+            public int? StudentId { get; set; }
+            public int? StaffId { get; set; }
+            public int? SchoolId { get; set; }
+        }
+
+        [HttpPost("reprocess-range")]
+        public async Task<IActionResult> ReprocessRange([FromBody] ReprocessRangeRequest req)
+        {
+            if (req == null) return BadRequest("Missing request model.");
+            if (req.FromDate > req.ToDate) return BadRequest("FromDate cannot be later than ToDate.");
+
+            var success = await _attendanceService.ReprocessAttendanceRangeAsync(req.FromDate, req.ToDate, req.StudentId, req.StaffId, req.SchoolId);
+            if (!success) return StatusCode(500, "Reprocessing failed.");
+            return Ok(new { Message = "Calculation completed and attendance tables repopulated." });
+        }
+
+        public class ManualCorrectionRequest
+        {
+            public int AttendanceId { get; set; }
+            public string NewStatus { get; set; } = string.Empty;
+            public string Remarks { get; set; } = string.Empty;
+            public int ChangedByUserId { get; set; } = 1;
+        }
+
+        /// <summary>
+        /// Manual Attendance Correction: Saves and audits manually marked statuses.
+        /// </summary>
+        [HttpPost("manual-correction")]
+        public async Task<IActionResult> ManualCorrection([FromBody] ManualCorrectionRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.NewStatus)) return BadRequest("Invalid request.");
+
+            var attendance = await _context.Attendance.FindAsync(request.AttendanceId);
+            if (attendance == null) return NotFound("Attendance record not found.");
+
+            // Check if month is locked
+            if (await _attendanceService.IsAttendanceMonthLockedAsync(attendance.Date))
+            {
+                return BadRequest("This month's attendance is locked post-payroll and cannot be modified.");
+            }
+
+            var oldStatus = attendance.Status;
+            attendance.Status = request.NewStatus;
+            attendance.Remarks = request.Remarks;
+            attendance.ModifiedOn = DateTime.UtcNow;
+
+            // Log detailed auditable trace to AttendanceAuditLogs table
+            var auditLog = new AttendanceAuditLog
+            {
+                AttendanceId = attendance.Id,
+                OldStatus = oldStatus ?? "None",
+                NewStatus = request.NewStatus,
+                Remarks = request.Remarks,
+                ChangedBy = request.ChangedByUserId,
+                ChangedOn = DateTime.UtcNow
+            };
+
+            _context.AttendanceAuditLogs.Add(auditLog);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Attendance corrected and audit log recorded.", Record = attendance });
         }
     }
 }

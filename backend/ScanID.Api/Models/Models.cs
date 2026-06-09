@@ -664,5 +664,54 @@ namespace ScanID.Api.Models
         [Required]
         public string Name { get; set; } = string.Empty;
     }
+
+    /// <summary> Manages Student and Staff Leave Applications. </summary>
+    public class LeaveApplication : BaseEntity
+    {
+        public int Id { get; set; }
+        public int? StudentId { get; set; }
+        public int? StaffId { get; set; }
+        [Required]
+        public DateTime FromDate { get; set; }
+        [Required]
+        public DateTime ToDate { get; set; }
+        [Required]
+        public string Status { get; set; } = "Approved"; // Approved, Pending, Rejected
+        public string? Remarks { get; set; }
+
+        [ForeignKey("StudentId")]
+        public Student? Student { get; set; }
+
+        [ForeignKey("StaffId")]
+        public Staff? Staff { get; set; }
+    }
+
+    /// <summary> Audit logs for manual modifications of attendance status. </summary>
+    public class AttendanceAuditLog
+    {
+        public int Id { get; set; }
+        public int AttendanceId { get; set; }
+        [Required]
+        public string OldStatus { get; set; } = string.Empty;
+        [Required]
+        public string NewStatus { get; set; } = string.Empty;
+        public string? Remarks { get; set; }
+        public int ChangedBy { get; set; }
+        public DateTime ChangedOn { get; set; } = DateTime.UtcNow;
+
+        [ForeignKey("AttendanceId")]
+        public Attendance? Attendance { get; set; }
+    }
+
+    /// <summary> Records monthly attendance locking states to secure data post-payroll. </summary>
+    public class AttendanceLock
+    {
+        public int Id { get; set; }
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public bool IsLocked { get; set; } = true;
+        public string? LockedBy { get; set; }
+        public DateTime LockedOn { get; set; } = DateTime.UtcNow;
+    }
 }
 

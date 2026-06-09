@@ -28,5 +28,13 @@ namespace ScanID.Api.Interfaces
         /// Re-processes cleanly by doing a target wipe first to protect against duplicates (Replace-On-Read / Truncate-and-Reload).
         /// </summary>
         Task<List<string>> ProcessIodataLinesImmediateAsync(DateTime date, List<string> lines, bool wipeTargetDate = false);
+
+        // Reprocess range, and manage locking, auditing, and leave systems directly according to FRS Spec
+        Task<bool> ReprocessAttendanceRangeAsync(DateTime fromDate, DateTime toDate, int? studentId, int? staffId, int? schoolId);
+        Task<IEnumerable<LeaveApplication>> GetLeavesAsync(int? studentId, int? staffId, int? schoolId);
+        Task<bool> SubmitLeaveAsync(LeaveApplication leave);
+        Task<IEnumerable<AttendanceAuditLog>> GetAuditLogsAsync();
+        Task<bool> LockAttendanceMonthAsync(int year, int month, string lockedBy);
+        Task<bool> IsAttendanceMonthLockedAsync(DateTime date);
     }
 }

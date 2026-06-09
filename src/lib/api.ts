@@ -471,6 +471,13 @@ export const apiService = {
   processSingleIodataLine: (line: string) => api.post("/attendance/iodata/process-single", line),
   processImmediateLines: (date: string, lines: string[], wipeTargetDate?: boolean) => api.post("/attendance/iodata/process-immediate-lines", { date, lines, wipeTargetDate }),
   readServerFile: (date: string) => api.get("/attendance/iodata/read-server-file", { params: { date } }),
+  getLockStatus: (date: string) => api.get("/attendance/locked-status", { params: { date } }),
+  lockMonth: (year: number, month: number, lockedBy?: string) => api.post("/attendance/lock", null, { params: { year, month, lockedBy } }),
+  getLeaves: (studentId?: number, staffId?: number, schoolId?: number) => api.get("/attendance/leaves", { params: { studentId, staffId, schoolId } }),
+  submitLeave: (data: any) => api.post("/attendance/leaves", data),
+  getManualCorrectionAuditLogs: () => api.get("/attendance/audit-logs"),
+  reprocessAttendanceRange: (data: { fromDate: string; toDate: string; studentId?: number; staffId?: number; schoolId?: number }) => api.post("/attendance/reprocess-range", data),
+  correctAttendanceManually: (data: { attendanceId: number; newStatus: string; remarks: string; changedByUserId: number }) => api.post("/attendance/manual-correction", data),
 
   // Fees
   getFees: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) => api.get("/fees", { params: { schoolId, academicYearId, ...params } }),

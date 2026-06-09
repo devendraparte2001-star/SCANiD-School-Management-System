@@ -487,5 +487,476 @@ namespace ScanID.Api.Services
 
             return logs;
         }
+
+        public async Task<bool> IsAttendanceMonthLockedAsync(DateTime date)
+        {
+            return await _context.AttendanceLocks.AnyAsync(l => l.Year == date.Year && l.Month == date.Month && l.IsLocked);
+        }
+
+        public async Task<bool> LockAttendanceMonthAsync(int year, int month, string lockedBy)
+        {
+            var existing = await _context.AttendanceLocks.FirstOrDefaultAsync(l => l.Year == year && l.Month == month);
+            if (existing != null)
+            {
+                existing.IsLocked = true;
+                existing.LockedBy = lockedBy;
+                existing.LockedOn = DateTime.UtcNow;
+            }
+            else
+            {
+                _context.AttendanceLocks.Add(new AttendanceLock
+                {
+                    Year = year,
+                    Month = month,
+                    IsLocked = true,
+                    LockedBy = lockedBy,
+                    LockedOn = DateTime.UtcNow
+                });
+            }
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<IEnumerable<LeaveApplication>> GetLeavesAsync(int? studentId, int? staffId, int? schoolId)
+        {
+            IQueryable<LeaveApplication> query = _context.LeaveApplications
+                .Include(la => la.Student)
+                .Include(la => la.Staff);
+
+            if (studentId.HasValue) query = query.Where(la => la.StudentId == studentId);
+            if (staffId.HasValue) query = query.Where(la => la.StaffId == staffId);
+            if (schoolId.HasValue) query = query.Where(la => la.SchoolId == schoolId);
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<bool> SubmitLeaveAsync(LeaveApplication leave)
+        {
+            if (leave.Id > 0)
+            {
+                _context.Entry(leave).State = EntityState.Modified;
+            }
+            else
+            {
+                _context.LeaveApplications.Add(leave);
+            }
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<IEnumerable<AttendanceAuditLog>> GetAuditLogsAsync()
+        {
+            return await _context.AttendanceAuditLogs
+                .Include(al => al.Attendance)
+                .OrderByDescending(al => al.ChangedOn)
+                .ToListAsync();
+        }
+
+        public async Task<bool> ReprocessAttendanceRangeAsync(DateTime fromDate, DateTime toDate, int? studentId, int? staffId, int? schoolId)
+        {
+            // Gather students
+            var studentsQuery = _context.Students.AsQueryable();
+            if (studentId.HasValue) studentsQuery = studentsQuery.Where(s => s.Id == studentId);
+            if (schoolId.HasValue) studentsQuery = studentsQuery.Where(s => s.SchoolId == schoolId);
+            var studentsList = await studentsQuery.ToListAsync();
+
+            // Gather staff
+            var staffQuery = _context.Staff.AsQueryable();
+            if (staffId.HasValue) staffQuery = staffQuery.Where(s => s.Id == staffId);
+            if (schoolId.HasValue) staffQuery = staffQuery.Where(s => s.SchoolId == schoolId);
+            var staffList = await staffQuery.ToListAsync();
+
+            // Gather holidays
+            var holidaysQuery = _context.Holidays.AsQueryable();
+            if (schoolId.HasValue) holidaysQuery = holidaysQuery.Where(h => h.SchoolId == schoolId);
+            var holidaysList = await holidaysQuery.ToListAsync();
+
+            // Gather leave applications
+            var leavesQuery = _context.LeaveApplications.Where(l => l.Status == "Approved");
+            if (schoolId.HasValue) leavesQuery = leavesQuery.Where(l => l.SchoolId == schoolId);
+            var leavesList = await leavesQuery.ToListAsync();
+
+            // Gather shifts
+            var AllShifts = await _context.Shifts.ToListAsync();
+
+            // Gather IodataRecords
+            var rawPunches = await _context.IodataRecords
+                .Where(r => r.Date >= fromDate.Date && r.Date <= toDate.Date)
+                .ToListAsync();
+
+            // Gather current attendance records to merge/update
+            var currentAttendance = await _context.Attendance
+                .Where(a => a.Date >= fromDate.Date && a.Date <= toDate.Date)
+                .ToListAsync();
+
+            // Check locks for all months in range
+            var lockedMonths = await _context.AttendanceLocks
+                .Where(l => l.IsLocked)
+                .ToListAsync();
+
+            bool changedAny = false;
+
+            for (var d = fromDate.Date; d <= toDate.Date; d = d.AddDays(1))
+            {
+                // Is locked?
+                if (lockedMonths.Any(l => l.Year == d.Year && l.Month == d.Month)) continue;
+
+                // Priority 1: Holiday
+                var dailyHoliday = holidaysList.FirstOrDefault(h => h.FromDate.Date <= d && h.ToDate.Date >= d);
+
+                // Weekday name
+                var weekdayName = d.DayOfWeek.ToString(); // e.g. "Monday"
+
+                // Process Students
+                foreach (var student in studentsList)
+                {
+                    string finalCode = "A"; // Default fallback
+                    string remarks = "";
+
+                    if (dailyHoliday != null)
+                    {
+                        finalCode = "H";
+                        remarks = dailyHoliday.Name;
+                    }
+                    else
+                    {
+                        // Priority 2: Leave
+                        var leave = leavesList.FirstOrDefault(l => l.StudentId == student.Id && l.FromDate.Date <= d && l.ToDate.Date >= d);
+                        if (leave != null)
+                        {
+                            finalCode = "L";
+                            remarks = leave.Remarks ?? "Approved Student Leave";
+                        }
+                        else
+                        {
+                            // Shift Lookup
+                            var shift = AllShifts.FirstOrDefault(s => s.Id == student.ShiftId);
+                            bool hasActiveShift = shift != null;
+
+                            // Priority 3 & 4: Special Shift or standard weekday filter
+                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate <= d && shift.ToDate >= d;
+                            bool isWeekdayMatch = false;
+                            if (shift?.Weekdays != null)
+                            {
+                                isWeekdayMatch = shift.Weekdays.Contains(weekdayName, StringComparison.OrdinalIgnoreCase);
+                            }
+
+                            if (hasActiveShift && !isSpecial && !isWeekdayMatch)
+                            {
+                                // Weekly Off
+                                finalCode = "WO";
+                                remarks = "Weekly Off";
+                            }
+                            else
+                            {
+                                // Calculate biometric swipe rules
+                                var swipes = rawPunches
+                                    .Where(p => p.Rfid != null && p.Rfid.Trim().Equals(student.Rfid?.Trim(), StringComparison.OrdinalIgnoreCase) && p.Date.Date == d)
+                                    .OrderBy(p => p.InTime)
+                                    .ToList();
+
+                                if (swipes.Count == 0)
+                                {
+                                    // Absent
+                                    finalCode = "A";
+                                    remarks = "No Punch Recorded";
+                                }
+                                else
+                                {
+                                    // Parse punches
+                                    string firstPunch = swipes.First().InTime;
+                                    string lastPunch = swipes.Last().InTime;
+
+                                    // Parse times
+                                    string startTime = shift?.StartTime ?? "07:15";
+                                    string graceTime = shift?.GraceInTime ?? "60"; // in minutes or time string
+                                    string spanInTime = shift?.SpanInTime ?? "06:15";
+                                    string endTime = shift?.EndTime ?? "12:40";
+
+                                    // Let's compute punch minutes
+                                    int punchMin = ParseTimeToMinutes(firstPunch);
+                                    int startMin = ParseTimeToMinutes(startTime);
+                                    int graceMinVal = 15;
+                                    int.TryParse(graceTime, out graceMinVal);
+                                    int spanMinVal = 60;
+                                    int.TryParse(spanInTime, out spanMinVal);
+
+                                    // If spanInTime is structured like hh:mm we parse, otherwise it might be minutes offset
+                                    int spanVal = (spanInTime != null && spanInTime.Contains(":")) ? ParseTimeToMinutes(spanInTime) : (startMin - spanMinVal);
+
+                                    // IN-TIME logic
+                                    if (punchMin < spanVal)
+                                    {
+                                        finalCode = "A"; // Punch < Span In
+                                        remarks = "Scan before Span In Time";
+                                    }
+                                    else if (punchMin <= startMin + graceMinVal)
+                                    {
+                                        finalCode = "P"; // Present
+                                        remarks = "On-Time Arrival";
+                                    }
+                                    else if (punchMin <= startMin + 60)
+                                    {
+                                        finalCode = "PL"; // Present but Late
+                                        remarks = "Late arrival (Grace + <=1 hr)";
+                                    }
+                                    else
+                                    {
+                                        finalCode = "PVL"; // Present but Very Late
+                                        remarks = "Very late arrival (>1 hr)";
+                                    }
+
+                                    // OUT-TIME logic
+                                    int lastPunchMin = ParseTimeToMinutes(lastPunch);
+                                    int endMin = ParseTimeToMinutes(endTime);
+
+                                    if (lastPunchMin < endMin)
+                                    {
+                                        // Student rule: Student has only Single Punch option -> if single punch, still count as P
+                                        if (swipes.Count == 1)
+                                        {
+                                            // single punch is allowed for student, doesn't force early going
+                                        }
+                                        else
+                                        {
+                                            finalCode = "EG";
+                                            remarks += " | Left before shift completion";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Save student attendance record
+                    var statusName = GetStatusNameFromCode(finalCode);
+                    var attRecord = currentAttendance.FirstOrDefault(a => a.StudentId == student.Id && a.Date.Date == d);
+                    
+                    if (attRecord != null)
+                    {
+                        if (attRecord.Status != statusName)
+                        {
+                            attRecord.Status = statusName;
+                            attRecord.Remarks = remarks;
+                            _context.Entry(attRecord).State = EntityState.Modified;
+                            changedAny = true;
+                        }
+                    }
+                    else
+                    {
+                        _context.Attendance.Add(new Attendance
+                        {
+                            StudentId = student.Id,
+                            Date = d,
+                            Status = statusName,
+                            Remarks = remarks,
+                            MarkedByUserId = 1,
+                            UploadSource = "Reprocess Engine",
+                            CreatedBy = "System",
+                            ModifiedBy = "System",
+                            CreatedOn = DateTime.UtcNow,
+                            ModifiedOn = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false,
+                            SchoolId = schoolId ?? student.SchoolId,
+                            AcademicYearId = student.AcademicYearId
+                        });
+                        changedAny = true;
+                    }
+                }
+
+                // Process Staff
+                foreach (var staff in staffList)
+                {
+                    string finalCode = "A";
+                    string remarks = "";
+
+                    if (dailyHoliday != null)
+                    {
+                        finalCode = "H";
+                        remarks = dailyHoliday.Name;
+                    }
+                    else
+                    {
+                        // Priority 2: Leave
+                        var leave = leavesList.FirstOrDefault(l => l.StaffId == staff.Id && l.FromDate.Date <= d && l.ToDate.Date >= d);
+                        if (leave != null)
+                        {
+                            finalCode = "L";
+                            remarks = leave.Remarks ?? "Approved Staff Leave";
+                        }
+                        else
+                        {
+                            // Shift Lookup
+                            var shift = AllShifts.FirstOrDefault(s => s.Id == staff.ShiftId);
+                            bool hasActiveShift = shift != null;
+
+                            // Priority 3 & 4: Special Shift / standard weekdays
+                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate <= d && shift.ToDate >= d;
+                            bool isWeekdayMatch = false;
+                            if (shift?.Weekdays != null)
+                            {
+                                isWeekdayMatch = shift.Weekdays.Contains(weekdayName, StringComparison.OrdinalIgnoreCase);
+                            }
+
+                            if (hasActiveShift && !isSpecial && !isWeekdayMatch)
+                            {
+                                finalCode = "WO";
+                                remarks = "Weekly Off";
+                            }
+                            else
+                            {
+                                // Calculate swipes
+                                var swipes = rawPunches
+                                    .Where(p => p.Rfid != null && p.Rfid.Trim().Equals(staff.Rfid?.Trim(), StringComparison.OrdinalIgnoreCase) && p.Date.Date == d)
+                                    .OrderBy(p => p.InTime)
+                                    .ToList();
+
+                                if (swipes.Count == 0)
+                                {
+                                    finalCode = "A";
+                                    remarks = "No Punch Recorded";
+                                }
+                                else if (swipes.Count == 1)
+                                {
+                                    // Missing Punch Logic for Staff -> Discrepancy
+                                    finalCode = "D";
+                                    remarks = "Discrepancy: Only single punch found";
+                                }
+                                else
+                                {
+                                    string firstPunch = swipes.First().InTime;
+                                    string lastPunch = swipes.Last().InTime;
+
+                                    // Shift times
+                                    string startTime = shift?.StartTime ?? "09:00";
+                                    string graceTime = shift?.GraceInTime ?? "15";
+                                    string spanInTime = shift?.SpanInTime ?? "120"; // standard 120 minutes or 07:00
+                                    string endTime = shift?.EndTime ?? "17:00";
+
+                                    int punchMin = ParseTimeToMinutes(firstPunch);
+                                    int startMin = ParseTimeToMinutes(startTime);
+                                    int graceMinVal = 15;
+                                    int.TryParse(graceTime, out graceMinVal);
+                                    int spanMinVal = 120;
+                                    int.TryParse(spanInTime, out spanMinVal);
+
+                                    int spanVal = (spanInTime != null && spanInTime.Contains(":")) ? ParseTimeToMinutes(spanInTime) : (startMin - spanMinVal);
+
+                                    // In-Time
+                                    if (punchMin < spanVal)
+                                    {
+                                        finalCode = "A";
+                                        remarks = "Scan before Span In Time";
+                                    }
+                                    else if (punchMin <= startMin + graceMinVal)
+                                    {
+                                        finalCode = "P";
+                                        remarks = "On-Time Arrival";
+                                    }
+                                    else if (punchMin <= startMin + 60)
+                                    {
+                                        finalCode = "PL"; // Present but Late (PL)
+                                        remarks = "Late arrival (Grace + <=1 hr)";
+                                    }
+                                    else
+                                    {
+                                        finalCode = "PVL"; // Present but Very Late (PVL)
+                                        remarks = "Very late arrival (>1 hr)";
+                                    }
+
+                                    // Out-Time
+                                    int lastPunchMin = ParseTimeToMinutes(lastPunch);
+                                    int endMin = ParseTimeToMinutes(endTime);
+
+                                    if (lastPunchMin < endMin)
+                                    {
+                                        finalCode = "EG"; // Early Goer
+                                        remarks += " | Left before shift completion";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Save staff attendance record
+                    var statusName = GetStatusNameFromCode(finalCode);
+                    var attRecord = currentAttendance.FirstOrDefault(a => a.StaffId == staff.Id && a.Date.Date == d);
+
+                    if (attRecord != null)
+                    {
+                        if (attRecord.Status != statusName)
+                        {
+                            attRecord.Status = statusName;
+                            attRecord.Remarks = remarks;
+                            _context.Entry(attRecord).State = EntityState.Modified;
+                            changedAny = true;
+                        }
+                    }
+                    else
+                    {
+                        _context.Attendance.Add(new Attendance
+                        {
+                            StaffId = staff.Id,
+                            Date = d,
+                            Status = statusName,
+                            Remarks = remarks,
+                            MarkedByUserId = 1,
+                            UploadSource = "Reprocess Engine",
+                            CreatedBy = "System",
+                            ModifiedBy = "System",
+                            CreatedOn = DateTime.UtcNow,
+                            ModifiedOn = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false,
+                            SchoolId = schoolId ?? staff.SchoolId,
+                            AcademicYearId = staff.AcademicYearId
+                        });
+                        changedAny = true;
+                    }
+                }
+            }
+
+            if (changedAny)
+            {
+                return await _context.SaveChangesAsync() > 0;
+            }
+            return true;
+        }
+
+        private int ParseTimeToMinutes(string timeStr)
+        {
+            if (string.IsNullOrWhiteSpace(timeStr)) return 0;
+            try
+            {
+                var cleaned = timeStr.Trim().Replace("::", ":");
+                var parts = cleaned.Split(':');
+                if (parts.Length >= 2)
+                {
+                    int hh = int.Parse(parts[0]);
+                    int mm = int.Parse(parts[1]);
+                    return hh * 60 + mm;
+                }
+            }
+            catch {}
+            return 0;
+        }
+
+        private string GetStatusNameFromCode(string code)
+        {
+            return code switch
+            {
+                "P" => "Present",
+                "PL" => "Present but Late",
+                "PVL" => "Present but Very Late",
+                "A" => "Absent",
+                "H" => "Holiday",
+                "EG" => "Early Goer",
+                "D" => "Discrepancy",
+                "L" => "Leave",
+                "WO" => "Weekly Off",
+                "HDP" => "Half Day Present",
+                "HDA" => "Half Day Absent",
+                _ => "Absent"
+            };
+        }
     }
 }

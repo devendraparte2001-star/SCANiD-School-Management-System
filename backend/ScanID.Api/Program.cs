@@ -219,7 +219,7 @@ try
             BEGIN
                 CREATE TABLE [dbo].[AttendanceStatuses](
                     [Id] [int] IDENTITY(1,1) NOT NULL,
-                    [Code] [nvarchar](10) NOT NULL,
+                    [Code] [nvarchar](20) NOT NULL,
                     [Name] [nvarchar](100) NOT NULL,
                     [SchoolId] [int] NULL,
                     [AcademicYearId] [int] NULL,
@@ -231,19 +231,66 @@ try
                     [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_AttendanceStatuses_ModifiedOn] DEFAULT (GETUTCDATE()),
                  CONSTRAINT [PK_AttendanceStatuses] PRIMARY KEY CLUSTERED ([Id] ASC)
                 );
+            END
 
-                INSERT INTO [dbo].[AttendanceStatuses] ([Code], [Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES 
-                (N'P', N'Present', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'PL', N'Privilege/Paid Leave', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'PVL', N'Privilege Vacation Leave', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'A', N'Absent', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'H', N'Holiday', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'EG', N'Early Going', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'D', N'Duty Leave', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'L', N'Late', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'WO', N'Weekly Off', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'HDP', N'Half Day Present', 1, GETUTCDATE(), GETUTCDATE()),
-                (N'HDA', N'Half Day Absent', 1, GETUTCDATE(), GETUTCDATE());
+            -- Seed and Align AttendanceStatuses exactly to official FRS spec
+            MERGE [dbo].[AttendanceStatuses] AS target
+            USING (SELECT * FROM (VALUES
+                (N'P', N'Present'),
+                (N'PL', N'Present but Late'),
+                (N'PVL', N'Present but Very Late'),
+                (N'A', N'Absent'),
+                (N'H', N'Holiday'),
+                (N'EG', N'Early Goer'),
+                (N'D', N'Discrepancy'),
+                (N'L', N'Leave'),
+                (N'WO', N'Weekly Off'),
+                (N'HDP', N'Half Day Present'),
+                (N'HDA', N'Half Day Absent')
+            ) AS s(Code, Name)) AS source
+            ON (target.Code = source.Code)
+            WHEN MATCHED THEN
+                UPDATE SET Name = source.Name, IsDeleted = 0, IsActive = 1, ModifiedOn = GETUTCDATE()
+            WHEN NOT MATCHED THEN
+                INSERT (Code, Name, IsActive, IsDeleted, CreatedOn, ModifiedOn)
+                VALUES (source.Code, source.Name, 1, 0, GETUTCDATE(), GETUTCDATE());
+
+            -- Create LeaveApplications table if not exists (Enterprise leave integration)
+            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[LeaveApplications]') AND type in (N'U'))
+            BEGIN
+                CREATE TABLE [dbo].[LeaveApplications](
+                    [Id] [int] IDENTITY(1,1) NOT NULL,
+                    [StudentId] [int] NULL,
+                    [StaffId] [int] NULL,
+                    [FromDate] [datetime2](7) NOT NULL,
+                    [ToDate] [datetime2](7) NOT NULL,
+                    [Status] [nvarchar](50) NOT NULL CONSTRAINT [DF_LeaveApplications_Status] DEFAULT ('Approved'),
+                    [Remarks] [nvarchar](max) NULL,
+                    [SchoolId] [int] NULL,
+                    [AcademicYearId] [int] NULL,
+                    [IsActive] [bit] NOT NULL CONSTRAINT [DF_LeaveApplications_IsActive] DEFAULT (1),
+                    [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_LeaveApplications_IsDeleted] DEFAULT (0),
+                    [CreatedBy] [nvarchar](max) NULL,
+                    [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_LeaveApplications_CreatedOn] DEFAULT (GETUTCDATE()),
+                    [ModifiedBy] [nvarchar](max) NULL,
+                    [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_LeaveApplications_ModifiedOn] DEFAULT (GETUTCDATE()),
+                 CONSTRAINT [PK_LeaveApplications] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
+            END
+
+            -- Create AttendanceAuditLogs table if not exists (Enterprise full audit trail)
+            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AttendanceAuditLogs]') AND type in (N'U'))
+            BEGIN
+                CREATE TABLE [dbo].[AttendanceAuditLogs](
+                    [Id] [int] IDENTITY(1,1) NOT NULL,
+                    [AttendanceId] [int] NOT NULL,
+                    [OldStatus] [nvarchar](20) NOT NULL,
+                    [NewStatus] [nvarchar](20) NOT NULL,
+                    [Remarks] [nvarchar](500) NULL,
+                    [ChangedBy] [int] NOT NULL,
+                    [ChangedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_AttendanceAuditLogs_ChangedOn] DEFAULT (GETUTCDATE()),
+                 CONSTRAINT [PK_AttendanceAuditLogs] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
             END
 
             -- Add new Shift columns if they do not exist
@@ -302,7 +349,7 @@ try
                 'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
                 'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords',
                 'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems',
-                'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools', 'AttendanceStatuses'
+                'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools', 'AttendanceStatuses', 'LeaveApplications'
             )
 
             OPEN table_cursor

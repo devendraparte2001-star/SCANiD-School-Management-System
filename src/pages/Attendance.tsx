@@ -47,7 +47,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  FolderOpen
+  FolderOpen,
+  Lock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -93,7 +94,7 @@ const STATUS_META: Record<string, { label: string; bg: string; text: string; cod
 
 export default function Attendance({ user }: { user: any }) {
   // Navigation tabs: daily (Daily Roll Call), manual (Manual Attendance Upload), report (Attendance Reports)
-  const [activeTab, setActiveTab] = useState<"daily" | "manual" | "report">("daily");
+  const [activeTab, setActiveTab ] = useState<"daily" | "manual" | "report" | "leaves" | "reprocess" | "lock" | "audit">("daily");
 
   // -----------------------------------------
   // State for Daily Attendance Tab
@@ -108,6 +109,40 @@ export default function Attendance({ user }: { user: any }) {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>(user.schoolId?.toString() || "");
   const [selectedStandard, setSelectedStandard] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
+
+  // -----------------------------------------
+  // State for Leave Applications Tab
+  // -----------------------------------------
+  const [leavesList, setLeavesList] = useState<any[]>([]);
+  const [leavesLoading, setLeavesLoading] = useState(false);
+  const [showAddLeaveModal, setShowAddLeaveModal] = useState(false);
+  const [newLeaveType, setNewLeaveType] = useState<"student" | "staff">("student");
+  const [newLeaveTargetId, setNewLeaveTargetId] = useState<string>("");
+  const [newLeaveFromDate, setNewLeaveFromDate] = useState<string>("");
+  const [newLeaveToDate, setNewLeaveToDate] = useState<string>("");
+  const [newLeaveRemarks, setNewLeaveRemarks] = useState<string>("");
+
+  // -----------------------------------------
+  // State for Calculations & Reprocessing Tab
+  // -----------------------------------------
+  const [reprocessFromDate, setReprocessFromDate] = useState<string>("");
+  const [reprocessToDate, setReprocessToDate] = useState<string>("");
+  const [reprocessTargetType, setReprocessTargetType] = useState<"all" | "student" | "staff">("all");
+  const [reprocessTargetId, setReprocessTargetId] = useState<string>("");
+  const [isReprocessing, setIsReprocessing] = useState(false);
+
+  // -----------------------------------------
+  // State for Month Lock Tab
+  // -----------------------------------------
+  const [lockYear, setLockYear] = useState<number>(new Date().getFullYear());
+  const [lockMonth, setLockMonth] = useState<number>(new Date().getMonth() + 1);
+  const [isCurrentMonthLocked, setIsCurrentMonthLocked] = useState(false);
+
+  // -----------------------------------------
+  // State for Modification Audit Tab
+  // -----------------------------------------
+  const [correctionAuditLogs, setCorrectionAuditLogs] = useState<any[]>([]);
+  const [correctionAuditLogsLoading, setCorrectionAuditLogsLoading] = useState(false);
 
   // User Local Mode folder scan states with From-Date/To-Date inputs and folder selection mechanics
   const [localFolderFromDate, setLocalFolderFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -1030,6 +1065,122 @@ export default function Attendance({ user }: { user: any }) {
     }
   }, [activeTab, auditPage]);
 
+  // --- Monthly Lock & Enterprise Fetch Effects ---
+  const checkCurrentMonthLock = async () => {
+    try {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      const res = await apiService.getLockStatus(formattedDate);
+      setIsCurrentMonthLocked(!!res.data?.isLocked);
+    } catch (e) {
+      console.warn("Could not retrieve active month lock status:", e);
+    }
+  };
+
+  useEffect(() => {
+    checkCurrentMonthLock();
+  }, [date]);
+
+  const fetchApprovedLeaves = async () => {
+    setLeavesLoading(true);
+    try {
+      const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
+      const res = await apiService.getLeaves(undefined, undefined, schoolIdToUse);
+      setLeavesList(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error("Leaves loading error:", e);
+    } finally {
+      setLeavesLoading(false);
+    }
+  };
+
+  const fetchManualCorrectionLogs = async () => {
+    setCorrectionAuditLogsLoading(true);
+    try {
+      const res = await apiService.getManualCorrectionAuditLogs();
+      setCorrectionAuditLogs(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error("Audits loading error:", e);
+    } finally {
+      setCorrectionAuditLogsLoading(false);
+    }
+  };
+
+  const [leaveStatusSelected, setLeaveStatusSelected] = useState<string>("PL");
+
+  const handleAddLeaveClick = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLeaveTargetId || !newLeaveFromDate || !newLeaveToDate) {
+      toast.error("Please fill in all required leave application fields");
+      return;
+    }
+    const payload = {
+      studentId: newLeaveType === "student" ? parseSafeInt(newLeaveTargetId) : null,
+      staffId: newLeaveType === "staff" ? parseSafeInt(newLeaveTargetId) : null,
+      fromDate: new Date(newLeaveFromDate).toISOString(),
+      toDate: new Date(newLeaveToDate).toISOString(),
+      leaveType: leaveStatusSelected,
+      remarks: newLeaveRemarks,
+      createdBy: user.name || "Admin",
+      approvedBy: "School Board Authority"
+    };
+    try {
+      await apiService.submitLeave(payload);
+      toast.success("Leave application submitted successfully! Attendance records will align dynamically upon recalculation.");
+      setShowAddLeaveModal(false);
+      setNewLeaveTargetId("");
+      setNewLeaveFromDate("");
+      setNewLeaveToDate("");
+      setNewLeaveRemarks("");
+      fetchApprovedLeaves();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit leave application to Database");
+    }
+  };
+
+  const handleRunRangeReprocess = async () => {
+    if (!reprocessFromDate || !reprocessToDate) {
+      toast.error("Please specify a complete date range for computation");
+      return;
+    }
+    setIsReprocessing(true);
+    try {
+      await apiService.reprocessAttendanceRange({
+        fromDate: new Date(reprocessFromDate).toISOString(),
+        toDate: new Date(reprocessToDate).toISOString(),
+        studentId: reprocessTargetType === "student" ? parseSafeInt(reprocessTargetId) || undefined : undefined,
+        staffId: reprocessTargetType === "staff" ? parseSafeInt(reprocessTargetId) || undefined : undefined,
+        schoolId: user.role === "superadmin" ? parseSafeInt(selectedSchoolId) || undefined : parseSafeInt(user.schoolId) || undefined
+      });
+      toast.success("Priority attendance calculation completed and daily records updated!");
+      fetchStudentsAndAttendance();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data || "Reprocessing failed");
+    } finally {
+      setIsReprocessing(false);
+    }
+  };
+
+  const handleToggleMonthLock = async (setToLock: boolean) => {
+    try {
+      await apiService.lockMonth(lockYear, lockMonth, user.name || "Admin");
+      toast.success(`Success: Month ${lockMonth}/${lockYear} is now ${setToLock ? "LOCKED" : "UNLOCKED"}`);
+      checkCurrentMonthLock();
+    } catch (e) {
+      console.error(e);
+      toast.error("Lock/Unlock toggling state change failed");
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "leaves") {
+      fetchApprovedLeaves();
+    } else if (activeTab === "audit") {
+      fetchManualCorrectionLogs();
+    }
+  }, [activeTab, selectedSchoolId]);
+
   const handleIodataDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1169,11 +1320,11 @@ export default function Attendance({ user }: { user: any }) {
         </div>
 
         {/* Dynamic Tab Switch buttons */}
-        <div className="flex bg-slate-100 p-1 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex bg-slate-100 p-1 rounded-xl shadow-sm border border-slate-200 overflow-x-auto max-w-full scrollbar-none gap-0.5">
           <button
             onClick={() => setActiveTab("daily")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
               activeTab === "daily"
                 ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
@@ -1184,7 +1335,7 @@ export default function Attendance({ user }: { user: any }) {
           <button
             onClick={() => setActiveTab("manual")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
               activeTab === "manual"
                 ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
@@ -1193,9 +1344,53 @@ export default function Attendance({ user }: { user: any }) {
             Manual Upload
           </button>
           <button
+            onClick={() => setActiveTab("leaves")}
+            className={cn(
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
+              activeTab === "leaves"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            Leaves Register
+          </button>
+          <button
+            onClick={() => setActiveTab("reprocess")}
+            className={cn(
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
+              activeTab === "reprocess"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            Reprocess Range
+          </button>
+          <button
+            onClick={() => setActiveTab("lock")}
+            className={cn(
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
+              activeTab === "lock"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            Payroll Lock
+          </button>
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={cn(
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
+              activeTab === "audit"
+                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
+                : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            Correction Audit
+          </button>
+          <button
             onClick={() => setActiveTab("report")}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-lg transition-all tracking-wider md:text-sm md:font-semibold whitespace-nowrap",
+              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
               activeTab === "report"
                 ? "bg-white text-slate-900 shadow-sm border border-slate-100"
                 : "text-slate-500 hover:text-slate-900"
@@ -1352,6 +1547,12 @@ export default function Attendance({ user }: { user: any }) {
             {/* If Roll Call tab is active */}
             {activeTab === "daily" && (
               <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white">
+                {isCurrentMonthLocked && (
+                  <div className="mx-8 mt-6 bg-rose-50 border border-rose-200 p-4 rounded-xl flex items-center gap-3 text-rose-800 font-bold text-xs tracking-wide">
+                    <Lock size={14} className="text-rose-600 animate-pulse" />
+                    <span>PAYROLL COMPUTATION LOCKED: Attendance records have been fully locked for monthly payroll computations. Modifications are strictly disabled.</span>
+                  </div>
+                )}
                 <CardHeader className="pb-6 border-b border-slate-100 bg-white px-8 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <CardTitle className="text-2xl font-black text-slate-900">Attendance Sheet</CardTitle>
@@ -1365,12 +1566,20 @@ export default function Attendance({ user }: { user: any }) {
                       onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                       className="h-9 w-60 rounded-xl text-xs font-semibold border-slate-200 bg-slate-50/50"
                     />
-                    <Button variant="outline" size="sm" className="rounded-xl font-bold border-slate-200 hover:bg-slate-50" onClick={() => setStudents(s => s.map(x => ({ ...x, status: 'present' })))}>Mark All Present</Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl font-bold border-slate-200 hover:bg-slate-50"
+                      onClick={() => setStudents(s => s.map(x => ({ ...x, status: 'present' })))}
+                      disabled={isCurrentMonthLocked}
+                    >
+                      Mark All Present
+                    </Button>
                     {canManage && (
                       <Button
                         className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-bold"
                         onClick={handleSave}
-                        disabled={isSaving || loading}
+                        disabled={isSaving || loading || isCurrentMonthLocked}
                       >
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         {isSaving ? "Saving..." : "Save Changes"}
@@ -1459,6 +1668,7 @@ export default function Attendance({ user }: { user: any }) {
                                     <Select
                                       value={student.status}
                                       onValueChange={(val) => updateStatus(student.id, val)}
+                                      disabled={isCurrentMonthLocked}
                                     >
                                       <SelectTrigger className="h-9 w-48 rounded-xl border-slate-200 text-xs font-semibold bg-white shadow-sm">
                                         <SelectValue placeholder="Update Status" />
@@ -2493,6 +2703,357 @@ export default function Attendance({ user }: { user: any }) {
               </Card>
             </div>
           )}
+        </div>
+      )}
+
+      {/* -----------------------------------------
+          LEAVES APPLICATIONS REGISTRY
+         ----------------------------------------- */}
+      {activeTab === "leaves" && (
+        <div className="space-y-6 w-full">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight animate-in fade-in-20 duration-300">Approved Leave Registry</h2>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">
+                Schedule and allocate valid leaves (Paid Leave, Vacation, Duty Leave) to students and staff
+              </p>
+            </div>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl"
+              onClick={() => setShowAddLeaveModal(true)}
+            >
+              Add Leave Application
+            </Button>
+          </div>
+
+          <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white p-0">
+            <CardContent className="p-0">
+              {leavesLoading ? (
+                <div className="flex items-center justify-center p-24 text-slate-400 font-bold gap-2">
+                  <Loader2 size={24} className="animate-spin text-blue-600" />
+                  Loading database leaves...
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow className="h-16 border-b border-slate-50">
+                      <TableHead className="pl-8 text-[10px] font-black uppercase text-slate-400">Class Type</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Target Member ID</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Valid From</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Valid To</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Leave Code</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Remarks</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Auth By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leavesList.map((leave: any) => (
+                      <TableRow key={leave.id} className="h-16 border-b border-slate-100 hover:bg-slate-50/20 font-medium">
+                        <TableCell className="pl-8">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                            leave.studentId ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                          )}>
+                            {leave.studentId ? "Student" : "Staff"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs font-bold text-slate-600">ID-{leave.studentId || leave.staffId}</TableCell>
+                        <TableCell className="text-slate-800">{leave.fromDate?.split("T")[0]}</TableCell>
+                        <TableCell className="text-slate-800">{leave.toDate?.split("T")[0]}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-orange-100 text-orange-850 hover:bg-orange-100 font-bold text-[10px] uppercase px-3 border border-orange-200">
+                            {leave.leaveType || "PL"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-slate-500 italic max-w-xs truncate">{leave.remarks || "No remarks"}</TableCell>
+                        <TableCell className="text-slate-400 text-xs font-semibold">{leave.approvedBy || "Admin Approved"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {leavesList.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-20 text-slate-400 font-bold">
+                          No approved custom leave applications recorded in SQL Server.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Add Leave Application Modal */}
+          {showAddLeaveModal && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 border border-slate-100 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-black text-slate-900">Apply Approved Leave</h3>
+                  <Button variant="ghost" size="icon" className="rounded-lg" onClick={() => setShowAddLeaveModal(false)}><X size={16} /></Button>
+                </div>
+                <form onSubmit={handleAddLeaveClick} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Member Type</label>
+                      <Select value={newLeaveType} onValueChange={(val: any) => { setNewLeaveType(val); setNewLeaveTargetId(""); }}>
+                        <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50/50 text-xs font-semibold h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100"><SelectItem value="student">Student</SelectItem><SelectItem value="staff">Staff Member</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Leave Code</label>
+                      <Select value={leaveStatusSelected} onValueChange={setLeaveStatusSelected}>
+                        <SelectTrigger className="rounded-xl border-slate-200 bg-slate-50/50 text-xs font-semibold h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100">
+                          <SelectItem value="PL">Paid Leave (PL)</SelectItem>
+                          <SelectItem value="PVL">Vacation Leave (PVL)</SelectItem>
+                          <SelectItem value="D">Duty Leave (D)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Target Person ID / Name Reference</label>
+                    <Select value={newLeaveTargetId} onValueChange={setNewLeaveTargetId}>
+                      <SelectTrigger className="rounded-xl border-slate-200 h-11 text-xs font-semibold animate-in fade-in">
+                        <SelectValue placeholder="Choose target member" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl max-h-60 overflow-y-auto">
+                        {newLeaveType === "student" && students.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>{s.name} (GR:{s.grno})</SelectItem>
+                        ))}
+                        {newLeaveType === "staff" && staffList.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                        ))}
+                        {((newLeaveType === "student" && students.length === 0) || (newLeaveType === "staff" && staffList.length === 0)) && (
+                          <div className="p-3 text-slate-400 italic text-center text-xs">No active roster matching query</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                      <Input type="date" className="rounded-xl border-slate-200 h-11 text-xs font-bold" value={newLeaveFromDate} onChange={e => setNewLeaveFromDate(e.target.value)} required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label>
+                      <Input type="date" className="rounded-xl border-slate-200 h-11 text-xs font-bold" value={newLeaveToDate} onChange={e => setNewLeaveToDate(e.target.value)} required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Remarks / Authorizing Reason</label>
+                    <Input className="rounded-xl border-slate-200 h-11 text-normal" placeholder="Authorized sick leave block, clinical reasons, etc." value={newLeaveRemarks} onChange={e => setNewLeaveRemarks(e.target.value)} required />
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button type="button" variant="outline" className="flex-1 rounded-xl h-11 font-bold" onClick={() => setShowAddLeaveModal(false)}>Cancel</Button>
+                    <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 rounded-xl h-11 font-bold text-white">Submit Leave File</Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* -----------------------------------------
+          REPROCESS CALCULATOR ENGINE TAB
+         ----------------------------------------- */}
+      {activeTab === "reprocess" && (
+        <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white max-w-2xl mx-auto p-12">
+          <div className="text-center mb-8">
+            <Cpu className="h-12 w-12 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight animate-in fade-in-20 duration-300">Shift-Based Calculation Engine</h2>
+            <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto">
+              Recalculate specific intervals against shift timings, weekends, leaves, and custom biometric priority constraints.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">From Date</label>
+                <Input type="date" className="rounded-xl border-slate-200 h-11 font-bold text-slate-800" value={reprocessFromDate} onChange={e => setReprocessFromDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To Date</label>
+                <Input type="date" className="rounded-xl border-slate-200 h-11 font-bold text-slate-800" value={reprocessToDate} onChange={e => setReprocessToDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Member Filter Scope</label>
+              <Select value={reprocessTargetType} onValueChange={(val: any) => { setReprocessTargetType(val); setReprocessTargetId(""); }}>
+                <SelectTrigger className="rounded-xl border-slate-200 h-11 font-semibold text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">Wipe & Recalculate Everyone (All Students & Staff)</SelectItem>
+                  <SelectItem value="student">Student Class Only</SelectItem>
+                  <SelectItem value="staff">Staff Class Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {reprocessTargetType !== "all" && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Choose Target Member</label>
+                <Select value={reprocessTargetId} onValueChange={reprocessTargetId => setReprocessTargetId(reprocessTargetId)}>
+                  <SelectTrigger className="rounded-xl border-slate-200 h-11 text-xs font-semibold"><SelectValue placeholder="All matching members in category" /></SelectTrigger>
+                  <SelectContent className="rounded-xl max-h-60 overflow-y-auto">
+                    {reprocessTargetType === "student" && students.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>{s.name} (GR:{s.grno})</SelectItem>
+                    ))}
+                    {reprocessTargetType === "staff" && staffList.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 rounded-xl text-base font-bold flex items-center justify-center gap-2 mt-4 text-white"
+              onClick={handleRunRangeReprocess}
+              disabled={isReprocessing}
+            >
+              {isReprocessing ? <Loader2 className="animate-spin" size={18} /> : <Cpu size={18} />}
+              {isReprocessing ? "Executing Biometric Priority Engine..." : "Run Reprocessing Calculator"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* -----------------------------------------
+          MONTH LOCK MANAGER TAB
+         ----------------------------------------- */}
+      {activeTab === "lock" && (
+        <Card className="shadow-2xl shadow-slate-200/60 border-none rounded-[2rem] overflow-hidden bg-white max-w-2xl mx-auto p-12">
+          <div className="text-center mb-8">
+            <Lock className="h-12 w-12 text-rose-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight animate-in fade-in-20 duration-300">Monthly Attendance Payroll Lock</h2>
+            <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto">
+              Prevent retroactive modifications post payroll computational schedules for audit and compliance safety.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Execution Year</label>
+                <Select value={lockYear.toString()} onValueChange={v => setLockYear(parseInt(v))}>
+                  <SelectTrigger className="rounded-xl border-slate-200 h-11 font-bold text-slate-800"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="2025">2025</SelectItem>
+                    <SelectItem value="2026">2026</SelectItem>
+                    <SelectItem value="2027">2027</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Execution Month</label>
+                <Select value={lockMonth.toString()} onValueChange={v => setLockMonth(parseInt(v))}>
+                  <SelectTrigger className="rounded-xl border-slate-200 h-11 font-bold text-slate-800"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                      <SelectItem key={m} value={m.toString()}>Month {m.toString().padStart(2, "0")} ({format(new Date(2026, m - 1), "MMMM")})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-6 text-center space-y-2 mt-4 animate-in fade-in">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block font-sans">Current Security Context</span>
+              <span className="text-xs font-bold text-slate-600 block">
+                The active day date {format(date, "MMMM yyyy")} is currently:
+              </span>
+              <span className={cn(
+                "inline-block px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest text-white mt-1",
+                isCurrentMonthLocked ? "bg-red-600 animate-pulse shadow-md" : "bg-emerald-600"
+              )}>
+                {isCurrentMonthLocked ? "LOCKED POST-PAYROLL" : "UNLOCKED - MODIFIABLE"}
+              </span>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 rounded-xl h-12 font-bold border-slate-200 text-slate-800 hover:bg-slate-50 h-12"
+                onClick={() => handleToggleMonthLock(false)}
+              >
+                Unlock Selected Month
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-12 font-bold h-12 shadow-md shadow-rose-100"
+                onClick={() => handleToggleMonthLock(true)}
+              >
+                Lock Selected Month
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* -----------------------------------------
+          CORRECTION AUDIT TRAIL LOGS TAB
+         ----------------------------------------- */}
+      {activeTab === "audit" && (
+        <div className="space-y-6 w-full animate-in fade-in duration-300">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Manual Modifications Audit Trail</h2>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">
+              Complete historical trail log of manual attendance overrides, corrections, and authorizes signatures
+            </p>
+          </div>
+
+          <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white p-0">
+            <CardContent className="p-0">
+              {correctionAuditLogsLoading ? (
+                <div className="flex items-center justify-center p-24 text-slate-400 font-bold gap-2">
+                  <Loader2 size={18} className="animate-spin text-blue-600" />
+                  Loading modification trails...
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow className="h-16 border-b border-slate-50">
+                      <TableHead className="pl-8 text-[10px] font-black uppercase text-slate-400">Timestamp</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Attendance Reference</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Transition Status</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Reason / Remarks</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-400">Operator User ID</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {correctionAuditLogs.map((log: any) => (
+                      <TableRow key={log.id} className="h-16 border-b border-slate-100 hover:bg-slate-50/20 font-medium">
+                        <TableCell className="pl-8 font-mono text-xs text-slate-400 whitespace-nowrap">{new Date(log.changedOn).toLocaleString()}</TableCell>
+                        <TableCell className="font-bold text-slate-700">Record ID {log.attendanceId}</TableCell>
+                        <TableCell className="text-slate-700 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-xs font-bold">{log.oldStatus}</span>
+                          <span className="mx-2 text-slate-400">&rarr;</span>
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs font-black">{log.newStatus}</span>
+                        </TableCell>
+                        <TableCell className="text-slate-600 italic max-w-sm truncate">{log.remarks || "No reason given"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-500">USER-{log.changedBy}</TableCell>
+                      </TableRow>
+                    ))}
+                    {correctionAuditLogs.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-20 text-slate-400 font-bold">
+                          No manual correction logs registered in database.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
