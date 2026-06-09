@@ -576,6 +576,11 @@ namespace ScanID.Api.Models
         [Required]
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
+        
+        // Associated Standard/Grade for subject mapping
+        public int? StandardId { get; set; }
+        [ForeignKey("StandardId")]
+        public Standard? Standard { get; set; }
     }
 
     /// <summary> Master data for examination types. </summary>

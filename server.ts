@@ -282,7 +282,10 @@ async function startServer() {
   let sessions = dbData.sessions || [{ id: 1, name: "Morning" }];
   let batches = dbData.batches || [{ id: 1, name: "Batch A" }];
   let shifts = dbData.shifts || [{ id: 1, name: "MORNING" }, { id: 2, name: "AFTERNOON" }];
-  let subjects = dbData.subjects || [{ id: 1, name: "Mathematics" }, { id: 2, name: "Science" }];
+  let subjects = dbData.subjects || [
+    { id: 1, name: "Mathematics", schoolId: 1, academicYearId: 2, standardId: 1, StandardId: 1 },
+    { id: 2, name: "Science", schoolId: 1, academicYearId: 2, standardId: 2, StandardId: 2 }
+  ];
   let examTypes = dbData.examTypes || [{ id: 1, name: "Mid-Term" }, { id: 2, name: "Final" }];
   let designations = dbData.designations || [{ id: 1, name: "Principal" }, { id: 2, name: "Teacher" }];
   let occupations = dbData.occupations || [{ id: 1, name: "Service" }, { id: 2, name: "Business" }];

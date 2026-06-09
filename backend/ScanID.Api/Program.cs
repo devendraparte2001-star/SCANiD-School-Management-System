@@ -20,7 +20,7 @@ var allowedCorsOrigins = !string.IsNullOrWhiteSpace(corsOriginsOverride)
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
-builder.Services.Configure<RouteOptions>(options =>
+builder.Services.Configure<RouteOptions>(options => 
 {
     options.LowercaseUrls = true;
     options.LowercaseQueryStrings = true;
@@ -96,7 +96,7 @@ app.Use(async (context, next) =>
         FileLogger.LogError(ex);
 
         // Log to Database (optional, don't crash if DB is down)
-        try
+        try 
         {
             var db = context.RequestServices.GetRequiredService<ApplicationDbContext>();
             db.ErrorLogs.Add(new ErrorLog
@@ -113,13 +113,12 @@ app.Use(async (context, next) =>
         {
             FileLogger.LogError(new Exception("Failed to log error to database. " + dbEx.Message, dbEx));
         }
-
+        
         // Return a cleaner 500 error instead of throwing a raw exception that might leak info
         context.Response.StatusCode = 500;
         context.Response.ContentType = "application/json";
-        await context.Response.WriteAsJsonAsync(new
-        {
-            error = "Internal Server Error",
+        await context.Response.WriteAsJsonAsync(new { 
+            error = "Internal Server Error", 
             message = ex.Message,
             details = "Check server logs for more information."
         });
@@ -130,8 +129,8 @@ app.Use(async (context, next) =>
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ScanID API v1");
-    // c.SwaggerEndpoint("/scanid_erp_api/swagger/v1/swagger.json", "ScanID API v1");
+    //c.SwaggerEndpoint("/swagger/v1/swagger.json", "ScanID API v1");
+    c.SwaggerEndpoint("/scanid_erp_api/swagger/v1/swagger.json", "ScanID API v1");
     c.RoutePrefix = "swagger"; // Keep it at /swagger
 });
 
@@ -141,7 +140,7 @@ if (app.Environment.IsDevelopment())
     // In development, we might not have SSL certificates configured locally, 
     // so we skip redirection to prevent "Empty Response" errors.
 }
-else
+else 
 {
     //app.UseHttpsRedirection();
 }
@@ -164,7 +163,7 @@ try
     {
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<ApplicationDbContext>();
-
+        
         // 0. SELF-HEALING SCHEMA UPGRADE: Create Weekdays and Holidays, update Shifts columns, and alter Master Tables to include SchoolId/AcademicYearId
         _ = await context.Database.ExecuteSqlRawAsync(@"
             -- Create Weekdays table if not exists
@@ -226,6 +225,15 @@ try
                     ALTER TABLE [dbo].[Shifts] ADD [FromDate] DATETIME2(7) NULL;
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND name = 'ToDate')
                     ALTER TABLE [dbo].[Shifts] ADD [ToDate] DATETIME2(7) NULL;
+            END
+
+            -- Add StandardId column to Subjects if not exists
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Subjects]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Subjects]') AND name = 'StandardId')
+                BEGIN
+                    ALTER TABLE [dbo].[Subjects] ADD [StandardId] INT NULL;
+                END
             END
 
             -- Remove the extra column AcademicYearId from AcademicYears table if it got added previously

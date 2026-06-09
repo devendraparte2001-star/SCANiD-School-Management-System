@@ -451,6 +451,14 @@ export default function Configuration({
             cities: Array.isArray(citiesData) ? citiesData : [],
           }));
         }
+        if (activeTab === "subjects") {
+          const standardsRes = await apiService.getStandards();
+          const standardsData = standardsRes.data?.data || standardsRes.data || [];
+          setDependencies((prev) => ({
+            ...prev,
+            standards: Array.isArray(standardsData) ? standardsData : [],
+          }));
+        }
         if (activeTab === "navigation") {
           const rolesRes = await apiService.getRoles();
           const navsRes = await apiService.getNavigations();
@@ -529,6 +537,7 @@ export default function Configuration({
       color: item?.color ?? item?.Color ?? "#3b82f6",
       casteId: (item?.casteId ?? item?.CasteId ?? "")?.toString() || "",
       stateId: (item?.stateId ?? item?.StateId ?? "")?.toString() || "",
+      standardId: (item?.standardId ?? item?.StandardId ?? "")?.toString() || "",
       address: item?.address ?? item?.Address ?? "",
       phone: item?.phone ?? item?.Phone ?? "",
       email: item?.email ?? item?.Email ?? "",
@@ -660,6 +669,12 @@ export default function Configuration({
       if (activeTab !== "academic-years" && !formData.academicYearId) newErrors.academicYearId = true;
     }
 
+    if (activeTab === "subjects") {
+      if (!formData.standardId) {
+        newErrors.standardId = true;
+      }
+    }
+
     setFormErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) {
@@ -752,6 +767,9 @@ export default function Configuration({
         payload.ToDate = formData.toDate;
         payload.description = formData.description;
         payload.Description = formData.description;
+      } else if (activeTab === "subjects") {
+        payload.standardId = formData.standardId ? parseSafeInt(formData.standardId) : null;
+        payload.StandardId = formData.standardId ? parseSafeInt(formData.standardId) : null;
       } else if (activeTab === "academic-years") {
         payload.isCurrent = formData.isCurrent;
       } else if (activeTab === "houses") {
@@ -1049,6 +1067,11 @@ export default function Configuration({
                         Administrative State
                       </TableHead>
                     )}
+                    {activeTab === "subjects" && (
+                      <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Standard Mapping
+                      </TableHead>
+                    )}
                     {activeTab === "schools" && (
                       <>
                         <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -1339,6 +1362,16 @@ export default function Configuration({
                               {dependencies.states?.find(
                                 (s) => s.id === item.stateId,
                               )?.name || "LOC_UNSET"}
+                            </span>
+                          </TableCell>
+                        )}
+
+                        {activeTab === "subjects" && (
+                          <TableCell className="text-xs font-bold text-slate-600">
+                            <span className="px-3 py-1 bg-teal-50 text-teal-700 border border-teal-100 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                              {dependencies.standards?.find(
+                                (s) => s.id?.toString() === (item.standardId || item.StandardId)?.toString(),
+                              )?.name || "Not Mapped"}
                             </span>
                           </TableCell>
                         )}
@@ -3034,6 +3067,61 @@ export default function Configuration({
                     </SelectItem>
                     {Array.isArray(dependencies.states) &&
                       dependencies.states.map((s) => (
+                        <SelectItem
+                          key={s.id}
+                          value={s.id.toString()}
+                          className="font-semibold py-2"
+                        >
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {activeTab === "subjects" && (
+              <div className="space-y-2">
+                <Label
+                  className={cn(
+                    "text-xs font-black uppercase tracking-wider",
+                    formErrors.standardId ? "text-red-500" : "text-slate-400",
+                  )}
+                >
+                  Standard / Grade Mapping *
+                </Label>
+                <Select
+                  value={formData.standardId?.toString() || ""}
+                  onValueChange={(v) => {
+                    setFormData({ ...formData, standardId: v });
+                    if (formErrors.standardId)
+                      setFormErrors((prev) => ({ ...prev, standardId: false }));
+                  }}
+                >
+                  <SelectTrigger
+                    ref={(el) => {
+                      inputRefs.current["standardId"] = el;
+                    }}
+                    className={cn(
+                      "h-12 rounded-xl border-slate-200 bg-white font-bold px-4",
+                      formErrors.standardId &&
+                        "border-red-500 ring-2 ring-red-500/10",
+                    )}
+                  >
+                    <SelectValue placeholder="Select Standard / Grade">
+                      {formData.standardId ? ((dependencies.standards || []).find((s: any) => s.id?.toString() === formData.standardId?.toString())?.name || formData.standardId) : undefined}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-60 animate-in fade-in-50 duration-200">
+                    <SelectItem
+                      value=""
+                      className="font-semibold py-2 text-slate-400 italic"
+                      disabled
+                    >
+                      Select Standard / Grade
+                    </SelectItem>
+                    {Array.isArray(dependencies.standards) &&
+                      dependencies.standards.map((s) => (
                         <SelectItem
                           key={s.id}
                           value={s.id.toString()}
