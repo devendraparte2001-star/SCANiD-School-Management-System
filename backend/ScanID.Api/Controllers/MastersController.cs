@@ -245,6 +245,19 @@ namespace ScanID.Api.Controllers
         [HttpDelete("staff-initials/{id}")]
         public async Task<IActionResult> DeleteStaffInitial(int id) => await Delete(_context.StaffInitials, id);
 
+        // --- Attendance Statuses ---
+        [HttpGet("attendance-statuses")]
+        public async Task<ActionResult<IEnumerable<AttendanceStatus>>> GetAttendanceStatuses() => await GetAll(_context.AttendanceStatuses);
+
+        [HttpPost("attendance-statuses")]
+        public async Task<ActionResult<AttendanceStatus>> CreateAttendanceStatus(AttendanceStatus item) => await Create(_context.AttendanceStatuses, item);
+
+        [HttpPut("attendance-statuses/{id}")]
+        public async Task<IActionResult> UpdateAttendanceStatus(int id, AttendanceStatus item) => await Update(id, item);
+
+        [HttpDelete("attendance-statuses/{id}")]
+        public async Task<IActionResult> DeleteAttendanceStatus(int id) => await Delete(_context.AttendanceStatuses, id);
+
         // --- States ---
         [HttpGet("states")]
         public async Task<ActionResult<IEnumerable<State>>> GetStates() => await GetAll(_context.States);

@@ -54,6 +54,7 @@ namespace ScanID.Api.Data
         public DbSet<StaffInitial> StaffInitials { get; set; }
         public DbSet<Weekday> Weekdays { get; set; }
         public DbSet<Holiday> Holidays { get; set; }
+        public DbSet<AttendanceStatus> AttendanceStatuses { get; set; }
 
         /// <summary>
         /// Configures the model, including global query filters for soft deletion.
@@ -103,6 +104,7 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<SchoolSection>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Weekday>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Holiday>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<AttendanceStatus>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<NavigationItem>().HasQueryFilter(x => !x.IsDeleted);
 
             // Configuration to ignore the inherited AcademicYearId column on the AcademicYears master table (already represented by primary key Id)

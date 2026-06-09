@@ -654,5 +654,15 @@ namespace ScanID.Api.Models
         [Required]
         public string Name { get; set; } = string.Empty;
     }
+
+    /// <summary> Master data for official Attendance Statuses. </summary>
+    public class AttendanceStatus : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Code { get; set; } = string.Empty;
+        [Required]
+        public string Name { get; set; } = string.Empty;
+    }
 }
 

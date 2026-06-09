@@ -73,6 +73,24 @@ interface UploadLog {
   error?: string;
 }
 
+// Enterprise Attendance Statuses Meta Mapping
+const STATUS_META: Record<string, { label: string; bg: string; text: string; code: string }> = {
+  p: { label: "Present", bg: "bg-emerald-100 text-emerald-800 border-emerald-200", text: "text-emerald-700", code: "P" },
+  present: { label: "Present", bg: "bg-emerald-100 text-emerald-800 border-emerald-200", text: "text-emerald-700", code: "P" },
+  pl: { label: "Paid Leave", bg: "bg-blue-100 text-blue-800 border-blue-200", text: "text-blue-700", code: "PL" },
+  pvl: { label: "Vacation Leave", bg: "bg-indigo-100 text-indigo-800 border-indigo-200", text: "text-indigo-700", code: "PVL" },
+  a: { label: "Absent", bg: "bg-red-100 text-red-800 border-red-200", text: "text-red-700", code: "A" },
+  absent: { label: "Absent", bg: "bg-red-100 text-red-800 border-red-200", text: "text-red-700", code: "A" },
+  h: { label: "Holiday", bg: "bg-sky-100 text-sky-800 border-sky-200", text: "text-sky-700", code: "H" },
+  eg: { label: "Early Going", bg: "bg-purple-100 text-purple-800 border-purple-200", text: "text-purple-700", code: "EG" },
+  d: { label: "Duty Leave", bg: "bg-teal-100 text-teal-800 border-teal-200", text: "text-teal-700", code: "D" },
+  l: { label: "Late", bg: "bg-amber-100 text-amber-800 border-amber-200", text: "text-amber-700", code: "L" },
+  late: { label: "Late", bg: "bg-amber-100 text-amber-800 border-amber-200", text: "text-amber-700", code: "L" },
+  wo: { label: "Weekly Off", bg: "bg-slate-100 text-slate-800 border-slate-200", text: "text-slate-700", code: "WO" },
+  hdp: { label: "Half Day Present", bg: "bg-orange-100 text-orange-800 border-orange-200", text: "text-orange-700", code: "HDP" },
+  hda: { label: "Half Day Absent", bg: "bg-rose-100 text-rose-800 border-rose-200", text: "text-rose-700", code: "HDA" },
+};
+
 export default function Attendance({ user }: { user: any }) {
   // Navigation tabs: daily (Daily Roll Call), manual (Manual Attendance Upload), report (Attendance Reports)
   const [activeTab, setActiveTab] = useState<"daily" | "manual" | "report">("daily");
@@ -344,7 +362,7 @@ export default function Attendance({ user }: { user: any }) {
       const records = students.map(s => {
         const payload: any = {
           date: date.toISOString(),
-          status: s.status.charAt(0).toUpperCase() + s.status.slice(1),
+          status: STATUS_META[s.status.toLowerCase()]?.label || (s.status.charAt(0).toUpperCase() + s.status.slice(1)),
           markedByUserId: parseSafeInt(user.id),
           CreatedBy: user.name || user.email,
           ModifiedBy: user.name || user.email,
@@ -1420,45 +1438,45 @@ export default function Attendance({ user }: { user: any }) {
                               <TableCell className="font-mono text-xs font-bold text-slate-400 hidden sm:table-cell">{student.roll}</TableCell>
                               <TableCell className="font-black text-slate-900 tracking-tight">{student.name}</TableCell>
                               <TableCell>
-                                <Badge
-                                  className={cn(
-                                    "capitalize font-bold text-[10px] px-3",
-                                    student.status === 'present' ? "bg-emerald-100 text-emerald-700" :
-                                      student.status === 'absent' ? "bg-red-100 text-red-700" :
-                                        "bg-amber-100 text-amber-700"
-                                  )}
-                                  variant="secondary"
-                                >
-                                  {student.status}
-                                </Badge>
+                                {(() => {
+                                  const meta = STATUS_META[student.status.toLowerCase()] || { label: student.status, bg: "bg-slate-100 text-slate-800 border-slate-200", text: "", code: student.status.toUpperCase() };
+                                  return (
+                                    <Badge
+                                      className={cn(
+                                        "capitalize font-bold text-[10px] px-3 border",
+                                        meta.bg
+                                      )}
+                                      variant="secondary"
+                                    >
+                                      {meta.label} ({meta.code || student.status.toUpperCase()})
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               {canManage && (
                                 <TableCell className="text-right pr-8">
-                                  <div className="flex justify-end gap-1.5 font-bold">
-                                    <Button
-                                      size="icon"
-                                      variant={student.status === 'present' ? "default" : "outline"}
-                                      className={cn("h-8 w-8 rounded-full", student.status === 'present' && "bg-emerald-600 hover:bg-emerald-700")}
-                                      onClick={() => updateStatus(student.id, 'present')}
+                                  <div className="flex justify-end font-bold">
+                                    <Select
+                                      value={student.status}
+                                      onValueChange={(val) => updateStatus(student.id, val)}
                                     >
-                                      <Check size={14} />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant={student.status === 'absent' ? "default" : "outline"}
-                                      className={cn("h-8 w-8 rounded-full", student.status === 'absent' && "bg-red-600 hover:bg-red-700")}
-                                      onClick={() => updateStatus(student.id, 'absent')}
-                                    >
-                                      <X size={14} />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant={student.status === 'late' ? "default" : "outline"}
-                                      className={cn("h-8 w-8 rounded-full", student.status === 'late' && "bg-amber-500 hover:bg-amber-600")}
-                                      onClick={() => updateStatus(student.id, 'late')}
-                                    >
-                                      <Clock size={14} />
-                                    </Button>
+                                      <SelectTrigger className="h-9 w-48 rounded-xl border-slate-200 text-xs font-semibold bg-white shadow-sm">
+                                        <SelectValue placeholder="Update Status" />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl shadow-2xl border-slate-200 bg-white">
+                                        <SelectItem value="present">Present (P)</SelectItem>
+                                        <SelectItem value="absent">Absent (A)</SelectItem>
+                                        <SelectItem value="late">Late (L)</SelectItem>
+                                        <SelectItem value="pl">Paid Leave (PL)</SelectItem>
+                                        <SelectItem value="pvl">Vacation Leave (PVL)</SelectItem>
+                                        <SelectItem value="h">Holiday (H)</SelectItem>
+                                        <SelectItem value="eg">Early Going (EG)</SelectItem>
+                                        <SelectItem value="d">Duty Leave (D)</SelectItem>
+                                        <SelectItem value="wo">Weekly Off (WO)</SelectItem>
+                                        <SelectItem value="hdp">Half Day Present (HDP)</SelectItem>
+                                        <SelectItem value="hda">Half Day Absent (HDA)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                 </TableCell>
                               )}
@@ -1951,25 +1969,24 @@ export default function Attendance({ user }: { user: any }) {
                   {/* Target Status configuration */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Default Status</label>
-                    <div className="flex gap-2">
-                      {["Present", "Absent", "Late"].map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          onClick={() => setManualStatusToMark(st)}
-                          className={cn(
-                            "flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all border",
-                            manualStatusToMark === st
-                              ? st === "Present" ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                                : st === "Absent" ? "bg-red-50 border-red-300 text-red-700"
-                                  : "bg-amber-50 border-amber-300 text-amber-700"
-                              : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
-                          )}
-                        >
-                          {st}
-                        </button>
-                      ))}
-                    </div>
+                    <Select value={manualStatusToMark} onValueChange={(val) => setManualStatusToMark(val)}>
+                      <SelectTrigger className="border-slate-200 bg-slate-50/50 font-bold rounded-xl h-11 bg-white">
+                        <SelectValue placeholder="Select Default Status" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl shadow-2xl border-slate-200 bg-white">
+                        <SelectItem value="Present" className="cursor-pointer font-semibold py-2">Present (P)</SelectItem>
+                        <SelectItem value="Absent" className="cursor-pointer font-semibold py-2">Absent (A)</SelectItem>
+                        <SelectItem value="Late" className="cursor-pointer font-semibold py-2">Late (L)</SelectItem>
+                        <SelectItem value="Paid Leave" className="cursor-pointer font-semibold py-2">Paid/Privilege Leave (PL)</SelectItem>
+                        <SelectItem value="Vacation Leave" className="cursor-pointer font-semibold py-2">Vacation Leave (PVL)</SelectItem>
+                        <SelectItem value="Holiday" className="cursor-pointer font-semibold py-2">Holiday (H)</SelectItem>
+                        <SelectItem value="Early Going" className="cursor-pointer font-semibold py-2">Early Going (EG)</SelectItem>
+                        <SelectItem value="Duty Leave" className="cursor-pointer font-semibold py-2">Duty Leave (D)</SelectItem>
+                        <SelectItem value="Weekly Off" className="cursor-pointer font-semibold py-2">Weekly Off (WO)</SelectItem>
+                        <SelectItem value="Half Day Present" className="cursor-pointer font-semibold py-2">Half Day Present (HDP)</SelectItem>
+                        <SelectItem value="Half Day Absent" className="cursor-pointer font-semibold py-2">Half Day Absent (HDA)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Drag and Drop File Selection container */}

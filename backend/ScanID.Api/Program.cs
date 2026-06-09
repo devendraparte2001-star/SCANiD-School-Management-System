@@ -214,6 +214,38 @@ try
                 );
             END
 
+            -- Create AttendanceStatuses table if not exists
+            IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AttendanceStatuses]') AND type in (N'U'))
+            BEGIN
+                CREATE TABLE [dbo].[AttendanceStatuses](
+                    [Id] [int] IDENTITY(1,1) NOT NULL,
+                    [Code] [nvarchar](10) NOT NULL,
+                    [Name] [nvarchar](100) NOT NULL,
+                    [SchoolId] [int] NULL,
+                    [AcademicYearId] [int] NULL,
+                    [IsActive] [bit] NOT NULL CONSTRAINT [DF_AttendanceStatuses_IsActive] DEFAULT (1),
+                    [IsDeleted] [bit] NOT NULL CONSTRAINT [DF_AttendanceStatuses_IsDeleted] DEFAULT (0),
+                    [CreatedBy] [nvarchar](max) NULL,
+                    [CreatedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_AttendanceStatuses_CreatedOn] DEFAULT (GETUTCDATE()),
+                    [ModifiedBy] [nvarchar](max) NULL,
+                    [ModifiedOn] [datetime2](7) NOT NULL CONSTRAINT [DF_AttendanceStatuses_ModifiedOn] DEFAULT (GETUTCDATE()),
+                 CONSTRAINT [PK_AttendanceStatuses] PRIMARY KEY CLUSTERED ([Id] ASC)
+                );
+
+                INSERT INTO [dbo].[AttendanceStatuses] ([Code], [Name], [IsActive], [CreatedOn], [ModifiedOn]) VALUES 
+                (N'P', N'Present', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'PL', N'Privilege/Paid Leave', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'PVL', N'Privilege Vacation Leave', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'A', N'Absent', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'H', N'Holiday', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'EG', N'Early Going', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'D', N'Duty Leave', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'L', N'Late', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'WO', N'Weekly Off', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'HDP', N'Half Day Present', 1, GETUTCDATE(), GETUTCDATE()),
+                (N'HDA', N'Half Day Absent', 1, GETUTCDATE(), GETUTCDATE());
+            END
+
             -- Add new Shift columns if they do not exist
             IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Shifts]') AND type in (N'U'))
             BEGIN
@@ -270,7 +302,7 @@ try
                 'ExamTypes', 'Designations', 'Occupations', 'Roles', 'SchoolSections', 
                 'StaffInitials', 'Shifts', 'Messages', 'Notifications', 'IodataRecords',
                 'Attendance', 'AuditLogs', 'ErrorLogs', 'Fees', 'Marks', 'NavigationItems',
-                'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools'
+                'Users', 'Staff', 'Students', 'Weekdays', 'Holidays', 'AcademicYears', 'Schools', 'AttendanceStatuses'
             )
 
             OPEN table_cursor
