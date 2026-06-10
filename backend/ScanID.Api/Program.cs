@@ -633,6 +633,218 @@ try
                     ALTER TABLE [dbo].[Staff] DROP COLUMN [Temp_ModifiedOn];
             END
         ");
+
+        // 5. Ensure LeaveType column on LeaveApplications & recreate sp_ProcessIodataRecord procedure to use dynamic status mapping
+        _ = await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[LeaveApplications]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[LeaveApplications]') AND name = 'LeaveType')
+                BEGIN
+                    ALTER TABLE [dbo].[LeaveApplications] ADD [LeaveType] NVARCHAR(50) NULL;
+                END
+            END
+        ");
+
+        _ = await context.Database.ExecuteSqlRawAsync("IF OBJECT_ID('dbo.sp_ProcessIodataRecord', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ProcessIodataRecord;");
+        _ = await context.Database.ExecuteSqlRawAsync(@"
+            CREATE PROCEDURE dbo.sp_ProcessIodataRecord
+                @Rfid NVARCHAR(100),
+                @PunchDate NVARCHAR(50),
+                @PunchTime NVARCHAR(50),
+                @MachineId NVARCHAR(50) = NULL,
+                @TransactionId NVARCHAR(50) = NULL,
+                @CreatedDateTime NVARCHAR(50) = NULL
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                
+                DECLARE @StudentId INT = NULL;
+                DECLARE @StaffId INT = NULL;
+                DECLARE @IsStudent BIT = 0;
+                DECLARE @ShiftId INT = NULL;
+                DECLARE @GrNo NVARCHAR(100) = NULL;
+                DECLARE @MatchedName NVARCHAR(255) = NULL;
+                DECLARE @Role NVARCHAR(50) = 'Unknown';
+                DECLARE @IsPresent BIT = 1;
+                DECLARE @Status NVARCHAR(50) = 'On-Time';
+                
+                SET @PunchTime = LTRIM(RTRIM(REPLACE(@PunchTime, '::', ':')));
+                
+                DECLARE @Date DATE = NULL;
+                BEGIN TRY
+                    DECLARE @CleanDate NVARCHAR(50) = @PunchDate;
+                    IF CHARINDEX('/', @CleanDate) > 0 AND LEN(@CleanDate) <= 7 AND CHARINDEX('/', @CleanDate, CHARINDEX('/', @CleanDate) + 1) = 0
+                    BEGIN
+                        DECLARE @Len INT = LEN(@CleanDate);
+                        SET @CleanDate = SUBSTRING(@CleanDate, 1, @Len - 2) + '/' + SUBSTRING(@CleanDate, @Len - 1, 2);
+                    END
+                    SET @Date = CONVERT(DATE, @CleanDate, 103);
+                END TRY
+                BEGIN CATCH
+                    BEGIN TRY
+                        SET @Date = CONVERT(DATE, @PunchDate, 101);
+                    END TRY
+                    BEGIN CATCH
+                        SET @Date = CAST(GETUTCDATE() AS DATE);
+                    END CATCH
+                END CATCH;
+
+                IF @Date IS NULL SET @Date = CAST(GETUTCDATE() AS DATE);
+
+                SELECT TOP 1 
+                    @StudentId = Id, 
+                    @IsStudent = 1, 
+                    @ShiftId = ShiftId, 
+                    @GrNo = ISNULL(GrNo, ''), 
+                    @MatchedName = Name, 
+                    @Role = 'Student'
+                FROM [dbo].[Students] 
+                WHERE LTRIM(RTRIM(Rfid)) = LTRIM(RTRIM(@Rfid)) AND IsDeleted = 0;
+
+                IF @StudentId IS NULL
+                BEGIN
+                    SELECT TOP 1 
+                        @StaffId = s.Id, 
+                        @IsStudent = 0, 
+                        @ShiftId = s.ShiftId, 
+                        @GrNo = ISNULL(s.EmployeeId, ''), 
+                        @MatchedName = u.Name, 
+                        @Role = ISNULL(u.Role, 'Teacher')
+                    FROM [dbo].[Staff] s
+                    INNER JOIN [dbo].[Users] u ON s.UserId = u.Id
+                    WHERE LTRIM(RTRIM(s.Rfid)) = LTRIM(RTRIM(@Rfid)) AND s.IsDeleted = 0;
+                END
+
+                DECLARE @StartTime NVARCHAR(15) = '09:00';
+                DECLARE @EndTime NVARCHAR(15) = '17:00';
+                DECLARE @GraceInTime NVARCHAR(15) = '15';
+                DECLARE @SpanInTime NVARCHAR(15) = '120';
+                
+                IF @ShiftId IS NOT NULL
+                BEGIN
+                    SELECT TOP 1 
+                        @StartTime = ISNULL(StartTime, '09:00'),
+                        @EndTime = ISNULL(EndTime, '17:00'),
+                        @GraceInTime = ISNULL(GraceInTime, '15'),
+                        @SpanInTime = ISNULL(SpanInTime, '120')
+                    FROM [dbo].[Shifts]
+                    WHERE Id = @ShiftId;
+                END
+
+                DECLARE @PunchMin INT = 540;
+                DECLARE @StartMin INT = 540;
+                DECLARE @GraceMinVal INT = 15;
+                DECLARE @SpanMinVal INT = 120;
+                
+                BEGIN TRY
+                    DECLARE @pIdx INT = CHARINDEX(':', @PunchTime);
+                    IF @pIdx > 0
+                    BEGIN
+                        DECLARE @pHour INT = CAST(SUBSTRING(@PunchTime, 1, @pIdx - 1) AS INT);
+                        DECLARE @pMin INT = CAST(SUBSTRING(@PunchTime, @pIdx + 1, LEN(@PunchTime)) AS INT);
+                        SET @PunchMin = @pHour * 60 + @pMin;
+                    END
+                END TRY
+                BEGIN CATCH
+                    SET @PunchMin = 540;
+                END CATCH;
+
+                BEGIN TRY
+                    DECLARE @sIdx INT = CHARINDEX(':', @StartTime);
+                    IF @sIdx > 0
+                    BEGIN
+                        DECLARE @sHour INT = CAST(SUBSTRING(@StartTime, 1, @sIdx - 1) AS INT);
+                        DECLARE @sMin INT = CAST(SUBSTRING(@StartTime, @sIdx + 1, LEN(@StartTime)) AS INT);
+                        SET @StartMin = @sHour * 60 + @sMin;
+                    END
+                END TRY
+                BEGIN CATCH
+                    SET @StartMin = 540;
+                END CATCH;
+
+                BEGIN TRY
+                    SET @GraceMinVal = CAST(@GraceInTime AS INT);
+                END TRY
+                BEGIN CATCH
+                    SET @GraceMinVal = 15;
+                END CATCH;
+
+                BEGIN TRY
+                    SET @SpanMinVal = CAST(@SpanInTime AS INT);
+                END TRY
+                BEGIN CATCH
+                    SET @SpanMinVal = 120;
+                END CATCH;
+
+                IF @PunchMin < @StartMin - 30
+                BEGIN
+                    SET @Status = 'Early';
+                END
+                ELSE IF @PunchMin <= @StartMin + @GraceMinVal
+                BEGIN
+                    SET @Status = 'On-Time';
+                END
+                ELSE IF @PunchMin <= @StartMin + @SpanMinVal
+                BEGIN
+                    SET @Status = 'Late';
+                END
+                ELSE
+                BEGIN
+                    SET @Status = 'Very Late';
+                END
+
+                MERGE [dbo].[IodataRecords] AS target
+                USING (SELECT @Rfid AS Rfid, @Date AS [Date], @PunchTime AS InTime) AS source
+                ON (target.Rfid = source.Rfid AND CONVERT(DATE, target.[Date]) = source.[Date] AND target.InTime = source.InTime)
+                WHEN MATCHED THEN
+                    UPDATE SET 
+                        IsPresent = @IsPresent,
+                        IsStudent = @IsStudent,
+                        ShiftId = @ShiftId,
+                        GrNo = @GrNo,
+                        MatchedName = @MatchedName,
+                        Role = @Role,
+                        Status = @Status,
+                        PunchDate = @PunchDate,
+                        PunchTime = @PunchTime,
+                        MachineId = @MachineId,
+                        TransactionId = @TransactionId,
+                        ModifiedOn = GETUTCDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
+                    VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, GETUTCDATE(), GETUTCDATE(), 1, 0);
+
+                DECLARE @StatusTableCode NVARCHAR(20) = 'P';
+                IF @Status = 'Very Late' SET @StatusTableCode = 'PVL';
+                ELSE IF @Status = 'Late' SET @StatusTableCode = 'PL';
+
+                DECLARE @AttStatus NVARCHAR(100) = NULL;
+                SELECT TOP 1 @AttStatus = Name 
+                FROM [dbo].[AttendanceStatuses] 
+                WHERE Code = @StatusTableCode AND IsDeleted = 0 AND IsActive = 1;
+
+                IF @AttStatus IS NULL
+                BEGIN
+                    SET @AttStatus = CASE @StatusTableCode 
+                        WHEN 'PVL' THEN 'Present but Very Late' 
+                        WHEN 'PL' THEN 'Present but Late' 
+                        ELSE 'Present' 
+                    END;
+                END
+
+                IF @StudentId IS NOT NULL
+                BEGIN
+                    EXEC dbo.sp_ManageAttendance @StudentId = @StudentId, @Date = @Date, @Status = @AttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = NULL, @MarkedByUserId = 1, @UploadSource = 'IodataService';
+                END
+                ELSE IF @StaffId IS NOT NULL
+                BEGIN
+                    EXEC dbo.sp_ManageAttendance @StudentId = NULL, @Date = @Date, @Status = @AttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = @StaffId, @MarkedByUserId = 1, @UploadSource = 'IodataService';
+                END
+
+                SELECT TOP 1 * FROM [dbo].[IodataRecords] 
+                WHERE Rfid = @Rfid AND CONVERT(DATE, [Date]) = @Date AND InTime = @PunchTime;
+            END
+        ");
     }
 }
 catch (Exception ex)

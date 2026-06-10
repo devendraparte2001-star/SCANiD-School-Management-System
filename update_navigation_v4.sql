@@ -109,7 +109,10 @@ INSERT INTO [dbo].[NavigationItems] ([Id], [Title], [Icon], [Path], [ParentId], 
 (39, N'Exam Type Master', N'Award', N'/configuration/exam-types', 25, 14, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
 (40, N'Designation Master', N'Briefcase', N'/configuration/designations', 25, 15, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
 (41, N'Occupation Master', N'Hammer', N'/configuration/occupations', 25, 16, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
-(42, N'Staff Initials', N'UserRound', N'/configuration/staff-initials', 25, 17, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
+(42, N'Staff Initials', N'UserRound', N'/configuration/staff-initials', 25, 17, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(43, N'Weekday Master', N'Calendar', N'/configuration/weekdays', 25, 18, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(44, N'Holiday Master', N'CalendarCheck', N'/configuration/holidays', 25, 19, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE()),
+(45, N'Attendance Statuses', N'CalendarCheck', N'/configuration/attendance-statuses', 25, 20, 1, N'SYSTEM', GETUTCDATE(), N'SYSTEM', GETUTCDATE());
 
 SET IDENTITY_INSERT [dbo].[NavigationItems] OFF;
 GO

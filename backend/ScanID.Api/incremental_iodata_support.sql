@@ -213,26 +213,32 @@ BEGIN
         INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
         VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, GETUTCDATE(), GETUTCDATE(), 1, 0);
 
-    -- Sync to Core Student/Staff Attendance registers (Present, Absent, Late)
+    -- Sync to Core Student/Staff Attendance registers (P, PL, PVL)
+    DECLARE @StatusTableCode NVARCHAR(20) = 'P';
+    IF @Status = 'Very Late' SET @StatusTableCode = 'PVL';
+    ELSE IF @Status = 'Late' SET @StatusTableCode = 'PL';
+
+    DECLARE @AttStatus NVARCHAR(100) = NULL;
+    SELECT TOP 1 @AttStatus = Name 
+    FROM [dbo].[AttendanceStatuses] 
+    WHERE Code = @StatusTableCode AND IsDeleted = 0 AND IsActive = 1;
+
+    IF @AttStatus IS NULL
+    BEGIN
+        SET @AttStatus = CASE @StatusTableCode 
+            WHEN 'PVL' THEN 'Present but Very Late' 
+            WHEN 'PL' THEN 'Present but Late' 
+            ELSE 'Present' 
+        END;
+    END
+
     IF @StudentId IS NOT NULL
     BEGIN
-        DECLARE @AttStatus NVARCHAR(50) = 'Present';
-        IF @Status = 'Very Late' OR @Status = 'Late'
-        BEGIN
-            SET @AttStatus = 'Late';
-        END
-        
         EXEC dbo.sp_ManageAttendance @StudentId = @StudentId, @Date = @Date, @Status = @AttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = NULL, @MarkedByUserId = 1, @UploadSource = 'IodataService';
     END
     ELSE IF @StaffId IS NOT NULL
     BEGIN
-        DECLARE @StaffAttStatus NVARCHAR(50) = 'Present';
-        IF @Status = 'Very Late' OR @Status = 'Late'
-        BEGIN
-            SET @StaffAttStatus = 'Late';
-        END
-        
-        EXEC dbo.sp_ManageAttendance @StudentId = NULL, @Date = @Date, @Status = @StaffAttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = @StaffId, @MarkedByUserId = 1, @UploadSource = 'IodataService';
+        EXEC dbo.sp_ManageAttendance @StudentId = NULL, @Date = @Date, @Status = @AttStatus, @Remarks = @Status, @CreatedBy = 'IodataService', @StaffId = @StaffId, @MarkedByUserId = 1, @UploadSource = 'IodataService';
     END
 
     -- Return the processed result

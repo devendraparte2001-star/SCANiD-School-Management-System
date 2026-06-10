@@ -262,6 +262,12 @@ const MASTER_TYPES: Record<
     description: "Manage school and staff holidays calendar",
     apiPrefix: "Holiday",
   },
+  "attendance-statuses": {
+    label: "Attendance Statuses",
+    icon: CalendarCheck,
+    description: "Manage official attendance codes and definitions",
+    apiPrefix: "AttendanceStatus",
+  },
   navigation: {
     label: "Navigation Master",
     icon: LayoutGrid,
@@ -532,6 +538,7 @@ export default function Configuration({
     setFormData({
       name: item?.name ?? item?.Name ?? item?.fullName ?? item?.FullName ?? "",
       description: item?.description ?? item?.Description ?? "",
+      code: item?.code ?? item?.Code ?? "",
       isCurrent: item?.isCurrent ?? item?.IsCurrent ?? false,
       isActive: item?.isActive !== false && item?.IsActive !== false, // Default to true if undefined
       color: item?.color ?? item?.Color ?? "#3b82f6",
@@ -661,6 +668,10 @@ export default function Configuration({
         toast.error("From Date cannot be after To Date for holidays.");
         newErrors.toDate = true;
       }
+    }
+
+    if (activeTab === "attendance-statuses") {
+      if (!formData.code?.trim()) newErrors.code = true;
     }
 
     // Mandatory multi-tenancy validation for master forms
@@ -809,6 +820,9 @@ export default function Configuration({
         payload.scanIDEmail = formData.scanIDEmail;
         payload.inChargeContact = formData.inChargeContact;
         payload.status = formData.status || "Active";
+      } else if (activeTab === "attendance-statuses") {
+        payload.code = formData.code;
+        payload.Code = formData.code;
       } else if (activeTab === "role-assignment") {
         let matchedRole = Array.isArray(dependencies.roles)
           ? dependencies.roles.find(
@@ -1101,7 +1115,7 @@ export default function Configuration({
                     {activeTab !== "role-assignment" &&
                       activeTab !== "navigation" && (
                         <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                          {activeTab === "shifts" ? "Shift Details / Timings" : activeTab === "holidays" ? "Holiday Duration & Info" : "Description"}
+                          {activeTab === "shifts" ? "Shift Details / Timings" : activeTab === "holidays" ? "Holiday Duration & Info" : activeTab === "attendance-statuses" ? "Attendance Code" : "Description"}
                         </TableHead>
                       )}
                     <TableHead className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -1503,6 +1517,12 @@ export default function Configuration({
                                     </span>
                                   )}
                                 </div>
+                              ) : activeTab === "attendance-statuses" ? (
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-blue-50 text-blue-700 font-extrabold text-[10px] uppercase border-blue-100 px-2 py-0.5 rounded-md">
+                                    Code: {item.code ?? item.Code ?? "N/A"}
+                                  </Badge>
+                                </div>
                               ) : (
                                 <span className="font-bold text-slate-400 italic truncate block max-w-[200px]">
                                   {item.description || "No metadata found"}
@@ -1656,6 +1676,37 @@ export default function Configuration({
                 }}
               />
             </div>
+
+            {activeTab === "attendance-statuses" && (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="code"
+                  className={cn(
+                    "text-xs font-black uppercase tracking-wider",
+                    formErrors.code ? "text-red-500" : "text-slate-400",
+                  )}
+                >
+                  Attendance Status Code *
+                </Label>
+                <Input
+                  ref={(el) => {
+                    inputRefs.current["code"] = el;
+                  }}
+                  id="code"
+                  placeholder="Enter attendance code (e.g. P, A, L, DL)..."
+                  className={cn(
+                    "h-12 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold",
+                    formErrors.code && "border-red-500 ring-2 ring-red-500/10",
+                  )}
+                  value={formData.code || ""}
+                  onChange={(e) => {
+                    setFormData({ ...formData, code: e.target.value });
+                    if (formErrors.code)
+                      setFormErrors((prev) => ({ ...prev, code: false }));
+                  }}
+                />
+              </div>
+            )}
 
             {/* School & Academic Year Selector on ALL masters except Schools, Navigation and Role Assignment */}
             {activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment" && (

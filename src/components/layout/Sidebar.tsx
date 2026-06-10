@@ -143,6 +143,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             { id: 42, title: "Staff Initials", icon: "UserRound", path: "/configuration/staff-initials", parentId: 25, sortOrder: 17, roleIds: adminRoles },
             { id: 43, title: "Weekday Master", icon: "Calendar", path: "/configuration/weekdays", parentId: 25, sortOrder: 18, roleIds: adminRoles },
             { id: 44, title: "Holiday Master", icon: "CalendarCheck", path: "/configuration/holidays", parentId: 25, sortOrder: 19, roleIds: adminRoles },
+            { id: 45, title: "Attendance Statuses", icon: "CalendarCheck", path: "/configuration/attendance-statuses", parentId: 25, sortOrder: 20, roleIds: adminRoles },
 
             { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
           ];
@@ -425,6 +426,32 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             );
             if (holidaysItem && Number(holidaysItem.parentId) !== generalMastersId) {
               holidaysItem.parentId = generalMastersId;
+            }
+          }
+
+          // 14. Ensure Attendance Statuses (ID 45) is present under General Masters
+          const hasAttendanceStatuses = rawData.some((item: any) => 
+            item.title === "Attendance Statuses" || 
+            (item.path && item.path.includes("/attendance-statuses"))
+          );
+          if (!hasAttendanceStatuses) {
+            rawData.push({
+              id: 45,
+              title: "Attendance Statuses",
+              icon: "CalendarCheck",
+              path: "/configuration/attendance-statuses",
+              parentId: generalMastersId,
+              sortOrder: 20,
+              roleIds: adminRoles
+            });
+          } else {
+            // Correct parentId if mismatch or external DB set it to null/something else
+            const attendanceStatusesItem = rawData.find((item: any) => 
+              item.title === "Attendance Statuses" || 
+              (item.path && item.path.includes("/attendance-statuses"))
+            );
+            if (attendanceStatusesItem && Number(attendanceStatusesItem.parentId) !== generalMastersId) {
+              attendanceStatusesItem.parentId = generalMastersId;
             }
           }
         }
@@ -735,7 +762,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
           </button>
         )}
 
-        <SimpleTooltip content={isCollapsed ? "Expand Sidebar" : ""} side="right" nativeButton={true}>
+        <SimpleTooltip content={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} side="right" nativeButton={true}>
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="absolute -right-3 top-10 bg-blue-600 text-white rounded-full p-1.5 shadow-xl hover:bg-blue-500 transition-all z-50 border-2 border-slate-950 scale-100 hover:scale-110 active:scale-95 hidden lg:block"

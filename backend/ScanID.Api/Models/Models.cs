@@ -677,6 +677,7 @@ namespace ScanID.Api.Models
         public DateTime ToDate { get; set; }
         [Required]
         public string Status { get; set; } = "Approved"; // Approved, Pending, Rejected
+        public string? LeaveType { get; set; } = "L";
         public string? Remarks { get; set; }
 
         [ForeignKey("StudentId")]

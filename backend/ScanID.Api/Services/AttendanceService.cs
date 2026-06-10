@@ -531,6 +531,31 @@ namespace ScanID.Api.Services
 
         public async Task<bool> SubmitLeaveAsync(LeaveApplication leave)
         {
+            // Auto-align SchoolId and AcademicYearId from student/staff record to prevent isolation in standard master grids
+            if (leave.StudentId.HasValue && (!leave.SchoolId.HasValue || !leave.AcademicYearId.HasValue))
+            {
+                var student = await _context.Students.FindAsync(leave.StudentId.Value);
+                if (student != null)
+                {
+                    leave.SchoolId = student.SchoolId;
+                    leave.AcademicYearId = student.AcademicYearId;
+                }
+            }
+            else if (leave.StaffId.HasValue && (!leave.SchoolId.HasValue || !leave.AcademicYearId.HasValue))
+            {
+                var staff = await _context.Staff.FindAsync(leave.StaffId.Value);
+                if (staff != null)
+                {
+                    leave.SchoolId = staff.SchoolId;
+                    leave.AcademicYearId = staff.AcademicYearId;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(leave.LeaveType))
+            {
+                leave.LeaveType = "L";
+            }
+
             if (leave.Id > 0)
             {
                 _context.Entry(leave).State = EntityState.Modified;
@@ -552,6 +577,34 @@ namespace ScanID.Api.Services
 
         public async Task<bool> ReprocessAttendanceRangeAsync(DateTime fromDate, DateTime toDate, int? studentId, int? staffId, int? schoolId)
         {
+            // Gather custom attendance statuses to map codes to names dynamically
+            var statusMapping = await _context.AttendanceStatuses
+                .Where(x => !x.IsDeleted && x.IsActive)
+                .ToDictionaryAsync(x => x.Code, x => x.Name, StringComparer.OrdinalIgnoreCase);
+
+            string GetStatusName(string code)
+            {
+                if (statusMapping.TryGetValue(code, out var name))
+                {
+                    return name;
+                }
+                return code switch
+                {
+                    "P" => "Present",
+                    "PL" => "Present but Late",
+                    "PVL" => "Present but Very Late",
+                    "A" => "Absent",
+                    "H" => "Holiday",
+                    "EG" => "Early Goer",
+                    "D" => "Discrepancy",
+                    "L" => "Leave",
+                    "WO" => "Weekly Off",
+                    "HDP" => "Half Day Present",
+                    "HDA" => "Half Day Absent",
+                    _ => "Absent"
+                };
+            }
+
             // Gather students
             var studentsQuery = _context.Students.AsQueryable();
             if (studentId.HasValue) studentsQuery = studentsQuery.Where(s => s.Id == studentId);
@@ -622,7 +675,7 @@ namespace ScanID.Api.Services
                         var leave = leavesList.FirstOrDefault(l => l.StudentId == student.Id && l.FromDate.Date <= d && l.ToDate.Date >= d);
                         if (leave != null)
                         {
-                            finalCode = "L";
+                            finalCode = !string.IsNullOrWhiteSpace(leave.LeaveType) ? leave.LeaveType : "L";
                             remarks = leave.Remarks ?? "Approved Student Leave";
                         }
                         else
@@ -632,7 +685,7 @@ namespace ScanID.Api.Services
                             bool hasActiveShift = shift != null;
 
                             // Priority 3 & 4: Special Shift or standard weekday filter
-                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate <= d && shift.ToDate >= d;
+                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate.HasValue && shift.FromDate.Value.Date <= d && shift.ToDate.HasValue && shift.ToDate.Value.Date >= d;
                             bool isWeekdayMatch = false;
                             if (shift?.Weekdays != null)
                             {
@@ -685,8 +738,8 @@ namespace ScanID.Api.Services
                                     // IN-TIME logic
                                     if (punchMin < spanVal)
                                     {
-                                        finalCode = "A"; // Punch < Span In
-                                        remarks = "Scan before Span In Time";
+                                        finalCode = "P"; // Early arrival is still Present!
+                                        remarks = "On-Time Arrival (Early)";
                                     }
                                     else if (punchMin <= startMin + graceMinVal)
                                     {
@@ -727,7 +780,7 @@ namespace ScanID.Api.Services
                     }
 
                     // Save student attendance record
-                    var statusName = GetStatusNameFromCode(finalCode);
+                    var statusName = GetStatusName(finalCode);
                     var attRecord = currentAttendance.FirstOrDefault(a => a.StudentId == student.Id && a.Date.Date == d);
                     
                     if (attRecord != null)
@@ -780,7 +833,7 @@ namespace ScanID.Api.Services
                         var leave = leavesList.FirstOrDefault(l => l.StaffId == staff.Id && l.FromDate.Date <= d && l.ToDate.Date >= d);
                         if (leave != null)
                         {
-                            finalCode = "L";
+                            finalCode = !string.IsNullOrWhiteSpace(leave.LeaveType) ? leave.LeaveType : "L";
                             remarks = leave.Remarks ?? "Approved Staff Leave";
                         }
                         else
@@ -790,7 +843,7 @@ namespace ScanID.Api.Services
                             bool hasActiveShift = shift != null;
 
                             // Priority 3 & 4: Special Shift / standard weekdays
-                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate <= d && shift.ToDate >= d;
+                            bool isSpecial = shift?.IsSpecialShift == true && shift.FromDate.HasValue && shift.FromDate.Value.Date <= d && shift.ToDate.HasValue && shift.ToDate.Value.Date >= d;
                             bool isWeekdayMatch = false;
                             if (shift?.Weekdays != null)
                             {
@@ -844,8 +897,8 @@ namespace ScanID.Api.Services
                                     // In-Time
                                     if (punchMin < spanVal)
                                     {
-                                        finalCode = "A";
-                                        remarks = "Scan before Span In Time";
+                                        finalCode = "P"; // Early arrival is still Present!
+                                        remarks = "On-Time Arrival (Early)";
                                     }
                                     else if (punchMin <= startMin + graceMinVal)
                                     {
@@ -869,8 +922,16 @@ namespace ScanID.Api.Services
 
                                     if (lastPunchMin < endMin)
                                     {
-                                        finalCode = "EG"; // Early Goer
-                                        remarks += " | Left before shift completion";
+                                        if (swipes.Count == 1)
+                                        {
+                                            finalCode = "D"; // Discrepancy
+                                            remarks += " | Single swipe (missing out-punch)";
+                                        }
+                                        else
+                                        {
+                                            finalCode = "EG"; // Early Goer
+                                            remarks += " | Left before shift completion";
+                                        }
                                     }
                                 }
                             }
@@ -878,7 +939,7 @@ namespace ScanID.Api.Services
                     }
 
                     // Save staff attendance record
-                    var statusName = GetStatusNameFromCode(finalCode);
+                    var statusName = GetStatusName(finalCode);
                     var attRecord = currentAttendance.FirstOrDefault(a => a.StaffId == staff.Id && a.Date.Date == d);
 
                     if (attRecord != null)
