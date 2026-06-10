@@ -323,62 +323,80 @@ async function startServer() {
 
   let navigationItems = dbData.navigationItems || [
     // IDs: SuperAdmin=1, Admin=2, Teacher=3, Student=4, Parent=5, All=0
-    // Root level items
     { id: 1, title: "Dashboard", icon: "LayoutDashboard", path: "/", parentId: null, sortOrder: 1, roleIds: [1, 2, 3, 4, 5] },
     
-    // Academic Operations Group (2)
+    // Academic Operations Group
     { id: 2, title: "Academic Operations", icon: "BookOpen", path: null, parentId: null, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
     { id: 3, title: "Student Registry", icon: "GraduationCap", path: "/students", parentId: 2, sortOrder: 1, roleIds: [1, 2, 3, 5] },
-    { id: 4, title: "Attendance Tracking", icon: "CalendarCheck", path: "/attendance", parentId: 2, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
-    { id: 5, title: "Examination & Marks", icon: "BarChart3", path: "/marks", parentId: 2, sortOrder: 3, roleIds: [1, 2, 3, 4, 5] },
+    { id: 4, title: "Attendance Tracking", icon: "CalendarCheck", path: null, parentId: 2, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
     
-    // Staff & HR Group (6)
-    { id: 6, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: [1, 2] },
-    { id: 7, title: "Staff Directory", icon: "UserCheck", path: "/staff", parentId: 6, sortOrder: 1, roleIds: [1, 2] },
-    { id: 24, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 6, sortOrder: 2, roleIds: [1, 2] },
+    // Attendance Tracking Children (IDs 5 to 11)
+    { id: 5, title: "Roll Call", icon: "CalendarCheck", path: "/attendance/daily", parentId: 4, sortOrder: 1, roleIds: [1, 2, 3, 4, 5] },
+    { id: 6, title: "Manual Upload", icon: "Upload", path: "/attendance/manual", parentId: 4, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
+    { id: 7, title: "Leaves Register", icon: "CalendarClock", path: "/attendance/leaves", parentId: 4, sortOrder: 3, roleIds: [1, 2, 3, 4, 5] },
+    { id: 8, title: "Reprocess Range", icon: "RefreshCw", path: "/attendance/reprocess", parentId: 4, sortOrder: 4, roleIds: [1, 2, 3, 4, 5] },
+    { id: 9, title: "Payroll Lock", icon: "Lock", path: "/attendance/lock", parentId: 4, sortOrder: 5, roleIds: [1, 2] },
+    { id: 10, title: "Correction Audit", icon: "History", path: "/attendance/audit", parentId: 4, sortOrder: 6, roleIds: [1, 2] },
+    { id: 11, title: "Reports", icon: "BarChart3", path: "/attendance/report", parentId: 4, sortOrder: 7, roleIds: [1, 2, 3, 4, 5] },
+
+    { id: 12, title: "Examination & Marks", icon: "BarChart3", path: "/marks", parentId: 2, sortOrder: 3, roleIds: [1, 2, 3, 4, 5] },
     
-    // Administrative Group (8)
-    { id: 8, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: [1, 2, 3, 4, 5] },
-    { id: 9, title: "Fee Management", icon: "CreditCard", path: "/fees", parentId: 8, sortOrder: 1, roleIds: [1, 2, 5] },
-    { id: 10, title: "Communication Hub", icon: "MessageSquare", path: "/messages", parentId: 8, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
+    // Staff & HR Group
+    { id: 13, title: "Staff & HR", icon: "Users", path: null, parentId: null, sortOrder: 3, roleIds: [1, 2] },
+    { id: 14, title: "Staff Directory", icon: "UserCheck", path: "/staff", parentId: 13, sortOrder: 1, roleIds: [1, 2] },
+    { id: 15, title: "Manage Users", icon: "UserPlus", path: "/configuration/users", parentId: 13, sortOrder: 2, roleIds: [1, 2] },
     
-    // Masters & Config Group (11)
-    { id: 11, title: "Masters & Config", icon: "Database", path: "/configuration", parentId: null, sortOrder: 5, roleIds: [1, 2] },
-    { id: 12, title: "Global Schools", icon: "School", path: "/configuration/schools", parentId: 11, sortOrder: 1, roleIds: [1, 2] },
+    // Administrative Group
+    { id: 16, title: "Administrative", icon: "ShieldCheck", path: null, parentId: null, sortOrder: 4, roleIds: [1, 2, 3, 4, 5] },
+    { id: 17, title: "Fee Management", icon: "CreditCard", path: "/fees", parentId: 16, sortOrder: 1, roleIds: [1, 2, 5] },
+    { id: 18, title: "Communication Hub", icon: "MessageSquare", path: "/messages", parentId: 16, sortOrder: 2, roleIds: [1, 2, 3, 4, 5] },
+    { id: 19, title: "Notification Center", icon: "Bell", path: "/notifications", parentId: 16, sortOrder: 3, roleIds: [1, 2, 3, 4, 5] },
     
-    // RBAC Sub-group (13)
-    { id: 13, title: "Access Control (RBAC)", icon: "Key", path: null, parentId: 11, sortOrder: 2, roleIds: [1, 2] },
-    { id: 14, title: "Role Master", icon: "Shield", path: "/configuration/role-master", parentId: 13, sortOrder: 1, roleIds: [1, 2] },
-    { id: 15, title: "User Accounts", icon: "UserCheck", path: "/configuration/role-assignment", parentId: 13, sortOrder: 2, roleIds: [1, 2] },
+    // Masters & Config Group
+    { id: 20, title: "Masters & Config", icon: "Database", path: "/configuration", parentId: null, sortOrder: 5, roleIds: [1, 2] },
+    { id: 21, title: "Global Schools", icon: "School", path: "/configuration/schools", parentId: 20, sortOrder: 1, roleIds: [1, 2] },
     
-    // Menu Designer Sub-group (16)
-    { id: 16, title: "Menu Designer", icon: "Layout", path: null, parentId: 11, sortOrder: 3, roleIds: [1, 2] },
-    { id: 17, title: "Navigation Builder", icon: "LayoutGrid", path: "/configuration/navigation", parentId: 16, sortOrder: 1, roleIds: [1, 2] },
+    // RBAC Sub-group
+    { id: 22, title: "Access Control (RBAC)", icon: "Key", path: null, parentId: 20, sortOrder: 2, roleIds: [1, 2] },
+    { id: 23, title: "Role Master", icon: "Shield", path: "/configuration/role-master", parentId: 22, sortOrder: 1, roleIds: [1, 2] },
+    { id: 24, title: "User Accounts", icon: "UserCheck", path: "/configuration/role-assignment", parentId: 22, sortOrder: 2, roleIds: [1, 2] },
     
-    // Academic Masters Sub-group (18)
-    { id: 18, title: "Academic Masters", icon: "BookOpen", path: null, parentId: 11, sortOrder: 4, roleIds: [1, 2] },
-    { id: 19, title: "Standards & Grades", icon: "Layers", path: "/configuration/standards", parentId: 18, sortOrder: 1, roleIds: [1, 2] },
-    { id: 20, title: "Divisions/Sections", icon: "Hash", path: "/configuration/sections", parentId: 18, sortOrder: 2, roleIds: [1, 2] },
-    { id: 21, title: "Academic Years", icon: "Calendar", path: "/configuration/academic-years", parentId: 18, sortOrder: 3, roleIds: [1, 2] },
-    { id: 22, title: "Subject Registry", icon: "BookOpen", path: "/configuration/subjects", parentId: 18, sortOrder: 4, roleIds: [1, 2] },
+    // Menu Designer Sub-group
+    { id: 25, title: "Menu Designer", icon: "Layout", path: null, parentId: 20, sortOrder: 3, roleIds: [1, 2] },
+    { id: 26, title: "Navigation Builder", icon: "LayoutGrid", path: "/configuration/navigation", parentId: 25, sortOrder: 1, roleIds: [1, 2] },
     
-    // General Masters Sub-group (25)
-    { id: 25, title: "General Masters", icon: "Database", path: null, parentId: 11, sortOrder: 5, roleIds: [1, 2] },
-    { id: 26, title: "Religion Master", icon: "Heart", path: "/configuration/religions", parentId: 25, sortOrder: 1, roleIds: [1, 2] },
-    { id: 27, title: "Blood Group Master", icon: "Droplets", path: "/configuration/blood-groups", parentId: 25, sortOrder: 2, roleIds: [1, 2] },
-    { id: 28, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 25, sortOrder: 3, roleIds: [1, 2] },
-    { id: 29, title: "Sub-Caste Master", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 25, sortOrder: 4, roleIds: [1, 2] },
-    { id: 30, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 25, sortOrder: 5, roleIds: [1, 2] },
-    { id: 31, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 25, sortOrder: 6, roleIds: [1, 2] },
-    { id: 32, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 25, sortOrder: 7, roleIds: [1, 2] },
-    { id: 33, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 25, sortOrder: 8, roleIds: [1, 2] },
-    { id: 34, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 25, sortOrder: 9, roleIds: [1, 2] },
-    { id: 35, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 25, sortOrder: 10, roleIds: [1, 2] },
-    { id: 43, title: "Weekday Master", icon: "Calendar", path: "/configuration/weekdays", parentId: 25, sortOrder: 18, roleIds: [1, 2] },
-    { id: 44, title: "Holiday Master", icon: "CalendarCheck", path: "/configuration/holidays", parentId: 25, sortOrder: 19, roleIds: [1, 2] },
- 
-    // System Audit (23)
-    { id: 23, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] },
+    // Academic Masters Sub-group
+    { id: 27, title: "Academic Masters", icon: "BookOpen", path: null, parentId: 20, sortOrder: 4, roleIds: [1, 2] },
+    { id: 28, title: "Standards & Grades", icon: "Layers", path: "/configuration/standards", parentId: 27, sortOrder: 1, roleIds: [1, 2] },
+    { id: 29, title: "Divisions/Sections", icon: "Hash", path: "/configuration/sections", parentId: 27, sortOrder: 2, roleIds: [1, 2] },
+    { id: 30, title: "Academic Years", icon: "Calendar", path: "/configuration/academic-years", parentId: 27, sortOrder: 3, roleIds: [1, 2] },
+    { id: 31, title: "Subject Registry", icon: "BookOpen", path: "/configuration/subjects", parentId: 27, sortOrder: 4, roleIds: [1, 2] },
+    
+    // General Masters Sub-group
+    { id: 32, title: "General Masters", icon: "Database", path: null, parentId: 20, sortOrder: 5, roleIds: [1, 2] },
+    { id: 33, title: "Religion Master", icon: "Heart", path: "/configuration/religions", parentId: 32, sortOrder: 1, roleIds: [1, 2] },
+    { id: 34, title: "Blood Group Master", icon: "Droplets", path: "/configuration/blood-groups", parentId: 32, sortOrder: 2, roleIds: [1, 2] },
+    { id: 35, title: "Caste Category", icon: "Users", path: "/configuration/castes", parentId: 32, sortOrder: 3, roleIds: [1, 2] },
+    { id: 36, title: "Sub-Caste Master", icon: "UserCircle", path: "/configuration/sub-castes", parentId: 32, sortOrder: 4, roleIds: [1, 2] },
+    { id: 37, title: "School House", icon: "Home", path: "/configuration/houses", parentId: 32, sortOrder: 5, roleIds: [1, 2] },
+    { id: 38, title: "Admission Types", icon: "UserCheck", path: "/configuration/admission-types", parentId: 32, sortOrder: 6, roleIds: [1, 2] },
+    { id: 39, title: "States Master", icon: "Map", path: "/configuration/states", parentId: 32, sortOrder: 7, roleIds: [1, 2] },
+    { id: 40, title: "Cities Master", icon: "MapPin", path: "/configuration/cities", parentId: 32, sortOrder: 8, roleIds: [1, 2] },
+    { id: 41, title: "School Sections", icon: "Layers", path: "/configuration/school-sections", parentId: 32, sortOrder: 9, roleIds: [1, 2] },
+    { id: 42, title: "Shift Timetable", icon: "Clock", path: "/configuration/shifts", parentId: 32, sortOrder: 10, roleIds: [1, 2] },
+    { id: 43, title: "Category Master", icon: "LayoutGrid", path: "/configuration/categories", parentId: 32, sortOrder: 11, roleIds: [1, 2] },
+    { id: 44, title: "Session Master", icon: "Clock", path: "/configuration/sessions", parentId: 32, sortOrder: 12, roleIds: [1, 2] },
+    { id: 45, title: "Batch Master", icon: "Users", path: "/configuration/batches", parentId: 32, sortOrder: 13, roleIds: [1, 2] },
+    { id: 46, title: "Exam Type Master", icon: "Award", path: "/configuration/exam-types", parentId: 32, sortOrder: 14, roleIds: [1, 2] },
+    { id: 47, title: "Designation Master", icon: "Briefcase", path: "/configuration/designations", parentId: 32, sortOrder: 15, roleIds: [1, 2] },
+    { id: 48, title: "Occupation Master", icon: "Hammer", path: "/configuration/occupations", parentId: 32, sortOrder: 16, roleIds: [1, 2] },
+    { id: 49, title: "Staff Initials", icon: "UserRound", path: "/configuration/staff-initials", parentId: 32, sortOrder: 17, roleIds: [1, 2] },
+    { id: 50, title: "Weekday Master", icon: "Calendar", path: "/configuration/weekdays", parentId: 32, sortOrder: 18, roleIds: [1, 2] },
+    { id: 51, title: "Holiday Master", icon: "CalendarCheck", path: "/configuration/holidays", parentId: 32, sortOrder: 19, roleIds: [1, 2] },
+    { id: 52, title: "Attendance Statuses", icon: "CalendarCheck", path: "/configuration/attendance-statuses", parentId: 32, sortOrder: 20, roleIds: [1, 2] },
+    
+    // System Audit
+    { id: 53, title: "System Audit", icon: "Terminal", path: "/system-logs", parentId: null, sortOrder: 6, roleIds: [1] }
   ];
 
   const mastersMap: Record<string, any[]> = {

@@ -586,6 +586,11 @@ export const apiService = {
   updateHoliday: (id: number, data: MasterWriteRequest) => api.put(`/masters/holidays/${id}`, data),
   deleteHoliday: (id: number) => api.delete(`/masters/holidays/${id}`),
 
+  getAttendanceStatuses: (params?: PaginatedParams) => api.get("/masters/attendance-statuses", { params }),
+  createAttendanceStatus: (data: MasterWriteRequest) => api.post("/masters/attendance-statuses", data),
+  updateAttendanceStatus: (id: number, data: MasterWriteRequest) => api.put(`/masters/attendance-statuses/${id}`, data),
+  deleteAttendanceStatus: (id: number) => api.delete(`/masters/attendance-statuses/${id}`),
+
   getSubjects: (params?: PaginatedParams) => api.get("/masters/subjects", { params }),
   createSubject: (data: MasterWriteRequest) => api.post("/masters/subjects", data),
   updateSubject: (id: number, data: MasterWriteRequest) => api.put(`/masters/subjects/${id}`, data),

@@ -617,6 +617,20 @@ BEGIN
 END
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[AttendanceLocks]') AND type in (N'U'))
+BEGIN
+CREATE TABLE [dbo].[AttendanceLocks](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Year] [int] NOT NULL,
+	[Month] [int] NOT NULL,
+	[IsLocked] [bit] NOT NULL DEFAULT (1),
+	[LockedBy] [nvarchar](max) NULL,
+	[LockedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+ CONSTRAINT [PK_AttendanceLocks] PRIMARY KEY CLUSTERED ([Id] ASC)
+)
+END
+GO
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Fees]') AND type in (N'U'))
 BEGIN
 CREATE TABLE [dbo].[Fees](

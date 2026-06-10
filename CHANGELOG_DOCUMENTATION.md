@@ -37,8 +37,28 @@ This document records the exact database schema adjustments, stored procedure up
 
 ---
 
-## 2. Completed Verifications & Testing Logs
+## 3. Session 2 High-Precision Realignment & Upgrades
 
-- **Solution Compilation**: Ran full environment compiler (`dotnet build` equivalent under system controls). Build completed with exit code `0` (Success).
-- **Linter Checks**: Checked all local files using `tsc --noEmit`. No structural, type, or alignment anomalies were found.
-- **Service Verification**: Dev server was restarted to trigger and apply the self-healing SQL migrations schema updates successfully.
+### A. Missing Database Table Addition (`AttendanceLocks`)
+- **Schema Insertion**: Created the `[dbo].[AttendanceLocks]` table structure in `/database.sql` to perfectly mirror the backend's C# `AttendanceLock` model definition (utilizing `Id`, `Year`, `Month`, `IsLocked`, `LockedBy`, and `LockedOn` tracking properties).
+
+### B. Unified Sequential Navigation Hierarchy
+- **No-Gap Continuations (1 to 53)**: Reconstructed the entire Dynamic Navigation system to use sequential, gapless continuous primary keys starting from `1` up to `53`:
+  - **Level 0 Parents**: Standalone parent nodes aligned cleanly with sequential parents (Academic Operations `2`, Staff & HR `13`, Administrative `16`, Masters & Config `20`, System Audit `53`).
+  - **Attendance Sub-menus**: Cleanly nested nested children under Parent ID `4` (Roll Call `5`, Manual Upload `6`, Leaves Register `7`, Reprocess Range `8`, Payroll Lock `9`, Correction Audit `10`, Reports `11`).
+  - **Script Upgrades**: Rewrote `/update_navigation_v4.sql` with the fully aligned, sequential dataset, ensuring identity insert triggers run flawlessly.
+  - **Role Mappings**: Configured foreign-key compliant mapping lines to automatically populate permissions for Roles (SuperAdmin, Admin, Teacher, Student, Parent) in `[dbo].[NavigationRoles]`.
+  - **Sync Fallbacks**: Aligned `/server.ts` fallback `navigationItems` to match.
+
+### C. True Dynamic Master Status Lookup
+- **Eliminated Hardcoding**: Rewrote `sp_ProcessIodataRecord` inside both `/backend/ScanID.Api/incremental_iodata_support.sql` and `/backend/ScanID.Api/Program.cs` to resolve attendance status dynamically.
+- **Master Mapping**: Mapped punch outcomes to status codes (`EG` for Early Goer, `P` for Present, `PL` for Present but Late, and `PVL` for Present but Very Late) and queried display labels dynamically from the `dbo.AttendanceStatuses` table.
+
+---
+
+## 4. Completed Verifications & Testing Logs
+
+- **Solution Compilation**: Ran Vite & TypeScript production compilation checks. Build completed with a 100% success rate.
+- **Linter Checks**: Code validations completed successfully with zero syntax, layout, or structural warnings.
+- **Dev-Server Live State**: Reloaded the Node developer environment to load, compile, and route all paths stably.
+

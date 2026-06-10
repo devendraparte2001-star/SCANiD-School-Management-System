@@ -267,6 +267,7 @@ const MASTER_TYPES: Record<
     icon: CalendarCheck,
     description: "Manage official attendance codes and definitions",
     apiPrefix: "AttendanceStatus",
+    getMethod: "getAttendanceStatuses",
   },
   navigation: {
     label: "Navigation Master",

@@ -97,7 +97,14 @@ export default function App() {
                 <Route path="/" element={<Dashboard user={user} />} />
                 <Route path="/students" element={<Students user={user} />} />
                 <Route path="/marks" element={<Marks user={user} />} />
-                <Route path="/attendance" element={<Attendance user={user} />} />
+                <Route path="/attendance" element={<Attendance user={user} defaultTab="daily" />} />
+                <Route path="/attendance/daily" element={<Attendance user={user} defaultTab="daily" />} />
+                <Route path="/attendance/manual" element={<Attendance user={user} defaultTab="manual" />} />
+                <Route path="/attendance/leaves" element={<Attendance user={user} defaultTab="leaves" />} />
+                <Route path="/attendance/reprocess" element={<Attendance user={user} defaultTab="reprocess" />} />
+                <Route path="/attendance/lock" element={<Attendance user={user} defaultTab="lock" />} />
+                <Route path="/attendance/audit" element={<Attendance user={user} defaultTab="audit" />} />
+                <Route path="/attendance/report" element={<Attendance user={user} defaultTab="report" />} />
                 <Route path="/fees" element={<Fees user={user} />} />
                 <Route path="/messages" element={<Messages user={user} />} />
                 <Route path="/notifications" element={<Notifications user={user} />} />
@@ -136,6 +143,7 @@ export default function App() {
                     <Route path="/configuration/shifts" element={<Configuration user={user} defaultTab="shifts" />} />
                     <Route path="/configuration/weekdays" element={<Configuration user={user} defaultTab="weekdays" />} />
                     <Route path="/configuration/holidays" element={<Configuration user={user} defaultTab="holidays" />} />
+                    <Route path="/configuration/attendance-statuses" element={<Configuration user={user} defaultTab="attendance-statuses" />} />
                     <Route path="/configuration/subjects" element={<Configuration user={user} defaultTab="subjects" />} />
                     <Route path="/configuration/exam-types" element={<Configuration user={user} defaultTab="exam-types" />} />
                     <Route path="/configuration/designations" element={<Configuration user={user} defaultTab="designations" />} />

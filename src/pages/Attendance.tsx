@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiService } from "@/lib/api";
 import { toast } from "sonner";
+import AttendanceReports from "@/components/reports/AttendanceReports";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,9 +93,16 @@ const STATUS_META: Record<string, { label: string; bg: string; text: string; cod
   hda: { label: "Half Day Absent", bg: "bg-rose-100 text-rose-800 border-rose-200", text: "text-rose-700", code: "HDA" },
 };
 
-export default function Attendance({ user }: { user: any }) {
+export default function Attendance({ user, defaultTab = "daily" }: { user: any; defaultTab?: string }) {
   // Navigation tabs: daily (Daily Roll Call), manual (Manual Attendance Upload), report (Attendance Reports)
-  const [activeTab, setActiveTab ] = useState<"daily" | "manual" | "report" | "leaves" | "reprocess" | "lock" | "audit">("daily");
+  const [activeTab, setActiveTab ] = useState<"daily" | "manual" | "report" | "leaves" | "reprocess" | "lock" | "audit">(defaultTab as any);
+
+  // Sync active tab with prop changes from sidebar navigation
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab as any);
+    }
+  }, [defaultTab]);
 
   // -----------------------------------------
   // State for Daily Attendance Tab
@@ -118,15 +126,15 @@ export default function Attendance({ user }: { user: any }) {
   const [showAddLeaveModal, setShowAddLeaveModal] = useState(false);
   const [newLeaveType, setNewLeaveType] = useState<"student" | "staff">("student");
   const [newLeaveTargetId, setNewLeaveTargetId] = useState<string>("");
-  const [newLeaveFromDate, setNewLeaveFromDate] = useState<string>("");
-  const [newLeaveToDate, setNewLeaveToDate] = useState<string>("");
+  const [newLeaveFromDate, setNewLeaveFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [newLeaveToDate, setNewLeaveToDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [newLeaveRemarks, setNewLeaveRemarks] = useState<string>("");
 
   // -----------------------------------------
   // State for Calculations & Reprocessing Tab
   // -----------------------------------------
-  const [reprocessFromDate, setReprocessFromDate] = useState<string>("");
-  const [reprocessToDate, setReprocessToDate] = useState<string>("");
+  const [reprocessFromDate, setReprocessFromDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [reprocessToDate, setReprocessToDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [reprocessTargetType, setReprocessTargetType] = useState<"all" | "student" | "staff">("all");
   const [reprocessTargetId, setReprocessTargetId] = useState<string>("");
   const [isReprocessing, setIsReprocessing] = useState(false);
@@ -231,6 +239,24 @@ export default function Attendance({ user }: { user: any }) {
     };
     fetchMasters();
   }, [user.role]);
+
+  // Pre-fill default selection targets for Add Leave dialog
+  useEffect(() => {
+    if (newLeaveType === "student" && students.length > 0 && !newLeaveTargetId) {
+      setNewLeaveTargetId(students[0].id.toString());
+    } else if (newLeaveType === "staff" && staffList.length > 0 && !newLeaveTargetId) {
+      setNewLeaveTargetId(staffList[0].id.toString());
+    }
+  }, [newLeaveType, students, staffList, newLeaveTargetId]);
+
+  // Pre-fill default selection targets for Reprocess range forms
+  useEffect(() => {
+    if (reprocessTargetType === "student" && students.length > 0 && !reprocessTargetId) {
+      setReprocessTargetId(students[0].id.toString());
+    } else if (reprocessTargetType === "staff" && staffList.length > 0 && !reprocessTargetId) {
+      setReprocessTargetId(staffList[0].id.toString());
+    }
+  }, [reprocessTargetType, students, staffList, reprocessTargetId]);
 
   // Fetch real-time schools' teachers for manual dropdown
   useEffect(() => {
@@ -1314,90 +1340,25 @@ export default function Attendance({ user }: { user: any }) {
             <CalendarCheck size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Daily Attendance</h1>
-            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Class registries, manual uploads, and analytical reports.</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+              {activeTab === "daily" && "Daily Roll Call"}
+              {activeTab === "manual" && "Manual Attendance Upload"}
+              {activeTab === "leaves" && "Leaves Register & Applications"}
+              {activeTab === "reprocess" && "Shift-Based Calculation Engine"}
+              {activeTab === "lock" && "Monthly Attendance Payroll Lock"}
+              {activeTab === "audit" && "Biometric Correction Audit Log"}
+              {activeTab === "report" && "Attendance & Security Reports"}
+            </h1>
+            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">
+              {activeTab === "daily" && "Class roll call registries and real-time biometric state monitoring."}
+              {activeTab === "manual" && "Manually override biometric punches and process text file logs."}
+              {activeTab === "leaves" && "File, view, and authorize medical and official approved leaves."}
+              {activeTab === "reprocess" && "Recalculate specific intervals against shift timings and biometric priorities."}
+              {activeTab === "lock" && "Seal retroactive attendance computational schedules to guarantee compliance."}
+              {activeTab === "audit" && "Transaction history auditing of manual modifications."}
+              {activeTab === "report" && "Synthesise comprehensive high-density attendance and safety reports."}
+            </p>
           </div>
-        </div>
-
-        {/* Dynamic Tab Switch buttons */}
-        <div className="flex bg-slate-100 p-1 rounded-xl shadow-sm border border-slate-200 overflow-x-auto max-w-full scrollbar-none gap-0.5">
-          <button
-            onClick={() => setActiveTab("daily")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "daily"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Roll Call
-          </button>
-          <button
-            onClick={() => setActiveTab("manual")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "manual"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Manual Upload
-          </button>
-          <button
-            onClick={() => setActiveTab("leaves")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "leaves"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Leaves Register
-          </button>
-          <button
-            onClick={() => setActiveTab("reprocess")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "reprocess"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Reprocess Range
-          </button>
-          <button
-            onClick={() => setActiveTab("lock")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "lock"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Payroll Lock
-          </button>
-          <button
-            onClick={() => setActiveTab("audit")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "audit"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Correction Audit
-          </button>
-          <button
-            onClick={() => setActiveTab("report")}
-            className={cn(
-              "px-3.5 py-2 text-xs font-bold rounded-lg transition-all tracking-wider md:text-[13px] md:font-semibold whitespace-nowrap",
-              activeTab === "report"
-                ? "bg-white text-slate-900 shadow-sm border border-slate-100"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            Reports
-          </button>
         </div>
       </div>
 
@@ -1757,261 +1718,15 @@ export default function Attendance({ user }: { user: any }) {
 
             {/* If Reports tab is active */}
             {activeTab === "report" && (
-              <div className="space-y-6">
-                {/* Bento aggregate cards row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-
-                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-                    <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
-                      <BarChart3 size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Class Average</p>
-                      <h3 className="text-2xl font-black text-slate-900">{aggregateRate}%</h3>
-                      <span className="text-[9px] text-teal-600 font-bold block mt-0.5">+1.2% versus overall target</span>
-                    </div>
-                  </Card>
-
-                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-                    <div className="bg-blue-50 p-4 rounded-xl text-blue-600">
-                      <Users size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Attendance Monitored</p>
-                      <h3 className="text-2xl font-black text-slate-900">{students.length}</h3>
-                      <span className="text-[9px] text-slate-400 font-semibold block mt-0.5">Active pupils tracked daily</span>
-                    </div>
-                  </Card>
-
-                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-                    <div className="bg-amber-50 p-4 rounded-xl text-amber-600">
-                      <Clock size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Late Registry Rate</p>
-                      <h3 className="text-2xl font-black text-slate-900">1.8%</h3>
-                      <span className="text-[9px] text-amber-600 font-bold block mt-0.5">Below margin limit criteria</span>
-                    </div>
-                  </Card>
-
-                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6 flex items-center gap-4">
-                    <div className="bg-teal-50 p-4 rounded-xl text-teal-600">
-                      <TrendingUp size={24} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Preservation Index</p>
-                      <h3 className="text-2xl font-black text-slate-900">Solid (A+)</h3>
-                      <span className="text-[9px] text-emerald-600 font-bold block mt-0.5">Highly compliant student base</span>
-                    </div>
-                  </Card>
-
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-
-                  {/* Recharts chart visualization */}
-                  <Card className="xl:col-span-3 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-8">
-                    <div className="mb-6">
-                      <CardTitle className="text-lg font-black text-slate-900">Attendance Trends</CardTitle>
-                      <CardDescription className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">7-day presence variance timeline</CardDescription>
-                    </div>
-                    <div className="h-72 w-full pr-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="colorOverall" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="colorStaff" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                          <YAxis domain={[60, 100]} stroke="#94a3b8" fontSize={11} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
-                          <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                          <Legend iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 'bold', paddingTop: 10 }} />
-                          <Area type="monotone" name="Student Presence %" dataKey="overall" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorOverall)" />
-                          <Area type="monotone" name="Staff Attendance %" dataKey="staffRate" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorStaff)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  {/* Attendance standings */}
-                  <Card className="xl:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden flex flex-col">
-                    <CardHeader className="border-b border-slate-50 px-8 py-6 pt-8 bg-white">
-                      <CardTitle className="text-lg font-black text-slate-900 tracking-tight">Active Standings</CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Attendees ranking evaluation list</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-1 overflow-y-auto max-h-[300px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-slate-50">
-                            <TableHead className="pl-6 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</TableHead>
-                            <TableHead className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Roster Ratio</TableHead>
-                            <TableHead className="pr-6 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Ratio Rate</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {reportRoster.map((rep) => (
-                            <TableRow key={rep.id} className="h-14 hover:bg-slate-50/50">
-                              <TableCell className="pl-6 flex flex-col gap-0.5 justify-center">
-                                <span className="font-extrabold text-slate-800 text-sm tracking-tight">{rep.name}</span>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">GR {rep.grno || `GR-${rep.id}`}</span>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline" className="text-[10px] font-extrabold text-slate-500">
-                                  {rep.present} / 20 Present
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="pr-6 text-right">
-                                <span className={cn(
-                                  "text-sm font-black",
-                                  rep.rate >= 90 ? "text-emerald-600" :
-                                    rep.rate >= 75 ? "text-amber-600" :
-                                      "text-red-600"
-                                )}>
-                                  {rep.rate}%
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {reportRoster.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={3} className="text-center py-12 text-slate-400 font-semibold h-[200px]">No standing analytics computed. Ensure active students are registered.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                </div>
-
-                {/* Database Actions Audit Trail list rendering dynamically from sp_ManageAttendance logs */}
-                <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden mt-8 w-full p-0">
-                  <CardHeader className="border-b border-slate-50 px-8 py-6 pt-8 bg-white flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Database Audit Trail Logs</CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">Transaction audit logs capturing actions, updates, and user ids</CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fetchAuditTrail}
-                      className="h-8 rounded-lg font-bold hover:bg-slate-50 border-slate-200"
-                    >
-                      <RefreshCw size={12} className="mr-1.5" />
-                      Refresh
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {loadingAudit ? (
-                      <div className="flex items-center justify-center py-20 text-slate-400 font-bold gap-2">
-                        <Loader2 size={18} className="animate-spin text-emerald-600" />
-                        Loading transaction logs...
-                      </div>
-                    ) : (
-                      <>
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                              <TableRow>
-                                <TableHead className="pl-8 font-black text-[10px] uppercase text-slate-400 py-3">Timestamp / Created</TableHead>
-                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Event Action</TableHead>
-                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Roster Affected</TableHead>
-                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Authorized UID</TableHead>
-                                <TableHead className="font-black text-[10px] uppercase text-slate-400 py-3">Description / Remarks</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {auditLogs.map((log: any, idx: number) => {
-                                const parseDate = log.timestamp || log.Timestamp || log.createdAt || log.CreatedAt || new Date().toISOString();
-                                const evType = log.type || log.Type || log.action || log.Action || "UPDATE";
-                                const entity = log.tableName || log.TableName || "Attendance";
-                                const who = log.userId || log.UserId || log.markedByUserId || log.MarkedByUserId || "1";
-                                const details = log.newValues || log.NewValues || log.details || log.Details || log.remarks || log.Remarks || "Modified record status successfully.";
-
-                                return (
-                                  <TableRow key={log.id || idx} className="h-14 hover:bg-slate-50/50 border-b border-slate-100">
-                                    <TableCell className="pl-8 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                                      {format(parseISO(parseDate), "yyyy-MM-dd HH:mm:ss")}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge
-                                        className={cn(
-                                          "text-[9px] font-black uppercase tracking-wider px-2 py-0.5",
-                                          evType.toLowerCase().includes("insert") || evType.toLowerCase().includes("create") ? "bg-emerald-50 text-emerald-700 border-emerald-100 border" :
-                                            evType.toLowerCase().includes("delete") ? "bg-red-50 text-red-700 border-red-100 border" :
-                                              "bg-blue-50 text-blue-700 border-blue-100 border"
-                                        )}
-                                      >
-                                        {evType}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-semibold text-slate-700 text-xs">
-                                      {entity}
-                                    </TableCell>
-                                    <TableCell className="font-mono text-xs text-blue-600 font-extrabold">
-                                      UID: #{who}
-                                    </TableCell>
-                                    <TableCell className="text-xs text-slate-400 max-w-sm truncate font-medium">
-                                      {details}
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                              {auditLogs.length === 0 && (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="py-16 text-center text-slate-400 font-bold">
-                                    No audit transactional history logs found in SQL Server db.
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-
-                        {/* Audit pagination footer controls */}
-                        {auditTotalPages > 1 && (
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-5 border-t border-slate-100 bg-slate-50/50">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Page {auditPage} of {auditTotalPages}
-                            </p>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={auditPage === 1}
-                                onClick={() => setAuditPage(p => Math.max(1, p - 1))}
-                                className="h-8 text-xs font-semibold"
-                              >
-                                Prev
-                              </Button>
-                              <span className="px-3 py-1 bg-white border text-xs font-extrabold text-slate-700 rounded-lg">
-                                {auditPage}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={auditPage >= auditTotalPages}
-                                onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))}
-                                className="h-8 text-xs font-semibold"
-                              >
-                                Next
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-              </div>
+              <AttendanceReports
+                user={user}
+                students={students}
+                staffList={staffList}
+                standards={standardsMaster}
+                sections={sectionsMaster}
+                schools={schools}
+                selectedSchoolId={selectedSchoolId}
+              />
             )}
 
           </div>

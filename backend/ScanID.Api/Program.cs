@@ -782,21 +782,39 @@ try
                     SET @SpanMinVal = 120;
                 END CATCH;
 
+                -- Compare punch time with grace and span constraints & map to master table codes
+                DECLARE @StatusCode NVARCHAR(20) = 'P';
                 IF @PunchMin < @StartMin - 30
                 BEGIN
-                    SET @Status = 'Early';
+                    SET @StatusCode = 'EG';
                 END
                 ELSE IF @PunchMin <= @StartMin + @GraceMinVal
                 BEGIN
-                    SET @Status = 'On-Time';
+                    SET @StatusCode = 'P';
                 END
                 ELSE IF @PunchMin <= @StartMin + @SpanMinVal
                 BEGIN
-                    SET @Status = 'Late';
+                    SET @StatusCode = 'PL';
                 END
                 ELSE
                 BEGIN
-                    SET @Status = 'Very Late';
+                    SET @StatusCode = 'PVL';
+                END
+
+                -- Retrieve active dynamic display status name from FRS AttendanceStatuses master table
+                SELECT TOP 1 @Status = Name 
+                FROM [dbo].[AttendanceStatuses] 
+                WHERE Code = @StatusCode AND IsDeleted = 0 AND IsActive = 1;
+
+                -- Failback to offline standards if the master table is not queried successfully
+                IF @Status IS NULL
+                BEGIN
+                    SET @Status = CASE @StatusCode 
+                        WHEN 'EG' THEN 'Early' 
+                        WHEN 'P' THEN 'On-Time' 
+                        WHEN 'PL' THEN 'Late' 
+                        ELSE 'Very Late' 
+                    END;
                 END
 
                 MERGE [dbo].[IodataRecords] AS target
@@ -822,23 +840,8 @@ try
                     INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, SchoolId, AcademicYearId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
                     VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, @SchoolId, @AcademicYearId, GETUTCDATE(), GETUTCDATE(), 1, 0);
 
-                DECLARE @StatusTableCode NVARCHAR(20) = 'P';
-                IF @Status = 'Very Late' SET @StatusTableCode = 'PVL';
-                ELSE IF @Status = 'Late' SET @StatusTableCode = 'PL';
-
-                DECLARE @AttStatus NVARCHAR(100) = NULL;
-                SELECT TOP 1 @AttStatus = Name 
-                FROM [dbo].[AttendanceStatuses] 
-                WHERE Code = @StatusTableCode AND IsDeleted = 0 AND IsActive = 1;
-
-                IF @AttStatus IS NULL
-                BEGIN
-                    SET @AttStatus = CASE @StatusTableCode 
-                        WHEN 'PVL' THEN 'Present but Very Late' 
-                        WHEN 'PL' THEN 'Present but Late' 
-                        ELSE 'Present' 
-                    END;
-                END
+                -- Sync to Core Student/Staff Attendance registers dynamically using retrieved master status
+                DECLARE @AttStatus NVARCHAR(100) = @Status;
 
                 IF @StudentId IS NOT NULL
                 BEGIN
