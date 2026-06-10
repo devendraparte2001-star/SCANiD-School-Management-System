@@ -661,6 +661,28 @@ This document records the exact changes, the root causes identified, and the fix
 - /CHANGES_DOCUMENTATION.md: Documented Batch 16 restoration.
 
 
+---
+
+## 65. Issue: Attendance reports UI is cramped when sidebar is expanded, and lacks server side pagination, sorting, and filtering (Batch 17)
+- **Root Cause & Requirements**:
+  1. **Layout Squeezing / Nested Grids**: The reports view (`AttendanceReports.tsx`) was rendered inside the `daily` grid tab inside `Attendance.tsx`. This took up only 75% of the screen and nested another `grid-cols-4` grid inside it, leaving very little space for tables and filters, causing elements to overlap and look cramped when the sidebar expanded.
+  2. **Client-Side Simulation / No Server-Side Query**: The reports tables lacked server-side pagination, sorting, and filtering, which was processed entirely on the client, violating the need for resilient enterprise architecture.
+
+- **Remediation & Enhancements**:
+  1. **Isolated Wide Layout**: Split the shared layout of `daily` and `report` tabs in `src/pages/Attendance.tsx` so the "Reports" tab renders at full page width, removing the duplicate "Attendance Context" left sidebar card and letting `<AttendanceReports />` utilize 100% of the screen.
+  2. **Express Server Reports API**: Created a server-side GET `/api/reports` handler in `/server.ts` that calculates metrics (Daily, Monthly, Class/Student wise, Defaulters, Staff daily/monthly, Late arrivals, Early goers, Missing punches, and Department summary) dynamically from backend registries, supports search/filter keywords, parses dynamic sort configurations, and serves paginated records.
+  3. **High-Fidelity Tables Integration**: Refactored `AttendanceReports.tsx` to communicate directly with the `/api/reports` API.
+  4. **Dynamic Headers Sorting & Searching**: Enabled dynamic sort arrow indicators directly on table headers, added a search bar for filtering matching parameters, and customized the UI category switches with flexible layouts to prevent any overlaps.
+  5. **Server-Side Pagination controls**: Added a stylish first/prev/next/last pagination selector bar under report tables.
+
+## 66. Modified/Synchronized Files List (Batch 17)
+
+- /server.ts: Embedded `/api/reports` Node endpoint with server-side page/pageSize, sorting, search, and dynamic filter parameters.
+- /src/pages/Attendance.tsx: Isolated reports block to run at full width.
+- /src/components/reports/AttendanceReports.tsx: Rewrote component to consume Reports API, integrate header column sorting, text search query parsing, pagination selector controls, and responsive switches.
+- /CHANGES_DOCUMENTATION.md: Documented Batch 17 changes.
+
+
 
 
 

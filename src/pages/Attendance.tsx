@@ -1363,9 +1363,9 @@ export default function Attendance({ user, defaultTab = "daily" }: { user: any; 
       </div>
 
       {/* -----------------------------------------
-          DAILY ATTENDANCE & REPORT SHARED GRID LAYOUT
+          DAILY ATTENDANCE GRID LAYOUT
          ----------------------------------------- */}
-      {(activeTab === "daily" || activeTab === "report") && (
+      {activeTab === "daily" && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <Card className="lg:col-span-1 border-none shadow-sm rounded-[2rem] overflow-hidden bg-white h-fit">
             <CardHeader className="border-b border-slate-50 px-8 py-6">
@@ -1716,20 +1716,24 @@ export default function Attendance({ user, defaultTab = "daily" }: { user: any; 
               </Card>
             )}
 
-            {/* If Reports tab is active */}
-            {activeTab === "report" && (
-              <AttendanceReports
-                user={user}
-                students={students}
-                staffList={staffList}
-                standards={standardsMaster}
-                sections={sectionsMaster}
-                schools={schools}
-                selectedSchoolId={selectedSchoolId}
-              />
-            )}
-
           </div>
+        </div>
+      )}
+
+      {/* -----------------------------------------
+          REPORTS TAB (Rendered in wide container)
+         ----------------------------------------- */}
+      {activeTab === "report" && (
+        <div className="w-full">
+          <AttendanceReports
+            user={user}
+            students={students}
+            staffList={staffList}
+            standards={standardsMaster}
+            sections={sectionsMaster}
+            schools={schools}
+            selectedSchoolId={selectedSchoolId}
+          />
         </div>
       )}
 

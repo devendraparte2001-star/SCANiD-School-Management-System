@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { 
   FileText, Users, Download, Printer, Search, CheckCircle, 
-  XCircle, Clock, AlertTriangle, Activity, Filter, Loader2, BarChart2 
+  XCircle, Clock, AlertTriangle, Activity, Filter, Loader2, BarChart2,
+  ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight 
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,8 +41,8 @@ type StaffReportType =
   | "department_summary";
 
 export default function AttendanceReports({
-  students,
-  staffList,
+  students = [],
+  staffList = [],
   standards = [],
   sections = [],
   schools = [],
@@ -61,231 +63,87 @@ export default function AttendanceReports({
   const [reportMonth, setReportMonth] = useState<string>(format(new Date(), "MM"));
   const [reportYear, setReportYear] = useState<string>(format(new Date(), "yyyy"));
   const [defaulterThreshold, setDefaulterThreshold] = useState<number>(75);
+  
+  // Server-side Pagination, Sorting and Filtering States
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [hasQueried, setHasQueried] = useState<boolean>(false);
   const [reportData, setReportData] = useState<any[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [sortBy, setSortBy] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Default selection synchronization inside filters
+  // Default selection synchronization to clear state when filters shift
   useEffect(() => {
     setReportData([]);
-  }, [activeCategory, studentReport, staffReport, selectedStandard, selectedSection, reportDate, reportMonth, reportYear]);
+    setHasQueried(false);
+    setPage(1);
+    setSortBy("");
+    setSortOrder("asc");
+  }, [activeCategory, studentReport, staffReport, selectedStandard, selectedSection, reportDate, reportMonth, reportYear, selectedStudentId, selectedStaffId, defaulterThreshold]);
 
-  // Generate Report Processor
-  const handleGenerateReport = () => {
+  // Generate and fetch reports dynamically via the backend Reports API
+  const handleGenerateReport = async (targetPage = 1) => {
     setIsGenerating(true);
-    
-    // Simulate generation with real query lookup
-    setTimeout(() => {
-      setIsGenerating(false);
-      let calculated: any[] = [];
+    try {
+      const response = await axios.get("/api/reports", {
+        params: {
+          category: activeCategory,
+          reportType: activeCategory === "student" ? studentReport : staffReport,
+          standard: selectedStandard,
+          section: selectedSection,
+          studentId: selectedStudentId,
+          staffId: selectedStaffId,
+          date: reportDate,
+          month: reportMonth,
+          year: reportYear,
+          threshold: defaulterThreshold,
+          search: searchQuery,
+          sortBy: sortBy,
+          sortOrder: sortOrder,
+          page: targetPage,
+          pageSize: pageSize
+        }
+      });
 
-      if (activeCategory === "student") {
-        // Filter student roster
-        let matchedStudents = students.filter(s => {
-          if (selectedStandard !== "all" && s.standard?.toString().toLowerCase() !== selectedStandard.toLowerCase()) return false;
-          if (selectedSection !== "all" && s.section?.toString().toLowerCase() !== selectedSection.toLowerCase()) return false;
-          if (selectedStudentId !== "all" && s.id?.toString() !== selectedStudentId) return false;
-          return true;
-        });
-
-        // Fallback roster if empty to ensure highly functional simulation
-        if (matchedStudents.length === 0 && students.length > 0) {
-          matchedStudents = students.slice(0, 5);
-        } else if (matchedStudents.length === 0) {
-          // Absolute fallback
-          matchedStudents = [
-            { id: 1, grno: "GR-1042", name: "Anish Sharma", standard: "10th", section: "A", roll: "12" },
-            { id: 2, grno: "GR-1090", name: "Karan Patel", standard: "10th", section: "A", roll: "15" },
-            { id: 3, grno: "GR-1112", name: "Sara Fernandes", standard: "10th", section: "B", roll: "22" },
-            { id: 4, grno: "GR-1205", name: "Nikhil Joshi", standard: "9th", section: "A", roll: "08" },
-          ];
-        }
-
-        if (studentReport === "daily_attendance") {
-          calculated = matchedStudents.map((s, idx) => {
-            const h = 8;
-            const min = 10 + (s.id * 13) % 45;
-            const status = (s.id * 3) % 7 === 0 ? "Absent" : min > 30 ? "Late" : "Present";
-            return {
-              grNo: s.grno || s.registrationNumber || `GR-${s.id}`,
-              name: s.name,
-              class: `${s.standard || "10th"} (${s.section || "A"})`,
-              rollNo: s.roll || "01",
-              inTime: status === "Absent" ? "--" : `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")} AM`,
-              outTime: status === "Absent" ? "--" : "03:40 PM",
-              status,
-              remarks: status === "Late" ? "Biometric Delay" : status === "Absent" ? "Unexcused" : "Punctual"
-            };
-          });
-        } 
-        else if (studentReport === "monthly_attendance") {
-          calculated = matchedStudents.map((s) => {
-            const seed = 65 + (s.id * 7) % 35;
-            const total = 24;
-            const present = Math.min(total, Math.round((seed / 100) * total));
-            const absent = total - present;
-            const leave = (s.id % 5 === 0) ? 1 : 0;
-            return {
-              grNo: s.grno || s.registrationNumber || `GR-${s.id}`,
-              name: s.name,
-              class: `${s.standard || "10th"} (${s.section || "A"})`,
-              totalDays: total,
-              present: present - leave,
-              absent,
-              approvedLeave: leave,
-              percentage: Math.round(((present - leave) / total) * 100)
-            };
-          });
-        }
-        else if (studentReport === "class_student_wise") {
-          // Timeline view
-          const daysInMonth = 15;
-          const target = matchedStudents[0] || { name: "Anish Sharma", grno: "GR-1042", standard: "10th", section: "A", roll: "12" };
-          for (let d = 1; d <= daysInMonth; d++) {
-            const status = d % 7 === 0 ? "Weekly Off" : (d + Number(target.id)) % 11 === 0 ? "Absent" : "Present";
-            calculated.push({
-              date: `2026-${reportMonth}-${d.toString().padStart(2, "0")}`,
-              grNo: target.grno,
-              name: target.name,
-              class: `${target.standard || "10th"} (${target.section || "A"})`,
-              inTime: status === "Present" ? `08:${(10 + d * 3 % 20).toString().padStart(2, "0")} AM` : "--",
-              outTime: status === "Present" ? "03:45 PM" : "--",
-              status,
-              remarks: status === "Weekly Off" ? "Sunday" : status === "Absent" ? "Personal Leave" : "Punctual"
-            });
-          }
-        } 
-        else if (studentReport === "defaulter_list") {
-          calculated = matchedStudents
-            .map((s) => {
-              const seed = 50 + (s.id * 9) % 32; // Forces some lower percentages
-              const total = 30;
-              const present = Math.round((seed / 100) * total);
-              return {
-                grNo: s.grno || s.registrationNumber || `GR-${s.id}`,
-                name: s.name,
-                class: `${s.standard || "10th"} (${s.section || "A"})`,
-                totalDays: total,
-                present,
-                absent: total - present,
-                percentage: Math.round((present / total) * 100)
-              };
-            })
-            .filter(r => r.percentage < defaulterThreshold);
-
-          // Guarantee at least 2 entries for display if none generated
-          if (calculated.length === 0) {
-            calculated = [
-              { grNo: "GR-1250", name: "Ayush Saxena", class: "10th (A)", totalDays: 30, present: 18, absent: 12, percentage: 60 },
-              { grNo: "GR-1192", name: "Manish Kumar", class: "9th (B)", totalDays: 30, present: 21, absent: 9, percentage: 70 }
-            ];
-          }
-        }
-      } 
-      else {
-        // Staff filter roster
-        let matchedStaff = staffList.filter(s => {
-          if (selectedStaffId !== "all" && s.id?.toString() !== selectedStaffId) return false;
-          return true;
-        });
-
-        if (matchedStaff.length === 0 && staffList.length > 0) {
-          matchedStaff = staffList.slice(0, 5);
-        } else if (matchedStaff.length === 0) {
-          matchedStaff = [
-            { id: 1, employeeId: "EMP-041", name: "Prof. Rajesh Mehta", department: "Science" },
-            { id: 2, employeeId: "EMP-088", name: "Ms. Shalini Dixit", department: "Languages" },
-            { id: 3, employeeId: "EMP-102", name: "Mr. Vikas Kulkarni", department: "Mathematics" },
-          ];
-        }
-
-        if (staffReport === "daily_monthly") {
-          calculated = matchedStaff.map((s) => {
-            const present = 21;
-            const total = 24;
-            const late = 2;
-            return {
-              empId: s.employeeId || s.id?.toString() || `EMP-${s.id}`,
-              name: s.name,
-              department: s.department || s.role || "Teacher",
-              totalDays: total,
-              present,
-              absent: total - present - 1,
-              late,
-              approvedLeaves: 1,
-              ratio: `${present}/${total}`
-            };
-          });
-        }
-        else if (staffReport === "late_arrival") {
-          calculated = matchedStaff.map((s, idx) => {
-            const h = 8;
-            const min = 35 + (idx * 6) % 25; // 08:35 to 09:00 AM
-            const isVeryLate = min > 45;
-            return {
-              empId: s.employeeId || `EMP-${s.id}`,
-              name: s.name,
-              department: s.department || "Academic Faculty",
-              date: reportDate,
-              shiftTime: "08:15 AM",
-              punchTime: `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")} AM`,
-              lateMinutes: min - 15,
-              type: isVeryLate ? "Very Late" : "Late",
-              status: "P"
-            };
-          });
-        }
-        else if (staffReport === "early_goer") {
-          calculated = matchedStaff.map((s, idx) => {
-            const min = 40 - (idx * 8) % 30; // 03:10 to 03:40 PM
-            const gap = 300 - (180 + min); // early duration
-            return {
-              empId: s.employeeId || `EMP-${s.id}`,
-              name: s.name,
-              department: s.department || "Academic Faculty",
-              date: reportDate,
-              shiftOut: "04:30 PM",
-              punchOut: `03:${min.toString().padStart(2, "0")} PM`,
-              earlyMinutes: 30 + (50 - min),
-              status: "Half-Day / Early"
-            };
-          });
-        }
-        else if (staffReport === "missing_punch") {
-          calculated = matchedStaff.slice(0, 2).map((s, idx) => {
-            const missing = idx % 2 === 0 ? "OUT Punch Missing" : "IN Punch Missing";
-            return {
-              empId: s.employeeId || `EMP-${s.id}`,
-              name: s.name,
-              department: s.department || "Academic Faculty",
-              date: reportDate,
-              inTime: idx % 2 === 0 ? "08:10 AM" : "--",
-              outTime: idx % 2 === 0 ? "--" : "04:35 PM",
-              deviation: missing,
-              status: "Short Hours"
-            };
-          });
-        }
-        else if (staffReport === "department_summary") {
-          const depts = ["Academic Faculty", "Administration", "Biometric IT Support", "Security Staff"];
-          calculated = depts.map((d, idx) => {
-            const total = 5 + idx * 4;
-            const present = total - (idx % 2 === 0 ? 1 : 0);
-            return {
-              department: d,
-              totalStaff: total,
-              present,
-              absent: total - present,
-              late: idx % 2 === 0 ? 1 : 0,
-              onLeave: idx === 1 ? 1 : 0,
-              avgPunctuality: idx === 0 ? "96%" : idx === 1 ? "92%" : "98%"
-            };
-          });
-        }
+      if (response.data) {
+        setReportData(response.data.data || []);
+        setTotalCount(response.data.totalCount || 0);
+        setTotalPages(response.data.totalPages || 1);
+        setPage(response.data.page || 1);
+        setHasQueried(true);
+        toast.success("Security Report logs updated and synthesized successfully!");
       }
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Failed to query records: " + (e?.response?.data?.error || e.message));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-      setReportData(calculated);
-      toast.success("Security Report logs updated and synthesized successfully!");
-    }, 600);
+  // Re-fetch automatically when sorting, page, or search query is confirmed
+  useEffect(() => {
+    if (hasQueried) {
+      handleGenerateReport(page);
+    }
+  }, [sortBy, sortOrder, page, pageSize]);
+
+  const handleSort = (field: string) => {
+    const order = sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+    setSortBy(field);
+    setSortOrder(order);
+    setPage(1);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setPage(1);
+      handleGenerateReport(1);
+    }
   };
 
   // CSV Exporter Simulation
@@ -322,13 +180,13 @@ export default function AttendanceReports({
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-in fade-in duration-300">
       
       {/* Sidebar Report Selectors */}
-      <Card className="lg:col-span-1 border-none shadow-sm bg-white rounded-2xl overflow-hidden p-6 gap-6 flex flex-col h-fit">
+      <Card className="lg:col-span-1 border-none shadow-sm bg-white rounded-[2rem] overflow-hidden p-6 gap-6 flex flex-col h-fit">
         
-        {/* Category Switch */}
-        <div className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl self-center w-full border border-slate-200">
+        {/* Category Switch - Flex col to sm:flex-row handles scaling elegantly without overlapping */}
+        <div className="flex flex-col sm:flex-row gap-1 bg-slate-100 p-1.5 rounded-2xl w-full border border-slate-200">
           <button
             onClick={() => { setActiveCategory("student"); setReportData([]); }}
-            className={`py-2 text-xs font-black rounded-lg transition-all tracking-wider ${
+            className={`flex-1 py-2 text-xs font-black rounded-xl transition-all tracking-wider text-center ${
               activeCategory === "student" 
                 ? "bg-white text-slate-800 shadow-sm border border-slate-100" 
                 : "text-slate-400 hover:text-slate-800"
@@ -338,7 +196,7 @@ export default function AttendanceReports({
           </button>
           <button
             onClick={() => { setActiveCategory("staff"); setReportData([]); }}
-            className={`py-2 text-xs font-black rounded-lg transition-all tracking-wider ${
+            className={`flex-1 py-2 text-xs font-black rounded-xl transition-all tracking-wider text-center ${
               activeCategory === "staff" 
                 ? "bg-white text-slate-800 shadow-sm border border-slate-100" 
                 : "text-slate-400 hover:text-slate-800"
@@ -352,7 +210,7 @@ export default function AttendanceReports({
         <div className="space-y-1">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block px-1 mb-2">Available Reports</span>
           {activeCategory === "student" ? (
-            <>
+            <div className="flex flex-col gap-1">
               <button
                 onClick={() => setStudentReport("daily_attendance")}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
@@ -397,9 +255,9 @@ export default function AttendanceReports({
                 <div className={`p-1.5 rounded-lg ${studentReport === "defaulter_list" ? "bg-emerald-250 text-emerald-800" : "bg-slate-100 text-slate-500"}`}><AlertTriangle size={12} /></div>
                 Defaulters List (&lt;75%)
               </button>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="flex flex-col gap-1">
               <button
                 onClick={() => setStaffReport("daily_monthly")}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
@@ -455,22 +313,22 @@ export default function AttendanceReports({
                 <div className={`p-1.5 rounded-lg ${staffReport === "department_summary" ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500"}`}><Activity size={12} /></div>
                 Department Summary (New)
               </button>
-            </>
+            </div>
           )}
         </div>
       </Card>
 
-      {/* Report filter & result board */}
+      {/* Report filter & result board - Spans 3 columns of the outer container */}
       <div className="lg:col-span-3 space-y-6">
         
         {/* Dynamic Filters Card */}
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6">
+        <Card className="border-none shadow-sm bg-white rounded-3xl p-6">
           <div className="flex items-center gap-2 mb-4 border-b border-slate-50 pb-3">
             <Filter size={14} className="text-emerald-600" />
             <span className="text-xs font-black uppercase tracking-wider text-slate-700">Filter Parameters</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-end">
             
             {/* SCHOOL & CLASS FILTERS (STUDENTS) */}
             {activeCategory === "student" && (
@@ -512,7 +370,7 @@ export default function AttendanceReports({
                   <SelectContent>
                     <SelectItem value="all">Select Primary Student</SelectItem>
                     {students.map(s => (
-                      <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.grno})</SelectItem>
+                      <SelectItem key={s.id} value={s.id.toString()}>{s.name || s.fullName} ({s.grNo})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -541,7 +399,7 @@ export default function AttendanceReports({
                   <SelectContent>
                     <SelectItem value="all">Wipe & View All Staff</SelectItem>
                     {staffList.map(s => (
-                      <SelectItem key={s.id} value={s.id?.toString()}>{s.name}</SelectItem>
+                      <SelectItem key={s.id} value={s.id?.toString()}>{s.name || s.user?.fullName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -585,10 +443,10 @@ export default function AttendanceReports({
               </>
             )}
 
-            {/* Action Trigger Button */}
-            <div className="sm:col-span-1">
+            {/* Action Trigger Button - Explicitly styled to avoid overlapping */}
+            <div className="sm:col-span-1 min-w-[140px]">
               <Button 
-                onClick={handleGenerateReport} 
+                onClick={() => handleGenerateReport(1)} 
                 disabled={isGenerating} 
                 className="w-full h-10 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center gap-2"
               >
@@ -602,7 +460,7 @@ export default function AttendanceReports({
 
         {/* Dynamic Preview Card */}
         <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden min-h-[400px]">
-          <CardHeader className="border-b border-slate-50 flex flex-row items-center justify-between px-8 py-6">
+          <CardHeader className="border-b border-slate-50 flex flex-col md:flex-row md:items-center md:justify-between px-8 py-6 gap-4">
             <div>
               <CardTitle className="text-base font-black text-slate-900 flex items-center gap-2">
                 <FileText size={16} className="text-blue-600" />
@@ -614,8 +472,21 @@ export default function AttendanceReports({
               <CardDescription className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Live digital output registry for security records</CardDescription>
             </div>
 
-            {/* Export buttons block */}
-            <div className="flex items-center gap-2">
+            {/* Search Input bar & Export buttons block */}
+            <div className="flex flex-wrap items-center gap-2">
+              {hasQueried && (
+                <div className="relative mr-2">
+                  <Input 
+                    type="text" 
+                    placeholder="Search query..." 
+                    className="h-8 text-xs rounded-xl border-slate-200 font-semibold w-44 pl-8"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                  />
+                  <Search size={12} className="absolute left-3 top-2.5 text-slate-400" />
+                </div>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -644,45 +515,123 @@ export default function AttendanceReports({
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Compiling biometric archives against registries...</span>
               </div>
             ) : reportData.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50 border-none">
-                      {Object.keys(reportData[0]).map((key) => (
-                        <TableHead key={key} className="text-[10px] font-black uppercase tracking-wider text-slate-400 p-4">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportData.map((row, rIdx) => (
-                      <TableRow key={rIdx} className="hover:bg-slate-50/50 border-b border-slate-100">
-                        {Object.entries(row).map(([key, val]: any, cIdx) => (
-                          <TableCell key={cIdx} className="p-4 text-xs font-semibold text-slate-600">
-                            {key === "status" || key === "type" ? (
-                              <Badge 
-                                variant="outline"
-                                className={cn(
-                                  "font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5",
-                                  val === "Present" || val === "P" 
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                    : val === "Late" || val === "Very Late" 
-                                    ? "bg-amber-50 text-amber-700 border-amber-200" 
-                                    : "bg-red-50 text-red-700 border-red-200"
-                                )}
-                              >
-                                {val}
-                              </Badge>
-                            ) : (
-                              val
-                            )}
-                          </TableCell>
+              <div className="space-y-4">
+                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 border-none">
+                        {Object.keys(reportData[0]).map((key) => (
+                          <TableHead 
+                            key={key} 
+                            onClick={() => handleSort(key)}
+                            className="text-[10px] font-black uppercase tracking-wider text-slate-400 p-4 cursor-pointer hover:bg-slate-100 hover:text-slate-800 transition-all select-none"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                              {sortBy === key ? (
+                                sortOrder === "asc" ? <ArrowUp size={11} className="text-blue-600 font-bold" /> : <ArrowDown size={11} className="text-blue-600 font-bold" />
+                              ) : (
+                                <ArrowUpDown size={10} className="text-slate-300 opacity-40 hover:opacity-100" />
+                              )}
+                            </div>
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.map((row, rIdx) => (
+                        <TableRow key={rIdx} className="hover:bg-slate-50/50 border-b border-slate-100">
+                          {Object.entries(row).map(([key, val]: any, cIdx) => (
+                            <TableCell key={cIdx} className="p-4 text-xs font-semibold text-slate-600">
+                              {key === "status" || key === "type" ? (
+                                <Badge 
+                                  variant="outline"
+                                  className={cn(
+                                    "font-extrabold text-[9px] uppercase tracking-wider px-2 py-0.5",
+                                    val === "Present" || val === "P" 
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                      : val === "Late" || val === "Very Late" || val === "Half-Day / Early"
+                                      ? "bg-amber-50 text-amber-700 border-amber-200" 
+                                      : "bg-red-50 text-red-700 border-red-200"
+                                  )}
+                                >
+                                  {val}
+                                </Badge>
+                              ) : (
+                                val
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Server-side Pagination Control Bar */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border border-slate-100 rounded-xl bg-slate-50/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Showing page {page} of {totalPages} ({totalCount} total entries)
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page === 1}
+                        onClick={() => {
+                          setPage(1);
+                          handleGenerateReport(1);
+                        }}
+                        className="h-8 text-xs font-bold rounded-lg border-slate-200"
+                      >
+                        First
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page === 1}
+                        onClick={() => {
+                          const prevPage = Math.max(1, page - 1);
+                          setPage(prevPage);
+                          handleGenerateReport(prevPage);
+                        }}
+                        className="h-8 text-xs font-bold rounded-lg border-slate-200"
+                      >
+                        Prev
+                      </Button>
+                      <span className="px-3 py-1 bg-white text-xs font-extrabold border border-slate-200 rounded-lg text-slate-800">
+                        {page}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page >= totalPages}
+                        onClick={() => {
+                          const nextPage = Math.min(totalPages, page + 1);
+                          setPage(nextPage);
+                          handleGenerateReport(nextPage);
+                        }}
+                        className="h-8 text-xs font-bold rounded-lg border-slate-200"
+                      >
+                        Next
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page >= totalPages}
+                        onClick={() => {
+                          const nextPage = totalPages;
+                          setPage(nextPage);
+                          handleGenerateReport(nextPage);
+                        }}
+                        className="h-8 text-xs font-bold rounded-lg border-slate-200"
+                      >
+                        Last
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
