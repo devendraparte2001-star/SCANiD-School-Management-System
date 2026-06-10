@@ -20,6 +20,8 @@ CREATE TABLE [dbo].[IodataRecords](
     [PunchTime] [nvarchar](50) NULL,
     [MachineId] [nvarchar](50) NULL,
     [TransactionId] [nvarchar](50) NULL,
+    [SchoolId] [int] NULL,
+    [AcademicYearId] [int] NULL,
     [IsActive] [bit] NOT NULL DEFAULT (1),
     [IsDeleted] [bit] NOT NULL DEFAULT (0),
     [CreatedBy] [nvarchar](max) NULL,
@@ -53,6 +55,8 @@ BEGIN
     DECLARE @Role NVARCHAR(50) = 'Unknown';
     DECLARE @IsPresent BIT = 1;
     DECLARE @Status NVARCHAR(50) = 'On-Time';
+    DECLARE @SchoolId INT = NULL;
+    DECLARE @AcademicYearId INT = NULL;
     
     -- Normalize PunchTime (double colons or weird spaces)
     SET @PunchTime = LTRIM(RTRIM(REPLACE(@PunchTime, '::', ':')));
@@ -88,7 +92,9 @@ BEGIN
         @ShiftId = ShiftId, 
         @GrNo = ISNULL(GrNo, ''), 
         @MatchedName = Name, 
-        @Role = 'Student'
+        @Role = 'Student',
+        @SchoolId = SchoolId,
+        @AcademicYearId = AcademicYearId
     FROM [dbo].[Students] 
     WHERE LTRIM(RTRIM(Rfid)) = LTRIM(RTRIM(@Rfid)) AND IsDeleted = 0;
 
@@ -101,7 +107,9 @@ BEGIN
             @ShiftId = s.ShiftId, 
             @GrNo = ISNULL(s.EmployeeId, ''), 
             @MatchedName = u.Name, 
-            @Role = ISNULL(u.Role, 'Teacher')
+            @Role = ISNULL(u.Role, 'Teacher'),
+            @SchoolId = s.SchoolId,
+            @AcademicYearId = s.AcademicYearId
         FROM [dbo].[Staff] s
         INNER JOIN [dbo].[Users] u ON s.UserId = u.Id
         WHERE LTRIM(RTRIM(s.Rfid)) = LTRIM(RTRIM(@Rfid)) AND s.IsDeleted = 0;
@@ -208,10 +216,12 @@ BEGIN
             PunchTime = @PunchTime,
             MachineId = @MachineId,
             TransactionId = @TransactionId,
+            SchoolId = @SchoolId,
+            AcademicYearId = @AcademicYearId,
             ModifiedOn = GETUTCDATE()
     WHEN NOT MATCHED THEN
-        INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
-        VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, GETUTCDATE(), GETUTCDATE(), 1, 0);
+        INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, SchoolId, AcademicYearId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
+        VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, @SchoolId, @AcademicYearId, GETUTCDATE(), GETUTCDATE(), 1, 0);
 
     -- Sync to Core Student/Staff Attendance registers (P, PL, PVL)
     DECLARE @StatusTableCode NVARCHAR(20) = 'P';

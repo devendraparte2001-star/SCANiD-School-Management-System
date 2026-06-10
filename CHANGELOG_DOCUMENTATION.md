@@ -29,6 +29,12 @@ This document records the exact database schema adjustments, stored procedure up
 - **Date Safety Comparisons**:
   - Re-anchored `isSpecial` shift comparisons using `.Value.Date` on nullable dates, avoiding false exclusions caused by time zone offsets.
 
+### D. Biometric Realignment & Isolation (`IodataRecords`)
+- **Columns Matching**: Updated `incremental_iodata_support.sql`'s `CREATE TABLE [dbo].[IodataRecords]` and the start-up SQL representation to match the customer's schema screenshot perfectly—ensuring that `SchoolId` (int, null) and `AcademicYearId` (int, null) columns are defined and kept fully intact.
+- **Dynamic Retrieval**: Refactored the raw log parser within `sp_ProcessIodataRecord` (in both sql script and start-up migrations) to dynamically query the matched student/staff's `SchoolId` and `AcademicYearId`.
+- **Dynamic Master Mapping**: Handled biometric timing results dynamically without hardcoding status strings like `'Present'` or `'Late'`. Instead, the status values are resolved dynamically from the `dbo.AttendanceStatuses` master table matching codes `P`, `PL`, or `PVL` natively.
+- **Entity Model Compliance**: Since `IodataRecord` inherits from `BaseEntity`, properties `SchoolId` and `AcademicYearId` are dynamically inherited and tracked in Entity Framework, ensuring seamless database synchronization.
+
 ---
 
 ## 2. Completed Verifications & Testing Logs

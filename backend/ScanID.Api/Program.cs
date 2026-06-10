@@ -667,6 +667,8 @@ try
                 DECLARE @Role NVARCHAR(50) = 'Unknown';
                 DECLARE @IsPresent BIT = 1;
                 DECLARE @Status NVARCHAR(50) = 'On-Time';
+                DECLARE @SchoolId INT = NULL;
+                DECLARE @AcademicYearId INT = NULL;
                 
                 SET @PunchTime = LTRIM(RTRIM(REPLACE(@PunchTime, '::', ':')));
                 
@@ -697,7 +699,9 @@ try
                     @ShiftId = ShiftId, 
                     @GrNo = ISNULL(GrNo, ''), 
                     @MatchedName = Name, 
-                    @Role = 'Student'
+                    @Role = 'Student',
+                    @SchoolId = SchoolId,
+                    @AcademicYearId = AcademicYearId
                 FROM [dbo].[Students] 
                 WHERE LTRIM(RTRIM(Rfid)) = LTRIM(RTRIM(@Rfid)) AND IsDeleted = 0;
 
@@ -709,7 +713,9 @@ try
                         @ShiftId = s.ShiftId, 
                         @GrNo = ISNULL(s.EmployeeId, ''), 
                         @MatchedName = u.Name, 
-                        @Role = ISNULL(u.Role, 'Teacher')
+                        @Role = ISNULL(u.Role, 'Teacher'),
+                        @SchoolId = s.SchoolId,
+                        @AcademicYearId = s.AcademicYearId
                     FROM [dbo].[Staff] s
                     INNER JOIN [dbo].[Users] u ON s.UserId = u.Id
                     WHERE LTRIM(RTRIM(s.Rfid)) = LTRIM(RTRIM(@Rfid)) AND s.IsDeleted = 0;
@@ -809,10 +815,12 @@ try
                         PunchTime = @PunchTime,
                         MachineId = @MachineId,
                         TransactionId = @TransactionId,
+                        SchoolId = @SchoolId,
+                        AcademicYearId = @AcademicYearId,
                         ModifiedOn = GETUTCDATE()
                 WHEN NOT MATCHED THEN
-                    INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
-                    VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, GETUTCDATE(), GETUTCDATE(), 1, 0);
+                    INSERT (Rfid, [Date], InTime, IsPresent, IsStudent, ShiftId, GrNo, MatchedName, Role, Status, PunchDate, PunchTime, MachineId, TransactionId, SchoolId, AcademicYearId, CreatedOn, ModifiedOn, IsActive, IsDeleted)
+                    VALUES (@Rfid, @Date, @PunchTime, @IsPresent, @IsStudent, @ShiftId, @GrNo, @MatchedName, @Role, @Status, @PunchDate, @PunchTime, @MachineId, @TransactionId, @SchoolId, @AcademicYearId, GETUTCDATE(), GETUTCDATE(), 1, 0);
 
                 DECLARE @StatusTableCode NVARCHAR(20) = 'P';
                 IF @Status = 'Very Late' SET @StatusTableCode = 'PVL';
