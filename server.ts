@@ -291,7 +291,21 @@ async function startServer() {
   let occupations = dbData.occupations || [{ id: 1, name: "Service" }, { id: 2, name: "Business" }];
   let schoolSections = dbData.schoolSections || [{ id: 1, name: "Primary" }, { id: 2, name: "Secondary" }, { id: 3, name: "Higher Secondary" }];
   let staffInitials = dbData.staffInitials || [{ id: 1, name: "Mr." }, { id: 2, name: "Mrs." }, { id: 3, name: "Dr." }, { id: 4, name: "Ms." }];
-  let roles = dbData.roles || [{ id: 1, name: "superadmin" }, { id: 2, name: "admin" }, { id: 3, name: "teacher" }];
+  // Standard list of roles from the database
+  let roles = dbData.roles || [
+    { id: 1, name: "superadmin" }, 
+    { id: 2, name: "admin" }, 
+    { id: 3, name: "teacher" },
+    { id: 4, name: "student" },
+    { id: 5, name: "parent" }
+  ];
+  // Alert types master database array for notification severity
+  let alertTypes = dbData.alertTypes || [
+    { id: 1, code: "info", name: "Info (Blue)" },
+    { id: 2, code: "success", name: "Success (Green)" },
+    { id: 3, code: "warning", name: "Warning (Amber)" },
+    { id: 4, code: "error", name: "Error (Red)" }
+  ];
   let weekdays = dbData.weekdays || [
     { id: 1, name: "Monday", isActive: true },
     { id: 2, name: "Tuesday", isActive: true },
@@ -426,6 +440,8 @@ async function startServer() {
     "staffinitials": staffInitials,
     "staffInitials": staffInitials,
     "roles": roles,
+    "alert-types": alertTypes,
+    "alerttypes": alertTypes,
     "standards": standards,
     "sections": sections,
     // Add variations for different frontend names
@@ -478,7 +494,8 @@ async function startServer() {
         occupations,
         schoolSections,
         staffInitials,
-        roles
+        roles,
+        alertTypes
       };
       fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
     } catch (e) {

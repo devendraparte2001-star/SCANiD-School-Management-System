@@ -683,6 +683,30 @@ This document records the exact changes, the root causes identified, and the fix
 - /CHANGES_DOCUMENTATION.md: Documented Batch 17 changes.
 
 
+---
+
+## 67. Issue: Notification module Add/Edit New Notification form dropdown selectors contain hardcoded values (Batch 18)
+- **Root Cause & Requirements**:
+  1. **Manual Metadata Presets**: The "Recipient Role Scope" and "Alert Type" dropdown options within isCreateModalOpen and isEditModalOpen forms inside `Notifications.tsx` had client-side hardcoded static values (e.g. Roles 1 to 5, Severity strings). 
+  2. **API/DB Decoupling**: Hardcoded selectors did not sync dynamically with system databases, violating enterprise-grade specifications requiring all active records to flow directly from the database through REST APIs.
+
+- **Remediation & Enhancements**:
+  1. **Database Relational Integrity**: Added support for standard system database entities by expanding the in-memory backend database arrays. Formulated a new `AlertTypes` table (`dbo.AlertTypes`) and registered it under `mastersMap` matching standard database procedures.
+  2. **Expanded System Roles**: Expanded the `Roles` database array to support administrative and consumer roles: superadmin, admin, teacher, student, and parent.
+  3. **REST Endpoint Extension**: Configured `/api/masters/alert-types` (backed by `AlertTypes`) and `/api/masters/roles` (backed by `Roles`) queries to run dynamically.
+  4. **React Component State Wiring**: Refactored `/src/pages/Notifications.tsx` with dedicated React state vectors: added `roles` and `alertTypes`, alongside asynchronous loading routines `fetchRoles` and `fetchAlertTypes` querying core client-side API layer `apiService.getRoles()` and `apiService.getAlertTypes()`.
+  5. **Dynamic UI Dropdowns**: Rewrote form dropdown JSX tags in both Add and Edit modal forms to iterate dynamically over reactive states fetched directly from backend database registers.
+
+## 68. Modified/Synchronized Files List (Batch 18)
+
+- /database.sql: Registered schema script declaration and seed queries for `[dbo].[AlertTypes]` table.
+- /update_alert_types_master.sql: Supplied standalone incremental SQL script to register the new `AlertTypes` table and seed standard severity statuses.
+- /server.ts: Declared and initialized `alertTypes` master array, broadened system roles metadata array, integrated `alertTypes` into `saveDb` serialization, and mounted `"alert-types"`/`"alerttypes"` in system `mastersMap`.
+- /src/lib/api.ts: Added client-side HTTP GET endpoint helper function `getAlertTypes` querying `/masters/alert-types`.
+- /src/pages/Notifications.tsx: Integrated dynamic role and alert type API triggers, tracking states, and dynamic visual option lists mapping.
+- /CHANGES_DOCUMENTATION.md: Documented Batch 18 enhancements.
+
+
 
 
 

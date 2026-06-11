@@ -60,6 +60,8 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [schools, setSchools] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [alertTypes, setAlertTypes] = useState<any[]>([]);
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<"info" | "success" | "warning" | "error">("info");
@@ -120,10 +122,30 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await apiService.getRoles();
+      setRoles(response.data.data || response.data || []);
+    } catch (error) {
+      console.error("Error fetching roles in Notification Center:", error);
+    }
+  };
+
+  const fetchAlertTypes = async () => {
+    try {
+      const response = await apiService.getAlertTypes();
+      setAlertTypes(response.data.data || response.data || []);
+    } catch (error) {
+      console.error("Error fetching alert types in Notification Center:", error);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
     fetchSchools();
     fetchUsers();
+    fetchRoles();
+    fetchAlertTypes();
   }, [currentUser]);
 
   const handleMarkAsRead = async (id: number) => {
@@ -498,12 +520,11 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                   <select 
                     value={newType}
                     onChange={(e) => setNewType(e.target.value as any)}
-                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 text-slate-800"
                   >
-                    <option value="info">Info (Blue)</option>
-                    <option value="success">Success (Green)</option>
-                    <option value="warning">Warning (Amber)</option>
-                    <option value="error">Error (Red)</option>
+                    {alertTypes.map(at => (
+                      <option key={at.id} value={at.code || at.Code}>{at.name || at.Name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -532,14 +553,14 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                   <select 
                     value={selectedRoleId}
                     onChange={(e) => setSelectedRoleId(e.target.value)}
-                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 text-slate-800"
                   >
                     <option value="all">All Roles</option>
-                    <option value="1">Super Admin</option>
-                    <option value="2">Admin</option>
-                    <option value="3">Teacher</option>
-                    <option value="4">Student</option>
-                    <option value="5">Parent</option>
+                    {roles.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.name ? r.name.charAt(0).toUpperCase() + r.name.slice(1) : r.Name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -637,12 +658,11 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                   <select 
                     value={editType}
                     onChange={(e) => setEditType(e.target.value as any)}
-                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 text-slate-800"
                   >
-                    <option value="info">Info (Blue)</option>
-                    <option value="success">Success (Green)</option>
-                    <option value="warning">Warning (Amber)</option>
-                    <option value="error">Error (Red)</option>
+                    {alertTypes.map(at => (
+                      <option key={at.id} value={at.code || at.Code}>{at.name || at.Name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -671,14 +691,14 @@ export default function Notifications({ user: propUser }: NotificationsProps = {
                   <select 
                     value={editRoleId}
                     onChange={(e) => setEditRoleId(e.target.value)}
-                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
+                    className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 text-slate-800"
                   >
                     <option value="all">All Roles</option>
-                    <option value="1">Super Admin</option>
-                    <option value="2">Admin</option>
-                    <option value="3">Teacher</option>
-                    <option value="4">Student</option>
-                    <option value="5">Parent</option>
+                    {roles.map(r => (
+                      <option key={r.id} value={r.id}>
+                        {r.name ? r.name.charAt(0).toUpperCase() + r.name.slice(1) : r.Name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

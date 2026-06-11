@@ -617,6 +617,9 @@ export const apiService = {
   updateRole: (id: number, data: MasterWriteRequest) => api.put(`/masters/roles/${id}`, data),
   deleteRole: (id: number) => api.delete(`/masters/roles/${id}`),
 
+  // Alert Types
+  getAlertTypes: (params?: PaginatedParams) => api.get("/masters/alert-types", { params }),
+
   // Navigation (Sidebar)
   getNavigations: (roleId?: number, params?: PaginatedParams) => api.get("/navigation", { params: { roleId, ...params } }),
   createNavigation: (data: NavigationWriteRequest) => api.post("/navigation", data),
