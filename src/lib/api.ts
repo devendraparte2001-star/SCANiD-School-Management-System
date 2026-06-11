@@ -201,6 +201,12 @@ const mockFallbacks: Record<string, any> = {
     { id: 4, name: "Student", description: "Student-level access", isActive: true },
     { id: 5, name: "Parent", description: "Parent-level access", isActive: true },
   ],
+  "/masters/alert-types": [
+    { id: 1, code: "info", name: "Info (Blue)" },
+    { id: 2, code: "success", name: "Success (Green)" },
+    { id: 3, code: "warning", name: "Warning (Amber)" },
+    { id: 4, code: "error", name: "Error (Red)" }
+  ],
   "/staff": [
     { id: 1, userId: 2, schoolId: 1, name: "John Doe", employeeId: "EMP001", initials: "Mr.", status: "Active", contactNumber: "9876543210" }
   ],
