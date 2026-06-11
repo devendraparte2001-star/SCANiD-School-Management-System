@@ -50,6 +50,7 @@ namespace ScanID.Api.Data
         public DbSet<Designation> Designations { get; set; }
         public DbSet<Occupation> Occupations { get; set; }
         public DbSet<Role> Roles { get; set; }
+        public DbSet<AlertType> AlertTypes { get; set; }
         public DbSet<SchoolSection> SchoolSections { get; set; }
         public DbSet<StaffInitial> StaffInitials { get; set; }
         public DbSet<Weekday> Weekdays { get; set; }
@@ -104,6 +105,7 @@ namespace ScanID.Api.Data
             modelBuilder.Entity<Designation>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Occupation>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Role>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<AlertType>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<SchoolSection>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Weekday>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Holiday>().HasQueryFilter(x => !x.IsDeleted);

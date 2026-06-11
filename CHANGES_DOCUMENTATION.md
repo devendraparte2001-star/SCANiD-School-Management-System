@@ -724,6 +724,27 @@ This document records the exact changes, the root causes identified, and the fix
 - /CHANGES_DOCUMENTATION.md: Documented Batch 19 dynamic fallback fail-safe protection.
 
 
+---
+
+## 71. Issue: Local .NET C# Backend on port 5000 returned 404 Not Found for /api/masters/alert-types (Batch 20)
+- **Root Cause & Requirements**:
+  1. **C# Model & DB Configuration Desynchronization**: While the relational custom `dbo.AlertTypes` SQL database table was successfully created and seeded in Batch 18, the parallel compiled C# `.NET` Web API project at `/backend` lacked the corresponding Entity Framework Core entity classes and endpoints.
+  2. **Failed .NET Routing**: When running in local development mode with a custom local override pointing `VITE_API_BASE_URL` directly to `http://localhost:5000/api`, `/api/masters/alert-types` request was directed straight to the .NET API routing layer, returning a `404 Not Found`.
+
+- **Remediation & Enhancements**:
+  1. **New .NET Entity Model**: Added `AlertType` class derived from `BaseEntity` into `/backend/ScanID.Api/Models/Models.cs` matching database schema attributes.
+  2. **DbContext DB Mappings**: Registered `public DbSet<AlertType> AlertTypes` inside `/backend/ScanID.Api/Data/ApplicationDbContext.cs` and configured its query filter for soft deletion checks `modelBuilder.Entity<AlertType>().HasQueryFilter(x => !x.IsDeleted)` inside `OnModelCreating`.
+  3. **Master Endpoints Registration**: Appended the correct asynchronous CRUD endpoints under `/masters/alert-types` and `/masters/alerttypes` mapping inside `/backend/ScanID.Api/Controllers/MastersController.cs`. Now, the .NET Web API correctly resolves, reads, writes, and updates active records from the persistent SQL Server database directly.
+
+## 72. Modified/Synchronized Files List (Batch 20)
+
+- /backend/ScanID.Api/Models/Models.cs: Formulated the standard Entity Framework C# entity definition class `AlertType`.
+- /backend/ScanID.Api/Data/ApplicationDbContext.cs: Integrated model collections and global filters to handle AlertType storage maps.
+- /backend/ScanID.Api/Controllers/MastersController.cs: Structured HTTP master routing endpoints for AlertTypes retrieval and operations under the standard C# controller suite.
+- /CHANGES_DOCUMENTATION.md: Documented Batch 20 enhancements.
+
+
+
 
 
 

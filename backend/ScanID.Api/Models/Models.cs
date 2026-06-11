@@ -616,6 +616,16 @@ namespace ScanID.Api.Models
         public string? Description { get; set; }
     }
 
+    /// <summary> System alert types for severity classification in communication and notifications. </summary>
+    public class AlertType : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Code { get; set; } = string.Empty;
+        [Required]
+        public string Name { get; set; } = string.Empty;
+    }
+
     /// <summary> Master data for school sections (Primary, Secondary, Higher Secondary, etc). </summary>
     public class SchoolSection : BaseEntity
     {

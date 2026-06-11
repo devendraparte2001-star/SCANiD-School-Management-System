@@ -487,5 +487,22 @@ namespace ScanID.Api.Controllers
 
         [HttpDelete("roles/{id}")]
         public async Task<IActionResult> DeleteRole(int id) => await Delete(_context.Roles, id);
+
+        // --- Alert Types ---
+        [HttpGet("alert-types")]
+        [HttpGet("alerttypes")]
+        public async Task<ActionResult<IEnumerable<AlertType>>> GetAlertTypes() => await GetAll(_context.AlertTypes);
+
+        [HttpPost("alert-types")]
+        [HttpPost("alerttypes")]
+        public async Task<ActionResult<AlertType>> CreateAlertType(AlertType item) => await Create(_context.AlertTypes, item);
+
+        [HttpPut("alert-types/{id}")]
+        [HttpPut("alerttypes/{id}")]
+        public async Task<IActionResult> UpdateAlertType(int id, AlertType item) => await Update(id, item);
+
+        [HttpDelete("alert-types/{id}")]
+        [HttpDelete("alerttypes/{id}")]
+        public async Task<IActionResult> DeleteAlertType(int id) => await Delete(_context.AlertTypes, id);
     }
 }
