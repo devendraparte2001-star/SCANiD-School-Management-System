@@ -122,8 +122,10 @@ interface StaffMember {
 }
 
 import { useSearchParams } from "react-router-dom";
+import { useSystemLabels } from "@/context/LabelContext";
 
 export default function Staff({ user }: { user: any }) {
+  const { labels } = useSystemLabels();
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const canManage = isAdmin;
 
@@ -966,8 +968,8 @@ export default function Staff({ user }: { user: any }) {
             <Users size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Staff Management</h1>
-            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Administrative control for personnel & assignments</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">{labels?.staff?.split('/')?.[0] || "Staff"} Directory</h1>
+            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Administrative control for {labels?.staffs?.toLowerCase() || "staff"} & personnel records</p>
           </div>
         </div>
         {isAdmin && (

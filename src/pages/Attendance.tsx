@@ -1341,13 +1341,13 @@ export default function Attendance({ user, defaultTab = "daily" }: { user: any; 
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-              {activeTab === "daily" && "Daily Roll Call"}
-              {activeTab === "manual" && "Manual Attendance Upload"}
-              {activeTab === "leaves" && "Leaves Register & Applications"}
-              {activeTab === "reprocess" && "Shift-Based Calculation Engine"}
-              {activeTab === "lock" && "Monthly Attendance Payroll Lock"}
-              {activeTab === "audit" && "Biometric Correction Audit Log"}
-              {activeTab === "report" && "Attendance & Security Reports"}
+              {activeTab === "daily" && "Roll Call"}
+              {activeTab === "manual" && "Manual Upload"}
+              {activeTab === "leaves" && "Leaves Register"}
+              {activeTab === "reprocess" && "Reprocess Range"}
+              {activeTab === "lock" && "Payroll Lock"}
+              {activeTab === "audit" && "Correction Audit"}
+              {activeTab === "report" && "Reports"}
             </h1>
             <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">
               {activeTab === "daily" && "Class roll call registries and real-time biometric state monitoring."}

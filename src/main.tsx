@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { LabelProvider } from '@/context/LabelContext';
 
 // Safely suppress benign ResizeObserver loop errors/warnings from chart resizing events to keep development console clean
 if (typeof window !== "undefined") {
@@ -16,5 +17,7 @@ if (typeof window !== "undefined") {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <App />
+  <LabelProvider>
+    <App />
+  </LabelProvider>
 );

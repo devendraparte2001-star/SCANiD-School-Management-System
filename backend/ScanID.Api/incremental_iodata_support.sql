@@ -61,29 +61,90 @@ BEGIN
     -- Normalize PunchTime (double colons or weird spaces)
     SET @PunchTime = LTRIM(RTRIM(REPLACE(@PunchTime, '::', ':')));
     
-    -- Normalize PunchDate (handling cases like 01/0223 -> 01/02/23)
     DECLARE @Date DATE = NULL;
-    BEGIN TRY
-        DECLARE @CleanDate NVARCHAR(50) = @PunchDate;
-        IF CHARINDEX('/', @CleanDate) > 0 AND LEN(@CleanDate) <= 7 AND CHARINDEX('/', @CleanDate, CHARINDEX('/', @CleanDate) + 1) = 0
-        BEGIN
-            DECLARE @Len INT = LEN(@CleanDate);
-            SET @CleanDate = SUBSTRING(@CleanDate, 1, @Len - 2) + '/' + SUBSTRING(@CleanDate, @Len - 1, 2);
-        END
-        -- Prioritize style 103 (DD/MM/YYYY or DD/MM/YY) according to user DDMMYY requirements
-        SET @Date = CONVERT(DATE, @CleanDate, 103);
-    END TRY
-    BEGIN CATCH
-        BEGIN TRY
-            SET @Date = CONVERT(DATE, @PunchDate, 101);
-        END TRY
-        BEGIN CATCH
-            SET @Date = CAST(GETUTCDATE() AS DATE);
-        END CATCH
-    END CATCH;
+    DECLARE @RawDateString NVARCHAR(100) = LTRIM(RTRIM(@PunchDate));
 
-    -- Ensure @Date is parsed
-    IF @Date IS NULL SET @Date = CAST(GETUTCDATE() AS DATE);
+    -- Clean up trailing time components if any (e.g. "2026-06-11T08:02" or "11/06/2026 15:30")
+    IF CHARINDEX(' ', @RawDateString) > 0
+    BEGIN
+        SET @RawDateString = SUBSTRING(@RawDateString, 1, CHARINDEX(' ', @RawDateString) - 1);
+    END
+    IF CHARINDEX('T', @RawDateString) > 0
+    BEGIN
+        SET @RawDateString = SUBSTRING(@RawDateString, 1, CHARINDEX('T', @RawDateString) - 1);
+    END
+
+    DECLARE @CleanDate NVARCHAR(50) = @RawDateString;
+
+    -- 1. Try native casting (works for standard ISO YYYY-MM-DD)
+    SET @Date = TRY_CAST(@CleanDate AS DATE);
+
+    -- 2. Try style 112 (basic ISO: yyyyMMdd, e.g. "20260611")
+    IF @Date IS NULL AND LEN(@CleanDate) = 8 AND ISNUMERIC(@CleanDate) = 1 AND (CAST(SUBSTRING(@CleanDate, 1, 4) AS INT) BETWEEN 1900 AND 2100)
+    BEGIN
+        SET @Date = TRY_CONVERT(DATE, @CleanDate, 112);
+    END
+
+    -- 3. Parse custom 6-digit pure numeric representation (DDMMyy, e.g. "110626" -> "11/06/26")
+    IF @Date IS NULL AND LEN(@CleanDate) = 6 AND ISNUMERIC(@CleanDate) = 1
+    BEGIN
+        DECLARE @FormattedSixChar NVARCHAR(50) = SUBSTRING(@CleanDate, 1, 2) + '/' + SUBSTRING(@CleanDate, 3, 2) + '/' + SUBSTRING(@CleanDate, 5, 2);
+        SET @Date = TRY_CONVERT(DATE, @FormattedSixChar, 103);
+        IF @Date IS NULL
+        BEGIN
+            SET @Date = TRY_CONVERT(DATE, @FormattedSixChar, 101);
+        END
+    END
+
+    -- 4. Parse custom 8-digit pure numeric representation (DDMMyyyy, e.g. "11062026" -> "11/06/2026")
+    IF @Date IS NULL AND LEN(@CleanDate) = 8 AND ISNUMERIC(@CleanDate) = 1
+    BEGIN
+        DECLARE @FormattedEightChar NVARCHAR(50) = SUBSTRING(@CleanDate, 1, 2) + '/' + SUBSTRING(@CleanDate, 3, 2) + '/' + SUBSTRING(@CleanDate, 5, 4);
+        SET @Date = TRY_CONVERT(DATE, @FormattedEightChar, 103);
+        IF @Date IS NULL
+        BEGIN
+            SET @Date = TRY_CONVERT(DATE, @FormattedEightChar, 101);
+        END
+    END
+
+    -- 5. Standard Slashed/Dashed Parsing with manual validation
+    IF @Date IS NULL
+    BEGIN
+        -- Normalize dashes to slashes
+        SET @CleanDate = REPLACE(@CleanDate, '-', '/');
+
+        -- Handle custom punch scanner string normalization (e.g. "11/0626" -> "11/06/26" if missing second slash)
+        IF CHARINDEX('/', @CleanDate) > 0 AND LEN(@CleanDate) <= 8 AND CHARINDEX('/', @CleanDate, CHARINDEX('/', @CleanDate) + 1) = 0
+        BEGIN
+            DECLARE @SlashOffset INT = CHARINDEX('/', @CleanDate);
+            DECLARE @SecondPortionLen INT = LEN(@CleanDate) - @SlashOffset;
+            IF @SecondPortionLen >= 4
+            BEGIN
+                SET @CleanDate = SUBSTRING(@CleanDate, 1, @SlashOffset) + SUBSTRING(@CleanDate, @SlashOffset + 1, @SecondPortionLen - 2) + '/' + SUBSTRING(@CleanDate, LEN(@CleanDate) - 1, 2);
+            END
+        END
+
+        -- Try style 103 (DD/MM/YYYY) first
+        SET @Date = TRY_CONVERT(DATE, @CleanDate, 103);
+
+        -- Try style 101 (MM/DD/YYYY) fallback
+        IF @Date IS NULL
+        BEGIN
+            SET @Date = TRY_CONVERT(DATE, @CleanDate, 101);
+        END
+
+        -- Try style 111 (YYYY/MM/DD) fallback
+        IF @Date IS NULL
+        BEGIN
+            SET @Date = TRY_CONVERT(DATE, @CleanDate, 111);
+        END
+    END
+
+    -- 6. Safety fallback to current UTC date if completely unparseable
+    IF @Date IS NULL 
+    BEGIN
+        SET @Date = CAST(GETUTCDATE() AS DATE);
+    END
 
     -- Look up student
     SELECT TOP 1 

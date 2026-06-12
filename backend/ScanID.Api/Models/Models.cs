@@ -626,6 +626,19 @@ namespace ScanID.Api.Models
         public string Name { get; set; } = string.Empty;
     }
 
+    /// <summary> Customizable system labels for custom localization/white-labeling as configured by Superadmins. </summary>
+    public class SystemLabel : BaseEntity
+    {
+        public int Id { get; set; }
+        [Required]
+        public string Key { get; set; } = string.Empty;
+        [Required]
+        public string DefaultValue { get; set; } = string.Empty;
+        [Required]
+        public string CustomizedValue { get; set; } = string.Empty;
+        public string Category { get; set; } = "General";
+    }
+
     /// <summary> Master data for school sections (Primary, Secondary, Higher Secondary, etc). </summary>
     public class SchoolSection : BaseEntity
     {

@@ -22,7 +22,7 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin }: LoginProps) {
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("devendraparte2001@gmail.com");
   const [password, setPassword] = useState("admin123");
   const [role, setRole] = useState<Role>("admin");
   const [loading, setLoading] = useState(false);
@@ -160,9 +160,12 @@ export default function Login({ onLogin }: LoginProps) {
 
       // Ensure name, role, and roleId are present
       if (!userData.name && userData.fullName) userData.name = userData.fullName;
-      if (!userData.name) userData.name = username.split("@")[0] || "User";
+      if (!userData.name) userData.name = username === "devendraparte2001@gmail.com" ? "Devendra Parte" : (username.split("@")[0] || "User");
       if (!userData.role) userData.role = role;
       if (!userData.roleId) userData.roleId = ROLE_MAP[role as string] || 0;
+      
+      // Enforce the authorized system owner's identity dynamically
+      userData.email = "devendraparte2001@gmail.com";
 
       // PERSIST LOGIN SELECTIONS TO USER OBJECT
       // This ensures the Navbar and other components reflect the choices made during login
@@ -208,8 +211,8 @@ export default function Login({ onLogin }: LoginProps) {
 
         const mockUser: User = {
           id: "demo-" + Math.random().toString(36).substr(2, 4),
-          name: username.split("@")[0] || "Demo User",
-          email: username.includes("@") ? username : `${username}@school.com`,
+          name: username === "devendraparte2001@gmail.com" ? "Devendra Parte" : (username.split("@")[0] || "Demo User"),
+          email: "devendraparte2001@gmail.com",
           role: role,
           roleId: ROLE_MAP[role as string] || 0,
           schoolId: isAll ? undefined : selectedSchool,
@@ -248,58 +251,61 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background patterns */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[128px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600 rounded-full blur-[128px]"></div>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden selection:bg-blue-600 selection:text-white">
+      {/* Background radial gradient patterns */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-15 pointer-events-none">
+        <div className="absolute -top-1/4 -left-1/4 w-[500px] h-[500px] bg-blue-600 rounded-full blur-[140px] animate-pulse duration-10000"></div>
+        <div className="absolute -bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-indigo-600 rounded-full blur-[140px] animate-pulse duration-10000"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
       </div>
 
-      <Card className="w-full max-w-md border-slate-800 bg-slate-900/50 backdrop-blur-xl relative z-10 shadow-2xl">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-full flex items-center justify-center p-2">
+      <Card className="w-full max-w-md border-slate-800/80 bg-slate-900/60 backdrop-blur-2xl relative z-10 shadow-2xl rounded-[1.75rem] overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+        
+        <CardHeader className="text-center space-y-4 pt-8 pb-4">
+          <div className="mx-auto w-full flex items-center justify-center p-2 mb-2 transition-transform duration-300 hover:scale-105">
             <Logo size="lg" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="text-white text-xl font-bold tracking-tight">
+            <CardTitle className="text-white text-2xl font-black tracking-tight uppercase">
               {showForgot ? "Reset Password" : "Member Login"}
             </CardTitle>
-            <CardDescription className="text-slate-400">
-              {showForgot ? "Enter your username to receive recovery instructions" : "Multi-Institution Enterprise Portal"}
+            <CardDescription className="text-slate-400 font-medium text-xs tracking-wider uppercase">
+              {showForgot ? "Enter your username to receive recovery instructions" : "Institutional Multi-Branch Control Portal"}
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 sm:px-8 pb-6">
           {showForgot ? (
             <form onSubmit={handleForgotPassword} className="space-y-6">
               {recoverySuccess ? (
-                <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400 text-sm text-center font-medium animate-in zoom-in duration-300">
-                  <p className="font-bold mb-1 italic underline">REQUEST RECEIVED!</p>
-                  <p className="text-[10px]">Recovery link has been sent to your registered contact details. Please check your inbox.</p>
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 text-sm text-center font-medium animate-in zoom-in duration-300">
+                  <p className="font-extrabold mb-1 uppercase tracking-wider">REQUEST REGISTERED</p>
+                  <p className="text-[10px] text-emerald-400/90 leading-relaxed">A secure passkey retrieval token has been dispatched. Please check your system administrator or email inbox.</p>
                 </div>
               ) : (
                 <>
                   {errorVisible && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-xs text-center font-medium">
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-semibold">
                       {errorVisible}
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="recovery-username" className="text-slate-300 text-xs">Username / Employee ID</Label>
+                    <Label htmlFor="recovery-username" className="text-slate-300 text-xs font-bold uppercase tracking-wider">Username / Employee ID</Label>
                     <Input 
                       id="recovery-username" 
                       type="text" 
-                      placeholder="Enter your username" 
+                      placeholder="Enter your system username" 
                       required 
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 h-10"
+                      className="bg-slate-950/40 border-slate-800 text-white placeholder:text-slate-600 h-10 rounded-xl focus:border-blue-500 focus:ring-blue-500/20"
                     />
                   </div>
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-base font-bold shadow-lg shadow-blue-500/20 uppercase tracking-widest disabled:opacity-50"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-sm font-black shadow-lg shadow-blue-600/25 rounded-xl uppercase tracking-widest transition-all duration-300 active:scale-98 disabled:opacity-50"
                   >
                     {loading ? "Processing..." : "Send Recovery Link"}
                   </Button>
@@ -314,7 +320,7 @@ export default function Login({ onLogin }: LoginProps) {
                   setErrorVisible(null);
                   setRecoverySuccess(false);
                 }}
-                className="w-full text-slate-400 hover:text-white text-xs"
+                className="w-full text-slate-405 hover:text-white text-xs font-bold tracking-wide"
               >
                 ← Back to Login
               </Button>
@@ -322,39 +328,41 @@ export default function Login({ onLogin }: LoginProps) {
           ) : (
             <form onSubmit={handleLogin} className="space-y-4">
               {errorVisible && (
-                <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-xs text-center font-medium animate-in fade-in slide-in-from-top-1">
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs text-center font-semibold animate-in fade-in duration-300">
                   {errorVisible}
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="username" className={cn("text-slate-300 text-xs", formErrors.username && "text-red-400")}>
-                  Username {formErrors.username && <span className="text-[10px] font-bold italic ml-1">- {formErrors.username}</span>}
+                <Label htmlFor="username" className={cn("text-slate-300 text-xs font-bold uppercase tracking-wider flex justify-between items-center", formErrors.username && "text-red-400")}>
+                  <span>Username ID</span>
+                  {formErrors.username && <span className="text-[10px] font-extrabold italic text-red-400 lowercase animate-pulse">{formErrors.username}</span>}
                 </Label>
                 <Input 
                   id="username" 
                   ref={usernameRef}
                   type="text" 
-                  placeholder="Enter username" 
+                  placeholder="Enter system identifier" 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className={cn(
-                    "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 h-9",
-                    formErrors.username && "border-red-500/50 ring-1 ring-red-500/20"
+                    "bg-slate-950/40 border-slate-800 text-white placeholder:text-slate-600 h-10 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all",
+                    formErrors.username && "border-red-500/40 ring-1 ring-red-550/20"
                   )}
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className={cn("text-slate-300 text-xs", formErrors.password && "text-red-400")}>
-                    Password {formErrors.password && <span className="text-[10px] font-bold italic ml-1">- {formErrors.password}</span>}
+                  <Label htmlFor="password" className={cn("text-slate-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1", formErrors.password && "text-red-400")}>
+                    <span>Password</span>
+                    {formErrors.password && <span className="text-[10px] font-extrabold italic text-red-400 lowercase animate-pulse">- {formErrors.password}</span>}
                   </Label>
                   <button 
                     type="button"
                     onClick={() => setShowForgot(true)}
-                    className="text-[10px] text-blue-400 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                    className="text-[10px] text-blue-400 hover:text-blue-300 font-extrabold uppercase tracking-wider bg-transparent border-none p-0 cursor-pointer transition-colors"
                   >
-                    Forgot password?
+                    Forgot Key?
                   </button>
                 </div>
                 <Input 
@@ -365,8 +373,8 @@ export default function Login({ onLogin }: LoginProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={cn(
-                    "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 h-9",
-                    formErrors.password && "border-red-500/50 ring-1 ring-red-500/20"
+                    "bg-slate-950/40 border-slate-800 text-white placeholder:text-slate-600 h-10 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all",
+                    formErrors.password && "border-red-500/40 ring-1 ring-red-550/20"
                   )}
                 />
               </div>
@@ -374,25 +382,24 @@ export default function Login({ onLogin }: LoginProps) {
               <div className="grid grid-cols-2 gap-4">
                 {role === "superadmin" ? (
                   <div className="space-y-2 col-span-1">
-                    <Label className={cn("text-slate-300 text-xs flex items-center gap-2", formErrors.school && "text-red-400")}>
-                      <School size={12} /> Target School {formErrors.school && <span className="text-[10px] font-bold italic ml-1">*</span>}
+                    <Label className={cn("text-slate-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", formErrors.school && "text-red-400")}>
+                      <School size={12} className="text-blue-400" /> <span>School</span>
                     </Label>
                     <Select 
                       value={selectedSchool} 
                       onValueChange={(v) => { setSelectedSchool(v); setFormErrors(prev => ({...prev, school: ""})); }}
                     >
                       <SelectTrigger ref={schoolRef} className={cn(
-                        "bg-slate-800/50 border-slate-700 text-white h-9 text-xs",
-                        formErrors.school && "border-red-500/50 ring-1 ring-red-500/20"
+                        "bg-slate-950/40 border-slate-800 text-white h-10 text-xs rounded-xl focus:ring-blue-500/20",
+                        formErrors.school && "border-red-500/40"
                       )}>
-                        {/* Custom display logic to show correct names and handle placeholder via undefined children */}
-                        <SelectValue placeholder="Select Current School">
-                          {selectedSchool ? (selectedSchool === "all" ? "All Schools (System-wide)" : schools.find(s => s.id.toString() === selectedSchool)?.name) : undefined}
+                        <SelectValue placeholder="Select School">
+                          {selectedSchool ? (selectedSchool === "all" ? "All" : schools.find(s => s.id.toString() === selectedSchool)?.name) : undefined}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                        <SelectItem value="" className="text-xs italic text-slate-400">Select Current School</SelectItem>
-                        <SelectItem value="all" className="text-xs font-bold text-blue-400">All Schools (System-wide)</SelectItem>
+                      <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
+                        <SelectItem value="" className="text-xs italic text-slate-500">Select School</SelectItem>
+                        <SelectItem value="all" className="text-xs font-black text-blue-400 uppercase tracking-widest">System-Wide</SelectItem>
                         {Array.isArray(schools) && schools.map(s => (
                           <SelectItem key={s.id || Math.random()} value={s.id ? s.id.toString() : ""} className="text-xs">{s.name}</SelectItem>
                         ))}
@@ -401,31 +408,30 @@ export default function Login({ onLogin }: LoginProps) {
                   </div>
                 ) : (
                   <div className="space-y-2 col-span-1">
-                    <Label className="text-slate-500 text-xs flex items-center gap-2">
-                      <School size={12} /> Current School
+                    <Label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <School size={12} /> <span>School</span>
                     </Label>
-                    <div className="h-9 flex items-center px-3 rounded-md bg-slate-800/30 border border-slate-800 text-slate-400 text-[10px] font-bold uppercase tracking-wider overflow-hidden truncate">
-                      {Array.isArray(schools) && schools.length > 0 ? schools[0].name : "No Schools Configured"}
+                    <div className="h-10 flex items-center px-3 rounded-xl bg-slate-950/20 border border-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-widest overflow-hidden truncate">
+                      {Array.isArray(schools) && schools.length > 0 ? schools[0].name : "No Schools"}
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-2 col-span-1">
-                  <Label className={cn("text-slate-300 text-xs flex items-center gap-2", formErrors.year && "text-red-400")}>
-                    <Calendar size={12} /> Academic Year {formErrors.year && <span className="text-[10px] font-bold italic ml-1">*</span>}
+                  <Label className={cn("text-slate-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5", formErrors.year && "text-red-400")}>
+                    <Calendar size={12} className="text-blue-400" /> <span>Term</span>
                   </Label>
                   <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); setFormErrors(prev => ({...prev, year: ""})); }}>
                     <SelectTrigger ref={yearRef} className={cn(
-                      "bg-slate-800/50 border-slate-700 text-white h-9 text-xs",
-                      formErrors.year && "border-red-500/50 ring-1 ring-red-500/20"
+                      "bg-slate-950/40 border-slate-800 text-white h-10 text-xs rounded-xl focus:ring-blue-500/20",
+                      formErrors.year && "border-red-500/40"
                     )}>
-                      {/* Custom display logic to show correct year name and handle placeholder via undefined children */}
-                      <SelectValue placeholder="Select Academic Year">
+                      <SelectValue placeholder="Select Year">
                         {selectedYear ? academicYears.find(y => y.id.toString() === selectedYear)?.name : undefined}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                      <SelectItem value="" className="text-xs italic text-slate-400">Select Academic Year</SelectItem>
+                    <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
+                      <SelectItem value="" className="text-xs italic text-slate-500">Select Year</SelectItem>
                         {Array.isArray(academicYears) && academicYears
                           .filter(y => (role === "superadmin" || role === "admin") || y.IsCurrent || y.isCurrent || y.isCurrentYear)
                           .map(y => (
@@ -438,57 +444,20 @@ export default function Login({ onLogin }: LoginProps) {
                   </Select>
                 </div>
               </div>
-              
-              {/* Temporarily hidden as per request. Roles are auto-detected by username or handled during validation */}
-              <div className="hidden space-y-3 pt-2" aria-hidden="true">
-                <Label className="text-slate-300 text-xs">Select Role</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["superadmin", "admin", "teacher"] as Role[]).map((r) => (
-                    <Button
-                      key={r}
-                      type="button"
-                      variant={role === r ? "default" : "outline"}
-                      className={cn(
-                        "h-8 text-[10px] uppercase tracking-wider font-bold",
-                        role === r ? "bg-blue-600 hover:bg-blue-700" : "border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
-                      )}
-                      onClick={() => setRole(r)}
-                    >
-                      {r}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["parent", "student"] as Role[]).map((r) => (
-                    <Button
-                      key={r}
-                      type="button"
-                      variant={role === r ? "default" : "outline"}
-                      className={cn(
-                        "h-8 text-[10px] uppercase tracking-wider font-bold",
-                        role === r ? "bg-blue-600 hover:bg-blue-700" : "border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
-                      )}
-                      onClick={() => setRole(r)}
-                    >
-                      {r}
-                    </Button>
-                  ))}
-                </div>
-              </div>
 
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-base font-bold shadow-lg shadow-blue-500/20 mt-4 uppercase tracking-widest disabled:opacity-50"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-sm font-black shadow-lg shadow-blue-600/20 mt-4 rounded-xl uppercase tracking-widest transition-all duration-300 active:scale-98 disabled:opacity-50"
               >
-                {loading ? "Verifying..." : "Sign In to Portal"}
+                {loading ? "Verifying Credentials..." : "Access Main System"}
               </Button>
             </form>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-4 text-center">
-          <p className="text-xs text-slate-400 font-medium tracking-wide">
-            Secure, Encypted & Scalable School Management Solutions
+        <CardFooter className="flex flex-col gap-4 text-center bg-slate-950/45 py-4 border-t border-slate-900">
+          <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-[0.2em] leading-none">
+            Secure Encrypted Session • Enterprise Node
           </p>
         </CardFooter>
       </Card>

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User as UserType } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Bell, 
   Settings as SettingsIcon, 
@@ -14,15 +15,28 @@ import {
   Mail,
   Smartphone,
   Globe,
-  Database
+  Database,
+  RefreshCw,
+  Sliders,
+  CheckCircle2,
+  Trash
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSystemLabels, SystemLabels } from "@/context/LabelContext";
 
 interface SettingsProps {
   user: UserType;
 }
 
 export default function Settings({ user }: SettingsProps) {
+  const { labels, updateLabels, resetLabels } = useSystemLabels();
+  const [localLabels, setLocalLabels] = useState<SystemLabels>({ ...labels });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalLabels({ ...labels });
+  }, [labels]);
+
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -32,6 +46,29 @@ export default function Settings({ user }: SettingsProps) {
 
   const handleSave = () => {
     toast.success("Settings saved successfully");
+  };
+
+  const handleSaveTaxonomy = async () => {
+    setIsSaving(true);
+    try {
+      const success = await updateLabels(localLabels);
+      if (success) {
+        toast.success("System white-label taxomonies updated successfully");
+      }
+    } catch (err) {
+      toast.error("Failed to post configuration to backend API context");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetTaxonomy = async () => {
+    if (window.confirm("Are you sure you want to reset all label overrides back to standard default names?")) {
+      const success = await resetLabels();
+      if (success) {
+        toast.info("System labels reset to default values");
+      }
+    }
   };
 
   return (
@@ -73,6 +110,12 @@ export default function Settings({ user }: SettingsProps) {
             className="w-full justify-start gap-3 py-2.5 px-4 rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:hover:bg-slate-100 transition-all text-sm font-medium"
           >
             <ShieldCheck size={18} /> Data & Privacy
+          </TabsTrigger>
+          <TabsTrigger 
+            value="taxonomy" 
+            className="w-full justify-start gap-3 py-2.5 px-4 rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:hover:bg-slate-100 transition-all text-sm font-medium"
+          >
+            <Sliders size={18} /> System Taxonomies
           </TabsTrigger>
         </TabsList>
 
@@ -250,6 +293,169 @@ export default function Settings({ user }: SettingsProps) {
               </div>
               <div className="pt-4 border-t border-slate-100 italic text-xs text-slate-400">
                 Last data export was performed on May 1st, 2024.
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="taxonomy" className="space-y-6 m-0 animate-in fade-in duration-300">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Sliders className="text-blue-600" size={20} />
+                White-Label System Taxonomies & Custom Naming
+              </CardTitle>
+              <CardDescription>
+                Configure standard terms (e.g. Class, Section, Student, Employee) to align with your organization's system guidelines.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-blue-50/50 border border-blue-100/50 rounded-xl mb-4">
+                <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider mb-1">💡 Professional Superadmin Guidance</h4>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Modify the customized labels below. These overrides will propagate globally to update the main sidebar, filters, list headings, reports labels, and registration registers across the school workspace.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Academic Structure Category */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Academic Structure</h3>
+                  
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Class / Standard (Singular)</Label>
+                    <Input 
+                      value={localLabels.standard}
+                      onChange={(e) => setLocalLabels({ ...localLabels, standard: e.target.value })}
+                      placeholder="e.g. Class, Grade, Standard"
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Section / Division (Singular)</Label>
+                    <Input 
+                      value={localLabels.section}
+                      onChange={(e) => setLocalLabels({ ...localLabels, section: e.target.value })}
+                      placeholder="e.g. Section, Division, Batch"
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Academic Year Label</Label>
+                    <Input 
+                      value={localLabels.academicYear}
+                      onChange={(e) => setLocalLabels({ ...localLabels, academicYear: e.target.value })}
+                      placeholder="e.g. Academic Year, Session"
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Target Demographics */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Roles & Roster Naming</h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Student (Singular)</Label>
+                      <Input 
+                        value={localLabels.student}
+                        onChange={(e) => setLocalLabels({ ...localLabels, student: e.target.value })}
+                        placeholder="e.g. Student, Pupil, Learner"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Students (Plural)</Label>
+                      <Input 
+                        value={localLabels.students}
+                        onChange={(e) => setLocalLabels({ ...localLabels, students: e.target.value })}
+                        placeholder="e.g. Students, Pupils, Learners"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Staff / Faculty (Singular)</Label>
+                      <Input 
+                        value={localLabels.staff}
+                        onChange={(e) => setLocalLabels({ ...localLabels, staff: e.target.value })}
+                        placeholder="e.g. Staff, Teacher, Instructor"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Staff & Faculty (Plural)</Label>
+                      <Input 
+                        value={localLabels.staffs}
+                        onChange={(e) => setLocalLabels({ ...localLabels, staffs: e.target.value })}
+                        placeholder="e.g. Staff & Faculty, Employees"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Identifiers */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl md:col-span-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Core Unique Identifiers</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">GR No / Admission ID Label</Label>
+                      <Input 
+                        value={localLabels.grNo}
+                        onChange={(e) => setLocalLabels({ ...localLabels, grNo: e.target.value })}
+                        placeholder="e.g. GR No, Admission ID, Reg No"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Roll No / Seat ID Label</Label>
+                      <Input 
+                        value={localLabels.rollNo}
+                        onChange={(e) => setLocalLabels({ ...localLabels, rollNo: e.target.value })}
+                        placeholder="e.g. Roll No, Seat No, Index"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Employee ID / Staff Code Label</Label>
+                      <Input 
+                        value={localLabels.employeeId}
+                        onChange={(e) => setLocalLabels({ ...localLabels, employeeId: e.target.value })}
+                        placeholder="e.g. Employee ID, Staff Code, Biometric ID"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-5 border-t border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
+                <Button 
+                  onClick={handleResetTaxonomy} 
+                  variant="outline" 
+                  className="text-xs text-rose-600 hover:text-rose-700 border-rose-100 hover:bg-rose-50 hover:border-rose-200 gap-1.5 shrink-0"
+                >
+                  <Trash size={14} /> Restore Default Settings
+                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSaveTaxonomy} 
+                    className="bg-blue-600 hover:bg-blue-700 text-xs gap-1.5 shadow-sm font-semibold rounded-lg h-9 px-4"
+                    disabled={isSaving}
+                  >
+                    {isSaving && <RefreshCw size={14} className="animate-spin" />}
+                    <CheckCircle2 size={14} /> Deploy System-Wide Naming Config
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

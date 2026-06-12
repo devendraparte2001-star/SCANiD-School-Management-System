@@ -336,7 +336,11 @@ export default function AttendanceReports({
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class / Standard</label>
                   <Select value={selectedStandard} onValueChange={setSelectedStandard}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                      <SelectValue placeholder="All Classes">
+                        {selectedStandard === "all" ? "All Classes" : selectedStandard}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Classes</SelectItem>
                       {standards.map(st => (
@@ -349,7 +353,11 @@ export default function AttendanceReports({
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Section / division</label>
                   <Select value={selectedSection} onValueChange={setSelectedSection}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                      <SelectValue placeholder="All Sections">
+                        {selectedSection === "all" ? "All Sections" : `Section ${selectedSection}`}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Sections</SelectItem>
                       {sections.map(sc => (
@@ -366,7 +374,13 @@ export default function AttendanceReports({
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Choose Student</label>
                 <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                    <SelectValue placeholder="Select Student">
+                      {selectedStudentId === "all" 
+                        ? "Select Primary Student" 
+                        : (students.find(s => s.id.toString() === selectedStudentId)?.name || "Select Student")}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Select Primary Student</SelectItem>
                     {students.map(s => (
@@ -395,7 +409,13 @@ export default function AttendanceReports({
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Staff Roster</label>
                 <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                    <SelectValue placeholder="Wipe & View All Staff">
+                      {selectedStaffId === "all" 
+                        ? "Wipe & View All Staff" 
+                        : (staffList.find(s => s.id?.toString() === selectedStaffId)?.name || staffList.find(s => s.id?.toString() === selectedStaffId)?.user?.name || "Select Staff")}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Wipe & View All Staff</SelectItem>
                     {staffList.map(s => (
@@ -420,7 +440,17 @@ export default function AttendanceReports({
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Schedule Month</label>
                   <Select value={reportMonth} onValueChange={setReportMonth}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                      <SelectValue>
+                        {(() => {
+                          const parsed = parseInt(reportMonth);
+                          if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) {
+                            return format(new Date(2026, parsed - 1), "MMMM");
+                          }
+                          return "June";
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       {["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].map((val, idx) => (
                         <SelectItem key={val} value={val}>{format(new Date(2026, idx), "MMMM")}</SelectItem>
@@ -432,7 +462,11 @@ export default function AttendanceReports({
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Schedule Year</label>
                   <Select value={reportYear} onValueChange={setReportYear}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200">
+                      <SelectValue>
+                        {reportYear}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="2025">2025</SelectItem>
                       <SelectItem value="2026">2026</SelectItem>

@@ -175,25 +175,67 @@ export default function Dashboard({ user }: DashboardProps) {
     : attendanceData;
 
   return (
-    <div className="space-y-4 sm:space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+      {/* Premium Multi-Institution Greeting Banner */}
+      <div className="relative overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-8 text-white shadow-xl shadow-slate-950/15">
+        <div className="absolute top-0 right-0 -mr-24 -mt-24 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-[10px] sm:text-xs font-semibold text-blue-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Portal Connected
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+              Welcome back, <span className="bg-gradient-to-r from-blue-300 to-indigo-200 bg-clip-text text-transparent">{user.name}</span>!
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-medium leading-relaxed">
+              Institution console is fully active for <span className="text-white font-bold uppercase text-[10px] tracking-widest px-2 py-0.5 rounded bg-white/15 border border-white/5">{user.role}</span>. You can manage student records, log attendance streams, review grades, or check master entries below.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-3 sm:gap-4 shrink-0 w-full md:w-auto">
+            <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
+              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Institutional Branch</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100 truncate max-w-[150px]" title={user.schoolName || "Global Control"}>
+                {user.schoolName || "Global Control"}
+              </span>
+            </div>
+            <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
+              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Academic Term</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100">
+                {user.academicYearName || "Current Term"}
+              </span>
+            </div>
+            <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-blue-600/20 backdrop-blur-sm border border-blue-500/20 flex flex-col min-w-[120px] shadow-lg shadow-blue-950/20">
+              <span className="text-[9px] uppercase font-bold tracking-widest text-blue-300">Active Date</span>
+              <span className="text-xs sm:text-sm font-bold mt-1 text-white">
+                {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
-          <div className="bg-blue-600 p-4 rounded-[1.25rem] text-white shadow-2xl shadow-blue-200 transition-transform hover:rotate-3">
+          <div className="bg-blue-600 p-4 rounded-[1.25rem] text-white shadow-2xl shadow-blue-200 transition-transform hover:rotate-3 shrink-0">
              <TrendingUp size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Dashboard Overview</h1>
-            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Here's what's happening at {user.schoolName || "your school"} today.</p>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">Operational Insights</h2>
+            <p className="text-slate-400 font-bold mt-1 text-xs uppercase tracking-widest leading-none">Instant snapshot metrics across administrative channels.</p>
           </div>
         </div>
         {user.role === "superadmin" && (
-          <div className="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl flex items-center gap-3">
+          <div className="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl flex items-center gap-3 shrink-0">
             <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-blue-200">
               SA
             </div>
             <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-[8px]">System Access</p>
-              <p className="text-sm font-bold text-blue-900">Super Admin View</p>
+              <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest leading-none">System Level</p>
+              <p className="text-xs font-bold text-blue-900 mt-1">Super Admin Console</p>
             </div>
           </div>
         )}

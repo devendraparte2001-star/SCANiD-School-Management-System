@@ -82,6 +82,7 @@ import { User } from "@/types";
 import { motion } from "motion/react";
 import { cn, parseSafeInt, resolvePhotoUrl } from "@/lib/utils";
 import { SimpleTooltip } from "@/components/shared/SimpleTooltip";
+import { useSystemLabels } from "@/context/LabelContext";
 
 interface ConfigurationProps {
   user: User;
@@ -281,6 +282,37 @@ export default function Configuration({
   user,
   defaultTab = "schools",
 }: ConfigurationProps) {
+  const { labels } = useSystemLabels();
+
+  // Helper taxonomy translation mapping for white labelling
+  const translateTitle = (title: string) => {
+    if (!title || !labels) return title;
+    let res = title;
+    if (res === "Student Registry" || res.toLowerCase() === "student registry" || res === "Student" || res === "Students") {
+      res = `${labels.student} Registry`;
+    } else if (res === "Staff Directory" || res.toLowerCase() === "staff directory") {
+      res = `${labels.staff.split('/')[0]} Directory`;
+    } else if (res === "Staff & HR" || res.toLowerCase() === "staff & hr") {
+      const staffLabel = labels.staffs || "Staff";
+      res = staffLabel.includes("Staff") ? staffLabel : `${staffLabel} & HR`;
+    } else if (res === "Standards & Grades" || res.toLowerCase() === "standards & grades" || res === "Standards" || res === "Standard") {
+      res = `${labels.standard}s & Grades`;
+    } else if (res === "Divisions/Sections" || res.toLowerCase() === "divisions/sections") {
+      res = `Divisions/${labels.section}s`;
+    } else if (res === "School Sections" || res.toLowerCase() === "school sections") {
+      res = `School ${labels.section}s`;
+    } else if (res === "Academic Years" || res.toLowerCase() === "academic years") {
+      res = `${labels.academicYear}s`;
+    } else if (res === "Attendance Tracking" || res.toLowerCase() === "attendance tracking" || res === "Attendance") {
+      res = "Attendance Tracking";
+    } else if (res === "Examination & Marks" || res.toLowerCase() === "marks" || res === "Marks") {
+      res = "Examination & Marks";
+    } else if (res === "Sections" || res === "Section") {
+      res = `${labels.section}s`;
+    }
+    return res;
+  };
+
   // INTERNAL RBAC CHECK: Secondary layer of protection for superadmin and admin roles
   if (user.role !== "superadmin" && user.role !== "admin") {
     return <Navigate to="/" replace />;
@@ -972,7 +1004,7 @@ export default function Configuration({
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-              {activeConfig.label}
+              {translateTitle(activeConfig.label)}
             </h1>
             <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">
               {activeConfig.description}

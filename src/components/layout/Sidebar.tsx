@@ -24,6 +24,7 @@ import { apiService } from "@/lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import { SimpleTooltip } from "@/components/shared/SimpleTooltip";
 import { Logo } from "@/components/shared/Logo";
+import { useSystemLabels } from "@/context/LabelContext";
 
 interface NavItem {
   id: number;
@@ -52,11 +53,33 @@ const getIcon = (iconName: string | null) => {
 };
 
 export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }: SidebarProps) {
+  const { labels } = useSystemLabels();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [menuItems, setMenuItems] = useState<NavItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Helper taxonomy translation mapping for white labelling
+  const translateTitle = (title: string) => {
+    if (!title || !labels) return title;
+    let res = title;
+    if (res === "Student Registry") {
+      res = `${labels.student} Registry`;
+    } else if (res === "Staff Directory") {
+      res = `${labels.staff.split('/')[0]} Directory`;
+    } else if (res === "Staff & HR") {
+      const staffLabel = labels.staffs || "Staff";
+      res = staffLabel.includes("Staff") ? staffLabel : `${staffLabel} & HR`;
+    } else if (res === "Standards & Grades") {
+      res = `${labels.standard}s & Grades`;
+    } else if (res === "Divisions/Sections") {
+      res = `Divisions/${labels.section}s`;
+    } else if (res === "School Sections") {
+      res = `School ${labels.section}s`;
+    }
+    return res;
+  };
 
   useEffect(() => {
     const fetchNavigation = async () => {
@@ -613,7 +636,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
 
     return (
       <div key={item.id} className="space-y-1">
-        <SimpleTooltip content={isCollapsed && level === 0 ? item.title : ""} side="right" nativeButton={false}>
+        <SimpleTooltip content={isCollapsed && level === 0 ? translateTitle(item.title) : ""} side="right" nativeButton={false}>
           <div className="w-full">
             {hasSubItems ? (
               <button
@@ -649,7 +672,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
                       level === 0 ? "text-sm" : "text-xs",
                       isParentActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
                     )}>
-                      {item.title}
+                      {translateTitle(item.title)}
                     </span>
                     <motion.div
                       animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -697,7 +720,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
                     level === 0 ? "text-sm" : "text-xs",
                     isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
                   )}>
-                    {item.title}
+                    {translateTitle(item.title)}
                   </span>
                 )}
               </Link>

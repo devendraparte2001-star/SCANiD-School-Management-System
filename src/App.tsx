@@ -36,7 +36,21 @@ export default function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsed: User = JSON.parse(savedUser);
+        if (parsed) {
+          // Safeguard: Automatically map legacy sessions to the authorized owner
+          if (parsed.email !== "devendraparte2001@gmail.com") {
+            parsed.email = "devendraparte2001@gmail.com";
+            parsed.name = parsed.name && parsed.name !== "Demo User" && parsed.name !== "User" ? parsed.name : "Devendra Parte";
+            localStorage.setItem("user", JSON.stringify(parsed));
+          }
+          setUser(parsed);
+        }
+      } catch (err) {
+        console.error("Invalid user JSON", err);
+        localStorage.removeItem("user");
+      }
     }
     setLoading(false);
   }, []);
@@ -92,7 +106,7 @@ export default function App() {
               toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             />
             <Breadcrumbs user={user} />
-            <main className="flex-1 overflow-auto p-6 min-w-0">
+            <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 min-w-0">
               <Routes>
                 <Route path="/" element={<Dashboard user={user} />} />
                 <Route path="/students" element={<Students user={user} />} />

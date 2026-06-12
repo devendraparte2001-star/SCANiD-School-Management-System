@@ -34,8 +34,10 @@ import ReportBuilder from "@/components/reports/ReportBuilder";
 import MarksEntry from "@/components/reports/MarksEntry";
 
 import { User as UserType } from "@/types";
+import { useSystemLabels } from "@/context/LabelContext";
 
 export default function Marks({ user }: { user: UserType }) {
+  const { labels } = useSystemLabels();
   const [marks, setMarks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -127,7 +129,7 @@ export default function Marks({ user }: { user: UserType }) {
             <BarChart3 size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Academic Analytics</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">Examination & Marks</h1>
             <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Global performance indexing & examination registry</p>
           </div>
         </div>

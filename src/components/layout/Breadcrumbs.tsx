@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSystemLabels } from "@/context/LabelContext";
 import { 
   ChevronRight, 
   Home, 
@@ -51,8 +52,36 @@ interface BreadcrumbsProps {
 }
 
 export default function Breadcrumbs({ user }: BreadcrumbsProps) {
+  const { labels } = useSystemLabels();
   const location = useLocation();
   const [menuItems, setMenuItems] = useState<NavItem[]>([]);
+
+  // Helper taxonomy translation mapping for white labelling
+  const translateTitle = (title: string) => {
+    if (!title || !labels) return title;
+    let res = title;
+    if (res === "Student Registry" || res.toLowerCase() === "student registry" || res === "Student" || res === "Students") {
+      res = `${labels.student} Registry`;
+    } else if (res === "Staff Directory" || res.toLowerCase() === "staff directory") {
+      res = `${labels.staff.split('/')[0]} Directory`;
+    } else if (res === "Staff & HR" || res.toLowerCase() === "staff & hr") {
+      const staffLabel = labels.staffs || "Staff";
+      res = staffLabel.includes("Staff") ? staffLabel : `${staffLabel} & HR`;
+    } else if (res === "Standards & Grades" || res.toLowerCase() === "standards & grades") {
+      res = `${labels.standard}s & Grades`;
+    } else if (res === "Divisions/Sections" || res.toLowerCase() === "divisions/sections") {
+      res = `Divisions/${labels.section}s`;
+    } else if (res === "School Sections" || res.toLowerCase() === "school sections") {
+      res = `School ${labels.section}s`;
+    } else if (res === "Academic Years" || res.toLowerCase() === "academic years") {
+      res = `${labels.academicYear}s`;
+    } else if (res === "Attendance Tracking" || res.toLowerCase() === "attendance tracking" || res === "Attendance") {
+      res = "Attendance Tracking";
+    } else if (res === "Examination & Marks" || res.toLowerCase() === "marks" || res === "Marks") {
+      res = "Examination & Marks";
+    }
+    return res;
+  };
 
   useEffect(() => {
     const fetchNavigation = async () => {
@@ -108,15 +137,16 @@ export default function Breadcrumbs({ user }: BreadcrumbsProps) {
         } else if (name.toLowerCase() === "system-logs") {
           name = "System Logs";
         } else if (name.toLowerCase() === "marks") {
-          name = "Academic Reports";
+          name = "Examination & Marks";
         }
       }
       
-      crumbs.push({ name, path });
+      // Dynamic white labeling replacement
+      crumbs.push({ name: translateTitle(name), path });
     });
     
     return crumbs;
-  }, [location.pathname, menuItems]);
+  }, [location.pathname, menuItems, labels]);
 
   const getIconForPath = (path: string, name: string) => {
     const cleanPath = path.toLowerCase().replace(/\/$/, "");
@@ -184,7 +214,7 @@ export default function Breadcrumbs({ user }: BreadcrumbsProps) {
   };
 
   return (
-    <div className="bg-white border-b border-slate-200/80 px-8 py-3 shrink-0 transition-all duration-300">
+    <div className="bg-white border-b border-slate-200/80 px-4 sm:px-6 md:px-8 py-3 shrink-0 transition-all duration-300">
       <nav className="flex items-center space-x-1 overflow-x-auto whitespace-nowrap scrollbar-hide py-0.5">
         {breadcrumbs.map((crumb, index) => {
           const IconComponent = getIconForPath(crumb.path, crumb.name);

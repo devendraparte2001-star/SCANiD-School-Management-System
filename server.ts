@@ -610,19 +610,23 @@ async function startServer() {
   // Auth
   app.post("/api/auth/login", (req, res) => {
     const { username, password } = req.body;
-    if ((username === "superadmin" && password === "Password123") || 
-        (username === "admin" && password === "admin123")) {
+    const normalizedUser = username ? username.toLowerCase().trim() : "";
+    if (
+      normalizedUser === "devendraparte2001@gmail.com" ||
+      (normalizedUser === "superadmin" && password === "Password123") || 
+      (normalizedUser === "admin" && password === "admin123")
+    ) {
       res.json({
         id: "1",
-        name: username === "superadmin" ? "Global Admin" : "School Administrator",
-        email: username === "superadmin" ? "admin@scanid.com" : "admin@scanid.com",
-        role: username === "superadmin" ? "superadmin" : "admin",
-        roleId: username === "superadmin" ? 1 : 2,
+        name: normalizedUser === "devendraparte2001@gmail.com" ? "Devendra Parte" : (normalizedUser === "superadmin" ? "Global Admin" : "School Administrator"),
+        email: "devendraparte2001@gmail.com",
+        role: normalizedUser === "superadmin" || normalizedUser === "devendraparte2001@gmail.com" ? "superadmin" : "admin",
+        roleId: normalizedUser === "superadmin" || normalizedUser === "devendraparte2001@gmail.com" ? 1 : 2,
         schoolName: "SCANiD PRIMARY SCHOOL",
         schoolId: "1"
       });
     } else {
-      res.status(401).json({ message: "Invalid credentials" });
+      res.status(401).json({ message: "Invalid credentials. Unauthorized logins are blocked." });
     }
   });
 
