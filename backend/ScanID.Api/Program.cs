@@ -675,7 +675,7 @@ try
                 DECLARE @Date DATE = NULL;
                 DECLARE @RawDateString NVARCHAR(100) = LTRIM(RTRIM(@PunchDate));
 
-                -- Clean up trailing time components if any (e.g. "2026-06-11T08:02" or "11/06/2026 15:30")
+                -- Clean up trailing time components if any (e.g. '2026-06-11T08:02' or '11/06/2026 15:30')
                 IF CHARINDEX(' ', @RawDateString) > 0
                 BEGIN
                     SET @RawDateString = SUBSTRING(@RawDateString, 1, CHARINDEX(' ', @RawDateString) - 1);
@@ -690,13 +690,13 @@ try
                 -- 1. Try native casting (works for standard ISO YYYY-MM-DD)
                 SET @Date = TRY_CAST(@CleanDate AS DATE);
 
-                -- 2. Try style 112 (basic ISO: yyyyMMdd, e.g. "20260611")
+                -- 2. Try style 112 (basic ISO: yyyyMMdd, e.g. '20260611')
                 IF @Date IS NULL AND LEN(@CleanDate) = 8 AND ISNUMERIC(@CleanDate) = 1 AND (CAST(SUBSTRING(@CleanDate, 1, 4) AS INT) BETWEEN 1900 AND 2100)
                 BEGIN
                     SET @Date = TRY_CONVERT(DATE, @CleanDate, 112);
                 END
 
-                -- 3. Parse custom 6-digit pure numeric representation (DDMMyy, e.g. "110626" -> "11/06/26")
+                -- 3. Parse custom 6-digit pure numeric representation (DDMMyy, e.g. '110626' -> '11/06/26')
                 IF @Date IS NULL AND LEN(@CleanDate) = 6 AND ISNUMERIC(@CleanDate) = 1
                 BEGIN
                     DECLARE @FormattedSixChar NVARCHAR(50) = SUBSTRING(@CleanDate, 1, 2) + '/' + SUBSTRING(@CleanDate, 3, 2) + '/' + SUBSTRING(@CleanDate, 5, 2);
@@ -707,7 +707,7 @@ try
                     END
                 END
 
-                -- 4. Parse custom 8-digit pure numeric representation (DDMMyyyy, e.g. "11062026" -> "11/06/2026")
+                -- 4. Parse custom 8-digit pure numeric representation (DDMMyyyy, e.g. '11062026' -> '11/06/2026')
                 IF @Date IS NULL AND LEN(@CleanDate) = 8 AND ISNUMERIC(@CleanDate) = 1
                 BEGIN
                     DECLARE @FormattedEightChar NVARCHAR(50) = SUBSTRING(@CleanDate, 1, 2) + '/' + SUBSTRING(@CleanDate, 3, 2) + '/' + SUBSTRING(@CleanDate, 5, 4);
@@ -724,7 +724,7 @@ try
                     -- Normalize dashes to slashes
                     SET @CleanDate = REPLACE(@CleanDate, '-', '/');
 
-                    -- Handle custom punch scanner string normalization (e.g. "11/0626" -> "11/06/26" if missing second slash)
+                    -- Handle custom punch scanner string normalization (e.g. '11/0626' -> '11/06/26' if missing second slash)
                     IF CHARINDEX('/', @CleanDate) > 0 AND LEN(@CleanDate) <= 8 AND CHARINDEX('/', @CleanDate, CHARINDEX('/', @CleanDate) + 1) = 0
                     BEGIN
                         DECLARE @SlashOffset INT = CHARINDEX('/', @CleanDate);
