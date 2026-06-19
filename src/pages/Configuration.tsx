@@ -32,6 +32,7 @@ import {
   UserRound,
   Hammer,
   Camera,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -629,6 +630,19 @@ export default function Configuration({
       scanIDEmail: item?.scanIDEmail ?? item?.ScanIDEmail ?? "",
       inChargeContact: item?.inChargeContact ?? item?.InChargeContact ?? "",
       status: item?.status ?? item?.Status ?? "Active",
+      tagline: item?.tagline ?? item?.Tagline ?? "",
+      mission: item?.mission ?? item?.Mission ?? "",
+      vision: item?.vision ?? item?.Vision ?? "",
+      motto: item?.motto ?? item?.Motto ?? "",
+      sliderImages: Array.isArray(item?.sliderImages ?? item?.SliderImages) 
+        ? (item?.sliderImages ?? item?.SliderImages).join(", ") 
+        : (item?.sliderImages ?? item?.SliderImages ?? ""),
+      noticesText: Array.isArray(item?.notices ?? item?.Notices) 
+        ? (item?.notices ?? item?.Notices).map((n: any) => `${n.title || n.Title} | ${n.date || n.Date}`).join("\n") 
+        : "",
+      highlightsText: Array.isArray(item?.highlights ?? item?.Highlights) 
+        ? (item?.highlights ?? item?.Highlights).map((h: any) => `${h.label || h.Label}: ${h.value || h.Value}`).join("\n") 
+        : "",
       startTime: item?.startTime ?? item?.StartTime ?? "",
       endTime: item?.endTime ?? item?.EndTime ?? "",
       graceInTime: item?.graceInTime ?? item?.GraceInTime ?? "",
@@ -853,6 +867,46 @@ export default function Configuration({
         payload.scanIDEmail = formData.scanIDEmail;
         payload.inChargeContact = formData.inChargeContact;
         payload.status = formData.status || "Active";
+        
+        // CMS Multi-School Settings mapping
+        payload.tagline = formData.tagline || "";
+        payload.mission = formData.mission || "";
+        payload.vision = formData.vision || "";
+        payload.motto = formData.motto || "";
+        payload.sliderImages = typeof formData.sliderImages === "string"
+          ? formData.sliderImages.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : (Array.isArray(formData.sliderImages) ? formData.sliderImages : []);
+          
+        if (typeof formData.noticesText === "string") {
+          payload.notices = formData.noticesText.split("\n")
+            .map((line: string) => {
+              const parts = line.split("|");
+              if (!parts[0]?.trim()) return null;
+              return {
+                id: Math.round(Math.random() * 1000000),
+                title: parts[0]?.trim(),
+                date: parts[1]?.trim() || new Date().toISOString().split("T")[0]
+              };
+            })
+            .filter(Boolean);
+        } else {
+          payload.notices = Array.isArray(formData.notices) ? formData.notices : [];
+        }
+        
+        if (typeof formData.highlightsText === "string") {
+          payload.highlights = formData.highlightsText.split("\n")
+            .map((line: string) => {
+              const parts = line.split(":");
+              if (!parts[0]?.trim()) return null;
+              return {
+                label: parts[0]?.trim(),
+                value: parts[1]?.trim() || "Active"
+              };
+            })
+            .filter(Boolean);
+        } else {
+          payload.highlights = Array.isArray(formData.highlights) ? formData.highlights : [];
+        }
       } else if (activeTab === "attendance-statuses") {
         payload.code = formData.code;
         payload.Code = formData.code;
@@ -3002,6 +3056,113 @@ export default function Configuration({
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* School CMS Website Configuration Section */}
+                <div className="p-5 bg-blue-500/5 hover:bg-blue-500-[8%] border border-blue-100 rounded-3xl space-y-5 transition-all mt-4">
+                  <h4 className="text-xs font-black text-blue-600 tracking-wider uppercase border-b border-blue-50 pb-2 flex items-center gap-2">
+                    <Sparkles size={14} className="text-blue-500" />
+                    CMS Portal - Custom Landing Page Config
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 col-span-2">
+                      <Label htmlFor="tagline" className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        School Slogan / Tagline
+                      </Label>
+                      <Input
+                        id="tagline"
+                        placeholder="e.g. Laying the foundations of modern learning & character"
+                        className="h-10 bg-white rounded-xl border-slate-200 font-bold"
+                        value={formData.tagline || ""}
+                        onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="motto" className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        School Motto
+                      </Label>
+                      <Input
+                        id="motto"
+                        placeholder="e.g. Honor, Wisdom & Courage"
+                        className="h-10 bg-white rounded-xl border-slate-200 font-bold"
+                        value={formData.motto || ""}
+                        onChange={(e) => setFormData({ ...formData, motto: e.target.value })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="mission" className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        Mission Statement
+                      </Label>
+                      <Input
+                        id="mission"
+                        placeholder="Enter mission text..."
+                        className="h-10 bg-white rounded-xl border-slate-200 font-bold"
+                        value={formData.mission || ""}
+                        onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="vision" className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Vision Statement
+                    </Label>
+                    <Input
+                      id="vision"
+                      placeholder="Enter vision text..."
+                      className="h-10 bg-white rounded-xl border-slate-200 font-bold"
+                      value={formData.vision || ""}
+                      onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sliderImages" className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex justify-between">
+                      <span>Carousel Slideshow Image Links (Comma-separated URLs)</span>
+                      <span className="text-[8px] text-slate-400 font-bold lowercase">supports unsplash/external urls</span>
+                    </Label>
+                    <textarea
+                      id="sliderImages"
+                      placeholder="https://images.unsplash.com/photo-1, https://images.unsplash.com/photo-2"
+                      className="w-full text-xs font-bold rounded-xl border border-slate-200 p-3 min-h-[60px] max-h-[120px] focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                      value={formData.sliderImages || ""}
+                      onChange={(e) => setFormData({ ...formData, sliderImages: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="highlightsText" className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex justify-between">
+                        <span>Institution Highlights</span>
+                        <span className="text-[8px] text-blue-500 italic lowercase">label: value (per line)</span>
+                      </Label>
+                      <textarea
+                        id="highlightsText"
+                        placeholder="Established: 2012&#10;Science Labs: 4 Units&#10;Trophy Won: 30+ Gold"
+                        className="w-full text-xs font-bold rounded-xl border border-slate-200 p-3 min-h-[80px] max-h-[150px] focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        value={formData.highlightsText || ""}
+                        onChange={(e) => setFormData({ ...formData, highlightsText: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 col-span-1">
+                      <Label htmlFor="noticesText" className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex justify-between">
+                        <span>Announcement Feed Notices</span>
+                        <span className="text-[8px] text-blue-500 italic lowercase">title | date (per line)</span>
+                      </Label>
+                      <textarea
+                        id="noticesText"
+                        placeholder="Admissions Open (2026) | 2026-06-19&#10;Grade 10 Board Registration | 2026-06-15"
+                        className="w-full text-xs font-bold rounded-xl border border-slate-200 p-3 min-h-[80px] max-h-[150px] focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        value={formData.noticesText || ""}
+                        onChange={(e) => setFormData({ ...formData, noticesText: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </div>
               </>
             )}

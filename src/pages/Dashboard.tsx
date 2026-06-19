@@ -24,7 +24,13 @@ import {
   HardDrive,
   Play,
   Pause,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Trash2,
+  Save,
+  Sliders,
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import { 
   LineChart, 
@@ -80,6 +86,34 @@ export default function Dashboard({ user }: DashboardProps) {
   const [isLiveActive, setIsLiveActive] = useState(true);
   const [latencyHistory, setLatencyHistory] = useState<any[]>([]);
   const [isLiveLoading, setIsLiveLoading] = useState(true);
+
+  // Portal CMS state variables
+  const [isCmsMode, setIsCmsMode] = useState(false);
+  const [cmsTotalStudents, setCmsTotalStudents] = useState("");
+  const [cmsTotalTeachers, setCmsTotalTeachers] = useState("");
+  const [cmsFeeCollection, setCmsFeeCollection] = useState("");
+  const [cmsAttendanceRate, setCmsAttendanceRate] = useState("");
+
+  const [cmsAttendanceTrend, setCmsAttendanceTrend] = useState<any[]>([]);
+  const [cmsPerformanceData, setCmsPerformanceData] = useState<any[]>([]);
+
+  const [cmsAnnouncementsList, setCmsAnnouncementsList] = useState<any[]>([]);
+  const [cmsEventsList, setCmsEventsList] = useState<any[]>([]);
+
+  const [isSavingCms, setIsSavingCms] = useState(false);
+  const [cmsError, setCmsError] = useState<string | null>(null);
+  const [cmsSuccess, setCmsSuccess] = useState<string | null>(null);
+
+  // New item adding inline inputs state
+  const [newAnnTitle, setNewAnnTitle] = useState("");
+  const [newAnnDesc, setNewAnnDesc] = useState("");
+  const [newAnnCategory, setNewAnnCategory] = useState("Info");
+  const [newAnnDate, setNewAnnDate] = useState("");
+
+  const [newEventTime, setNewEventTime] = useState("");
+  const [newEventLabel, setNewEventLabel] = useState("");
+  const [newEventType, setNewEventType] = useState("Holiday");
+  const [newEventColor, setNewEventColor] = useState("bg-blue-50 text-blue-600");
 
   useEffect(() => {
     let intervalId: any = null;
@@ -213,25 +247,69 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const displayEvents = [...mappedEvents, ...defaultEvents].slice(0, 4);
 
+  const fetchStats = async () => {
+    try {
+      const parsedSchoolId = parseSafeInt(user.schoolId);
+      const parsedYearId = parseSafeInt(user.academicYearId);
+
+      const res = await apiService.getStats(parsedSchoolId, parsedYearId);
+      if (res && res.data) {
+        const statsData = res.data.data || res.data;
+        setStats(statsData);
+
+        // Populate CMS state fields
+        setCmsTotalStudents(statsData.totalStudents?.toString() || "");
+        setCmsTotalTeachers(statsData.totalTeachers?.toString() || "");
+        setCmsFeeCollection(statsData.feeCollection || "");
+        setCmsAttendanceRate(statsData.attendanceRate || "");
+        if (statsData.attendanceTrend) setCmsAttendanceTrend(statsData.attendanceTrend);
+        if (statsData.performanceData) setCmsPerformanceData(statsData.performanceData);
+        if (statsData.recentAnnouncements) setCmsAnnouncementsList(statsData.recentAnnouncements);
+        if (statsData.upcomingEvents) setCmsEventsList(statsData.upcomingEvents);
+      }
+    } catch (error) {
+      console.error("Dashboard error:", error);
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 500); // Increased delay for layout stability
-    const fetchStats = async () => {
-      try {
-        const parsedSchoolId = parseSafeInt(user.schoolId);
-        const parsedYearId = parseSafeInt(user.academicYearId);
-
-        const res = await apiService.getStats(parsedSchoolId, parsedYearId);
-        if (res && res.data) {
-          const statsData = res.data.data || res.data;
-          setStats(statsData);
-        }
-      } catch (error) {
-        console.error("Dashboard error:", error);
-      }
-    };
     fetchStats();
     return () => clearTimeout(timer);
   }, [user.schoolId, user.academicYearId]);
+
+  const handleSaveCms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCms(true);
+    setCmsError(null);
+    setCmsSuccess(null);
+    try {
+      const payload = {
+        totalStudents: cmsTotalStudents ? parseInt(cmsTotalStudents) : undefined,
+        totalTeachers: cmsTotalTeachers ? parseInt(cmsTotalTeachers) : undefined,
+        feeCollection: cmsFeeCollection,
+        attendanceRate: cmsAttendanceRate,
+        attendanceTrend: cmsAttendanceTrend,
+        performanceData: cmsPerformanceData,
+        recentAnnouncements: cmsAnnouncementsList,
+        upcomingEvents: cmsEventsList
+      };
+
+      const res = await apiService.updateStats(payload);
+      if (res && res.data && res.data.success) {
+        setCmsSuccess("CMS properties committed to database and synchronized successfully!");
+        setTimeout(() => setCmsSuccess(null), 3500);
+        await fetchStats();
+      } else {
+        setCmsError("Failed to synchronize parameters with the system.");
+      }
+    } catch (err: any) {
+      console.error("Error committing CMS settings:", err);
+      setCmsError(err.response?.data?.error || err.message || "An unexpected error occurred during state save.");
+    } finally {
+      setIsSavingCms(false);
+    }
+  };
 
   const activePerformanceData = stats?.performanceData && stats.performanceData.length > 0
     ? stats.performanceData
@@ -284,6 +362,429 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* CMS Manager Banner */}
+      {isAdmin && (
+        <Card className="border-none shadow-sm bg-gradient-to-r from-slate-900 to-slate-950 rounded-[1.5rem] overflow-hidden text-white">
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-600 text-white p-3.5 rounded-2xl shadow-xl shadow-blue-500/20">
+                <Database size={24} className={cn(isCmsMode && "animate-pulse text-cyan-200")} />
+              </div>
+              <div className="text-left space-y-1">
+                <h3 className="font-black text-white text-base tracking-tight flex items-center gap-2">
+                  School Portal CMS Controller
+                  <span className="bg-blue-500/20 text-blue-400 font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider">Active</span>
+                </h3>
+                <p className="text-slate-300 font-medium text-xs leading-relaxed">
+                  Modify total counts, weekly curves, latest exam targets, notice bulletins, and academic events live inside the DB.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setIsCmsMode(!isCmsMode)}
+              className={cn(
+                "rounded-xl text-xs font-black uppercase tracking-wider h-11 transition-all duration-300 cursor-pointer px-6 shadow-md shrink-0 border-none",
+                isCmsMode 
+                  ? "bg-slate-800 text-white hover:bg-slate-700" 
+                  : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30"
+              )}
+            >
+              {isCmsMode ? "Hide CMS Workbench" : "Open CMS Workbench"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Slideable CMS Workbench Panel */}
+      <AnimatePresence>
+        {isCmsMode && isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border border-slate-100">
+              <CardHeader className="bg-slate-900 text-white p-6 sm:p-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl sm:text-2xl font-black tracking-tight">Interactive CMS Workspace</CardTitle>
+                    <CardDescription className="text-slate-400 font-bold mt-1.5 text-xs uppercase tracking-wider">
+                      Designated space for branch admins to overwrite public & dashboard statistics.
+                    </CardDescription>
+                  </div>
+                  <Sliders className="text-slate-400 stroke-[2.5]" size={28} />
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 sm:p-8 space-y-8">
+                <form onSubmit={handleSaveCms} className="space-y-8">
+                  
+                  {/* Global Success / Error Alerts */}
+                  {cmsSuccess && (
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3 text-emerald-800 text-xs font-bold animate-in zoom-in-95 duration-200">
+                      <Check className="text-emerald-600 h-5 w-5 shrink-0" />
+                      <span>{cmsSuccess}</span>
+                    </div>
+                  )}
+                  {cmsError && (
+                    <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-800 text-xs font-bold animate-in zoom-in-95 duration-200">
+                      <AlertTriangle className="text-rose-600 h-5 w-5 shrink-0" />
+                      <span>{cmsError}</span>
+                    </div>
+                  )}
+
+                  {/* SECTION 1: Snapshot Counter Statistics */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      1. Dynamic High-Level Counters
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Enrolled Students</label>
+                        <input
+                          type="number"
+                          value={cmsTotalStudents}
+                          onChange={(e) => setCmsTotalStudents(e.target.value)}
+                          placeholder="e.g. 1240"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Employed Teachers</label>
+                        <input
+                          type="number"
+                          value={cmsTotalTeachers}
+                          onChange={(e) => setCmsTotalTeachers(e.target.value)}
+                          placeholder="e.g. 84"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Annual Fee Collections</label>
+                        <input
+                          type="text"
+                          value={cmsFeeCollection}
+                          onChange={(e) => setCmsFeeCollection(e.target.value)}
+                          placeholder="e.g. ₹45.2L"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Average Attendance Rate</label>
+                        <input
+                          type="text"
+                          value={cmsAttendanceRate}
+                          onChange={(e) => setCmsAttendanceRate(e.target.value)}
+                          placeholder="e.g. 94.8%"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: Attendance Curves */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      2. Weekly Attendance Attendance Curve (Monday to Friday %)
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                      {cmsAttendanceTrend.map((t, idx) => (
+                        <div key={t.day} className="space-y-1 text-left">
+                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{t.day} Attendance %</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={t.attendance}
+                            onChange={(e) => {
+                              const newList = [...cmsAttendanceTrend];
+                              newList[idx] = { ...newList[idx], attendance: parseInt(e.target.value) || 0 };
+                              setCmsAttendanceTrend(newList);
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SECTION 3: Academic Performances */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      3. Educational Term Performance Curves (Average vs Top grades)
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {cmsPerformanceData.map((term, idx) => (
+                        <div key={term.name} className="bg-slate-50 p-4 rounded-2xl text-left border border-slate-100 space-y-3">
+                          <span className="text-[11px] font-black uppercase text-slate-900 tracking-wider block border-b pb-1 border-slate-200">{term.name}</span>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Average %</label>
+                              <input
+                                type="number"
+                                value={term.avg}
+                                onChange={(e) => {
+                                  const newList = [...cmsPerformanceData];
+                                  newList[idx] = { ...newList[idx], avg: parseInt(e.target.value) || 0 };
+                                  setCmsPerformanceData(newList);
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/10 font-bold"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Top %</label>
+                              <input
+                                type="number"
+                                value={term.top}
+                                onChange={(e) => {
+                                  const newList = [...cmsPerformanceData];
+                                  newList[idx] = { ...newList[idx], top: parseInt(e.target.value) || 0 };
+                                  setCmsPerformanceData(newList);
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/10 font-bold"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SECTION 4: Latest Dashboard Announcements */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      4. Notice Bulletins & Announcements
+                    </h4>
+                    
+                    {/* Existing announcements list */}
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                      {cmsAnnouncementsList.map((ann, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/70 p-3.5 rounded-xl border border-slate-100 transition-colors">
+                          <div className="text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-wider">{ann.category || "Info"}</span>
+                              <span className="text-[10px] text-slate-400 font-bold font-mono">{ann.date}</span>
+                            </div>
+                            <h5 className="font-extrabold text-sm text-slate-800 mt-1">{ann.title}</h5>
+                            <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{ann.desc}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setCmsAnnouncementsList(cmsAnnouncementsList.filter((_, i) => i !== idx));
+                            }}
+                            className="text-slate-400 hover:text-red-500 h-8 w-8 hover:bg-red-50 rounded-xl cursor-pointer bg-transparent"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Inline adding form block */}
+                    <div className="bg-blue-50/50 hover:bg-blue-50 border border-blue-100/50 p-4 rounded-[1.5rem] space-y-3 transition-colors">
+                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest leading-none">Draft New Announcement</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input
+                          type="text"
+                          placeholder="Notice Title (e.g. Science Fair Registration)"
+                          value={newAnnTitle}
+                          onChange={(e) => setNewAnnTitle(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Notice Date (e.g. Jun 15, 2026)"
+                          value={newAnnDate}
+                          onChange={(e) => setNewAnnDate(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                        <select
+                          value={newAnnCategory}
+                          onChange={(e) => setNewAnnCategory(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold cursor-pointer"
+                        >
+                          <option value="Info">Category: Info</option>
+                          <option value="Exam">Category: Exam</option>
+                          <option value="Sports">Category: Sports</option>
+                          <option value="Admissions">Category: Admissions</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          placeholder="Notice Detailed Message / Descriptions..."
+                          value={newAnnDesc}
+                          onChange={(e) => setNewAnnDesc(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (!newAnnTitle) return;
+                            const newAnn = {
+                              id: Date.now(),
+                              title: newAnnTitle,
+                              date: newAnnDate || new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+                              category: newAnnCategory,
+                              desc: newAnnDesc
+                            };
+                            setCmsAnnouncementsList([newAnn, ...cmsAnnouncementsList]);
+                            // Clear inputs
+                            setNewAnnTitle("");
+                            setNewAnnDesc("");
+                            setNewAnnDate("");
+                          }}
+                          className="bg-blue-600 text-white hover:bg-blue-700 h-9 rounded-xl text-xs font-bold gap-1 px-4 cursor-pointer border-none"
+                        >
+                          <Plus size={14} className="stroke-[3]" /> Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 5: Upcoming Events */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      5. Upcoming School Events & Calendar Milestones
+                    </h4>
+                    
+                    {/* Existing events list */}
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                      {cmsEventsList.map((evt, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/70 p-3.5 rounded-xl border border-slate-100 transition-colors">
+                          <div className="text-left flex items-start gap-3">
+                            <div className="bg-slate-200 text-slate-900 px-3 py-1.5 rounded-lg text-center font-bold text-xs">
+                              {evt.time}
+                            </div>
+                            <div>
+                              <h5 className="font-extrabold text-sm text-slate-800 mt-0.5">{evt.label}</h5>
+                              <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider block mt-1 w-max", evt.color || "bg-blue-50 text-blue-600")}>
+                                {evt.type}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setCmsEventsList(cmsEventsList.filter((_, i) => i !== idx));
+                            }}
+                            className="text-slate-400 hover:text-red-500 h-8 w-8 hover:bg-red-50 rounded-xl cursor-pointer bg-transparent"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Inline adding form block */}
+                    <div className="bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/50 p-4 rounded-[1.5rem] space-y-3 transition-colors">
+                      <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Draft Calendar Event</p>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <input
+                          type="text"
+                          placeholder="Time / Date (e.g. Jun 10, 09:00 AM)"
+                          value={newEventTime}
+                          onChange={(e) => setNewEventTime(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Event Label (e.g. Annual Sci-Fi Fair)"
+                          value={newEventLabel}
+                          onChange={(e) => setNewEventLabel(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold"
+                        />
+                        <select
+                          value={newEventType}
+                          onChange={(e) => setNewEventType(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold cursor-pointer"
+                        >
+                          <option value="Holiday">Type: Holiday</option>
+                          <option value="Exam">Type: Exam</option>
+                          <option value="Activity">Type: Activity</option>
+                          <option value="Meeting">Type: Meeting</option>
+                          <option value="Sports">Type: Sports</option>
+                        </select>
+                        <select
+                          value={newEventColor}
+                          onChange={(e) => setNewEventColor(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold cursor-pointer"
+                        >
+                          <option value="bg-red-50 text-red-600">Color: Red (High-alert)</option>
+                          <option value="bg-indigo-50 text-indigo-600">Color: Indigo</option>
+                          <option value="bg-blue-50 text-blue-600">Color: Blue</option>
+                          <option value="bg-emerald-50 text-emerald-600">Color: Green</option>
+                          <option value="bg-amber-50 text-amber-600 font-bold">Color: Orange/Amber</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (!newEventTime || !newEventLabel) return;
+                            const newEvt = {
+                              id: Date.now(),
+                              time: newEventTime,
+                              label: newEventLabel,
+                              type: newEventType,
+                              color: newEventColor
+                            };
+                            setCmsEventsList([...cmsEventsList, newEvt]);
+                            // Clear inputs
+                            setNewEventTime("");
+                            setNewEventLabel("");
+                          }}
+                          className="bg-indigo-600 text-white hover:bg-indigo-700 h-9 rounded-xl text-xs font-bold gap-1 px-4 cursor-pointer border-none"
+                        >
+                          <Plus size={14} className="stroke-[3]" /> Add Event
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCmsMode(false)}
+                      className="rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSavingCms}
+                      className="bg-blue-600 text-white hover:bg-blue-700 rounded-xl font-bold px-6 gap-2 cursor-pointer shadow-lg shadow-blue-600/20 border-none"
+                    >
+                      {isSavingCms ? (
+                        <>
+                          <RefreshCw className="animate-spin h-4 w-4" /> Saving Options...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} /> Save Dashboard Settings
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
@@ -577,19 +1078,29 @@ export default function Dashboard({ user }: DashboardProps) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 dashboard-card border-none" onClick={() => navigate("/marks")}>
+        <Card className="lg:col-span-2 border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold text-slate-900 leading-tight">Academic Performance</CardTitle>
                 <CardDescription className="font-medium text-slate-400">Average vs Top scores across all standards</CardDescription>
               </div>
-              <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div> Top
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-slate-300"></div> Avg
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8 flex items-center gap-1 cursor-pointer"
+                  onClick={() => navigate("/marks")}
+                >
+                  View Details <ArrowUpRight size={14} />
+                </Button>
+                <div className="hidden sm:flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div> Top
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-slate-300"></div> Avg
+                  </div>
                 </div>
               </div>
             </div>
@@ -649,10 +1160,22 @@ export default function Dashboard({ user }: DashboardProps) {
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card border-none" onClick={() => navigate("/attendance")}>
+        <Card className="border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold text-slate-900 leading-tight">Weekly Attendance</CardTitle>
-            <CardDescription className="font-medium text-slate-400">Daily student presence status</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-bold text-slate-900 leading-tight">Weekly Attendance</CardTitle>
+                <CardDescription className="font-medium text-slate-400">Daily student presence status</CardDescription>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8 flex items-center gap-1 cursor-pointer"
+                onClick={() => navigate("/attendance")}
+              >
+                View Details <ArrowUpRight size={14} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="h-[350px] w-full pt-6 px-4 pb-6">
             {isMounted ? (

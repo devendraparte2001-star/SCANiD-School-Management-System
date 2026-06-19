@@ -109,8 +109,64 @@ async function startServer() {
 
   // Mock data arrays for basic management (persisted dynamically in db.json)
   let schools = dbData.schools || [
-    { id: 1, name: "SCANiD PRIMARY SCHOOL", code: "SPS001", address: "MUMBAI, MAHARASHTRA", email: "pri@scanid.com", phone: "9876543210", totalStudents: 450, status: "Active" },
-    { id: 2, name: "SCANiD SECONDARY HIGH SCHOOL", code: "SSHS002", address: "PUNE, MAHARASHTRA", email: "sec@scanid.com", phone: "9876543211", totalStudents: 620, status: "Active" }
+    { 
+      id: 1, 
+      name: "SCANiD PRIMARY SCHOOL", 
+      code: "SPS001", 
+      address: "MUMBAI, MAHARASHTRA", 
+      email: "pri@scanid.com", 
+      phone: "9876543210", 
+      totalStudents: 450, 
+      status: "Active",
+      tagline: "Laying the Foundations of Modern Learning & Character",
+      description: "SCANiD Primary School is dedicated to fostering a supportive, safe, and intellectually stimulating space for young learners. We emphasize inquiry-based learning, primary computer literacy, active communication, and artistic and athletic discovery.",
+      mission: "To inspire an early curiosity for the sciences and arts while equipping young students with global leadership values and sound technical foundational skills.",
+      vision: "To become a pioneering primary education hub representing world-class digital learning integrated with profound values.",
+      sliderImages: [
+        "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=1200",
+        "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1200",
+        "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&q=80&w=1200"
+      ],
+      motto: "Honor, Wisdom & Joy",
+      highlights: [
+        { label: "Established", value: "2010" },
+        { label: "Faculty Size", value: "34 Expert Educators" },
+        { label: "Student Clubs", value: "15+ Creative Streams" }
+      ],
+      notices: [
+        { id: 1, title: "Primary Admissions Open (2026-27)", date: "2026-06-12" },
+        { id: 2, title: "Annual Speech Day & Drama Festival", date: "2026-06-25" }
+      ]
+    },
+    { 
+      id: 2, 
+      name: "SCANiD SECONDARY HIGH SCHOOL", 
+      code: "SSHS002", 
+      address: "PUNE, MAHARASHTRA", 
+      email: "sec@scanid.com", 
+      phone: "9876543211", 
+      totalStudents: 620, 
+      status: "Active",
+      tagline: "Empowering Secondary Visionaries & Scientific Minds",
+      description: "SCANiD Secondary High School features rigorous, state-of-the-art preparation for modern secondary education. With scientific labs, advanced computing rigs, competitive sports training, and counseling guidance, we prepare students for elite certifications.",
+      mission: "To fuel innovative research mindsets and advanced technical literacies through rigorous engineering, mathematics, and high-performance arts programs.",
+      vision: "To pioneer scholastic excellence globally, setting high marks in secondary academic results, national sports, and creative digital innovations.",
+      sliderImages: [
+        "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=1200",
+        "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&q=80&w=1200",
+        "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200"
+      ],
+      motto: "Knowledge, Strength & Innovation",
+      highlights: [
+        { label: "Established", value: "2015" },
+        { label: "Science Labs", value: "4 Specialized Rigs" },
+        { label: "Medals Won", value: "18+ National Awards" }
+      ],
+      notices: [
+        { id: 1, title: "Grade 10 Central Board Registrations", date: "2026-06-10" },
+        { id: 2, title: "Science Exhibition & Robot Expo 2026", date: "2026-06-28" }
+      ]
+    }
   ];
 
   let teachers = dbData.teachers || [
@@ -534,6 +590,41 @@ async function startServer() {
     }
   ];
 
+  let dashboardStats = dbData.dashboardStats || {
+    totalStudents: 1240,
+    totalTeachers: 84,
+    feeCollection: "₹45.2L",
+    attendanceRate: "94.8%",
+    recentAnnouncements: [
+      { id: 1, title: "Exam Schedule Released", date: "2026-05-15", category: "Exam", desc: "The final exam schedules for all branches are now available in the portal." },
+      { id: 2, title: "Annual Sports Day", date: "2026-06-01", category: "Sports", desc: "Sports registrations are open. Sign up today!" }
+    ],
+    upcomingEvents: [
+      { id: 1, title: "Science Fair", date: "2026-05-20", type: "Exhibition", label: "Science Fair Project Exhibition", color: "bg-red-50 text-red-600" },
+      { id: 2, title: "Teacher Training", date: "2026-05-25", type: "Workshop", label: "Interactive Pedagogy Seminar", color: "bg-indigo-50 text-indigo-600" }
+    ],
+    attendanceTrend: [
+      { day: "Mon", attendance: 92 },
+      { day: "Tue", attendance: 95 },
+      { day: "Wed", attendance: 88 },
+      { day: "Thu", attendance: 94 },
+      { day: "Fri", attendance: 91 }
+    ],
+    performanceData: [
+      { name: "Term 1", avg: 72, top: 94 },
+      { name: "Term 2", avg: 78, top: 96 },
+      { name: "Term 3", avg: 75, top: 93 },
+      { name: "Term 4", avg: 82, top: 98 }
+    ],
+    liveTelemetry: {
+      totalRecordsManaged: 284192,
+      activeDataPipelineStreamNodeCount: 12,
+      queryLatencyMs: 2.15,
+      streamingFps: 60,
+      activeRFIDReadersCount: 144
+    }
+  };
+
   let navigationItems = dbData.navigationItems || [
     // IDs: SuperAdmin=1, Admin=2, Teacher=3, Student=4, Parent=5, All=0
     { id: 1, title: "Dashboard", icon: "LayoutDashboard", path: "/", parentId: null, sortOrder: 1, roleIds: [1, 2, 3, 4, 5] },
@@ -696,7 +787,8 @@ async function startServer() {
         staffInitials,
         roles,
         alertTypes,
-        marks
+        marks,
+        dashboardStats
       };
       fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), "utf8");
     } catch (e) {
@@ -1358,33 +1450,27 @@ async function startServer() {
   app.get("/api/stats", (req, res) => {
     res.json({
       data: {
-        totalStudents: students.length,
+        totalStudents: dashboardStats.totalStudents !== undefined ? dashboardStats.totalStudents : students.length,
+        totalTeachers: dashboardStats.totalTeachers !== undefined ? dashboardStats.totalTeachers : teachers.length,
         totalSchools: schools.length,
-        activeAttendance: "92%",
-        averagePerformance: "88%",
-        recentAnnouncements: [
-          { id: 1, title: "Exam Schedule Released", date: "2024-05-15", category: "Exam" },
-          { id: 2, title: "Annual Sports Day", date: "2024-06-01", category: "Sports" }
-        ],
-        upcomingEvents: [
-          { id: 1, title: "Science Fair", date: "2024-05-20", type: "Exhibition" },
-          { id: 2, title: "Teacher Training", date: "2024-05-25", type: "Workshop" }
-        ],
-        attendanceTrend: [
-          { day: "Mon", attendance: 92 },
-          { day: "Tue", attendance: 95 },
-          { day: "Wed", attendance: 88 },
-          { day: "Thu", attendance: 94 },
-          { day: "Fri", attendance: 91 }
-        ],
-        performanceData: [
-          { name: "Term 1", avg: 72, top: 94 },
-          { name: "Term 2", avg: 78, top: 96 },
-          { name: "Term 3", avg: 75, top: 93 },
-          { name: "Term 4", avg: 82, top: 98 }
-        ]
+        feeCollection: dashboardStats.feeCollection || "₹45.2L",
+        attendanceRate: dashboardStats.attendanceRate || "94.8%",
+        recentAnnouncements: dashboardStats.recentAnnouncements || [],
+        upcomingEvents: dashboardStats.upcomingEvents || [],
+        attendanceTrend: dashboardStats.attendanceTrend || [],
+        performanceData: dashboardStats.performanceData || []
       }
     });
+  });
+
+  app.post("/api/stats", (req, res) => {
+    try {
+      dashboardStats = { ...dashboardStats, ...req.body };
+      saveDb();
+      res.json({ success: true, data: dashboardStats });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
   });
 
   // Live Dashboard High-Volume Telemetry Stream API

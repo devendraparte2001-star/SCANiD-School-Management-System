@@ -572,6 +572,7 @@ export const apiService = {
   // Stats
   getStats: (schoolId?: number, academicYearId?: number) => api.get("/stats", { params: { schoolId, academicYearId } }),
   getLiveStats: () => api.get("/stats/live"),
+  updateStats: (data: any) => api.post("/stats", data),
 
   // Attendance
   getAttendance: (date: string, schoolId?: number, academicYearId?: number, params?: PaginatedParams) =>
