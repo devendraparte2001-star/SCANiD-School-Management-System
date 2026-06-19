@@ -936,8 +936,12 @@ CREATE TABLE [dbo].[SystemLabels](
     [Category] [nvarchar](100) NOT NULL DEFAULT (N'General'),
     [IsActive] [bit] NOT NULL DEFAULT (1),
     [IsDeleted] [bit] NOT NULL DEFAULT (0),
+    [CreatedBy] [nvarchar](255) NULL,
     [CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [ModifiedBy] [nvarchar](255) NULL,
     [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [SchoolId] [int] NULL,
+    [AcademicYearId] [int] NULL,
  CONSTRAINT [PK_SystemLabels] PRIMARY KEY CLUSTERED ([Id] ASC)
 );
 

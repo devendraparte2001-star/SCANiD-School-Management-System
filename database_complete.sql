@@ -515,7 +515,13 @@ CREATE TABLE [dbo].[SystemLabels](
     [CustomizedValue] NVARCHAR(max) NOT NULL,
     [Category] NVARCHAR(100) NOT NULL DEFAULT (N'General'),
     [IsActive] BIT NOT NULL DEFAULT (1),
-    [IsDeleted] BIT NOT NULL DEFAULT (0)
+    [IsDeleted] BIT NOT NULL DEFAULT (0),
+    [CreatedBy] NVARCHAR(255) NULL,
+    [CreatedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()),
+    [ModifiedBy] NVARCHAR(255) NULL,
+    [ModifiedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()),
+    [SchoolId] INT NULL,
+    [AcademicYearId] INT NULL
 );
 GO
 
