@@ -45,7 +45,13 @@ namespace ScanID.Api.Controllers
                     new SystemLabel { Key = "grNo", DefaultValue = "GR No", CustomizedValue = "GR No", Category = "Identifiers" },
                     new SystemLabel { Key = "rollNo", DefaultValue = "Roll No", CustomizedValue = "Roll No", Category = "Identifiers" },
                     new SystemLabel { Key = "employeeId", DefaultValue = "Employee Code", CustomizedValue = "Employee Code", Category = "Identifiers" },
-                    new SystemLabel { Key = "academicYear", DefaultValue = "Academic Year", CustomizedValue = "Academic Year", Category = "Academic Structure" }
+                    new SystemLabel { Key = "academicYear", DefaultValue = "Academic Year", CustomizedValue = "Academic Year", Category = "Academic Structure" },
+                    new SystemLabel { Key = "logoTextPrimary", DefaultValue = "SCAN", CustomizedValue = "SCAN", Category = "Branding & Identity" },
+                    new SystemLabel { Key = "logoTextSecondary", DefaultValue = "iD", CustomizedValue = "iD", Category = "Branding & Identity" },
+                    new SystemLabel { Key = "logoSubtitle", DefaultValue = "SCANiD SYSTEMS PVT. LTD.", CustomizedValue = "SCANiD SYSTEMS PVT. LTD.", Category = "Branding & Identity" },
+                    new SystemLabel { Key = "loginHeading", DefaultValue = "Member Login", CustomizedValue = "Member Login", Category = "Branding & Identity" },
+                    new SystemLabel { Key = "loginSubtext", DefaultValue = "Institutional Multi-Branch Control Portal", CustomizedValue = "Institutional Multi-Branch Control Portal", Category = "Branding & Identity" },
+                    new SystemLabel { Key = "logoImage", DefaultValue = "", CustomizedValue = "", Category = "Branding & Identity" }
                 };
 
                 _context.SystemLabels.AddRange(defaultLabels);

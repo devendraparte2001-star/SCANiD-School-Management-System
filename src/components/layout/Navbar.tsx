@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Search, User, Settings as SettingsIcon, LogOut, School, Calendar, Menu, Info, AlertTriangle, CheckCircle, X } from "lucide-react";
+import { Bell, Search, User, Settings as SettingsIcon, LogOut, School, Calendar, Menu, Info, AlertTriangle, CheckCircle, X, Languages } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -30,6 +30,7 @@ import { apiService } from "@/lib/api";
 import { SimpleTooltip } from "@/components/shared/SimpleTooltip";
 
 import { Role, User as UserType } from "@/types";
+import { useLanguage, LanguageCode } from "@/context/LanguageContext";
 
 interface NavbarProps {
   user: UserType;
@@ -39,6 +40,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: NavbarProps) {
+  const { language, setLanguage, t } = useLanguage();
   const [search, setSearch] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [filteredResults, setFilteredResults] = useState<SearchItem[]>([]);
@@ -447,7 +449,7 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
           <Search size={16} className="text-slate-400 shrink-0 transition-colors group-focus-within:text-blue-500" />
           <Input 
             ref={inputRef}
-            placeholder="Search students, classes..." 
+            placeholder={t("searchPlaceholder")} 
             className="border-none bg-transparent focus-visible:ring-0 shadow-none text-xs sm:text-sm h-8 font-medium placeholder:text-slate-400"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -506,6 +508,61 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
     </div>
 
     <div className="flex items-center gap-4">
+        <DropdownMenu>
+          <SimpleTooltip content={t("language")} side="bottom" nativeButton={true}>
+            <DropdownMenuTrigger asChild nativeButton={true}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-slate-600 hover:bg-slate-50 outline-none flex items-center justify-center cursor-pointer"
+              >
+                <Languages size={20} />
+              </Button>
+            </DropdownMenuTrigger>
+          </SimpleTooltip>
+          <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-slate-100 shadow-xl p-1 bg-white">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-slate-400 font-black px-3 py-1.5 uppercase tracking-wider">{t("selectLanguage")}</DropdownMenuLabel>
+              <DropdownMenuSeparator className="my-1 bg-slate-100" />
+              <DropdownMenuItem 
+                onClick={() => setLanguage("en")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "en" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>English (US)</span>
+                {language === "en" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage("hi")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "hi" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>हिन्दी (Hindi)</span>
+                {language === "hi" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage("es")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "es" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>Español</span>
+                {language === "es" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage("ar")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "ar" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>العربية (Arabic)</span>
+                {language === "ar" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage("fr")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "fr" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>Français</span>
+                {language === "fr" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <DropdownMenu>
           <SimpleTooltip content="Notifications" side="bottom" nativeButton={true}>
             <DropdownMenuTrigger asChild nativeButton={true}>

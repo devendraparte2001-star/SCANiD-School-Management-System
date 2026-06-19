@@ -214,6 +214,83 @@ const mockFallbacks: Record<string, any> = {
     { id: 1, fullName: "Super Admin", username: "admin", role: "superadmin" },
     { id: 2, fullName: "John Doe", username: "teacher1", role: "teacher" },
   ],
+  "/fees": [
+    {
+      id: 1,
+      studentId: 1,
+      invoiceNumber: "INV-SB-1001",
+      type: "Admission Fee",
+      totalAmount: 3000,
+      paidAmount: 3000,
+      amount: 3000,
+      dueDate: "2026-04-15",
+      paidDate: "2026-04-10",
+      status: "Paid",
+      paymentMethod: "Cash",
+      term: "Annual Admission (Stateboard Subsidized)",
+      schoolId: 1,
+      academicYearId: 2,
+      student: {
+        id: 1,
+        fullName: "Demo Student (Local Server Offline)",
+        grNo: "GR-1001",
+        standard: "10th",
+        section: "A",
+        schoolId: 1,
+        optedForBus: false
+      }
+    },
+    {
+      id: 2,
+      studentId: 1,
+      invoiceNumber: "INV-SB-1002",
+      type: "Tuition Fee",
+      totalAmount: 4500,
+      paidAmount: 4500,
+      amount: 4500,
+      dueDate: "2026-06-15",
+      paidDate: "2026-06-01",
+      status: "Paid",
+      paymentMethod: "GPay",
+      term: "Term 1 Tuition",
+      schoolId: 1,
+      academicYearId: 2,
+      student: {
+        id: 1,
+        fullName: "Demo Student (Local Server Offline)",
+        grNo: "GR-1001",
+        standard: "10th",
+        section: "A",
+        schoolId: 1,
+        optedForBus: false
+      }
+    },
+    {
+      id: 3,
+      studentId: 1,
+      invoiceNumber: "INV-SB-1003",
+      type: "Activity Fee",
+      totalAmount: 1200,
+      paidAmount: 0,
+      amount: 1200,
+      dueDate: "2026-07-20",
+      paidDate: null,
+      status: "Pending",
+      paymentMethod: null,
+      term: "Term 1 Extracurricular",
+      schoolId: 1,
+      academicYearId: 2,
+      student: {
+        id: 1,
+        fullName: "Demo Student (Local Server Offline)",
+        grNo: "GR-1001",
+        standard: "10th",
+        section: "A",
+        schoolId: 1,
+        optedForBus: false
+      }
+    }
+  ],
   "/auth/login": {
     token: "demo-token",
     user: {
@@ -224,7 +301,41 @@ const mockFallbacks: Record<string, any> = {
       schoolId: null,
       academicYearId: 2
     }
-  }
+  },
+  "/marks": [
+    {
+      id: 1,
+      studentId: 1,
+      subject: "Mathematics",
+      examName: "Final Terminal Examination",
+      term: "Academic Term 1",
+      obtMarks: 85,
+      marksObtained: 85,
+      totalMarks: 100,
+      student: {
+        id: 1,
+        fullName: "Shivansh Sanjay Khopkar",
+        registrationNumber: "REG1001",
+        rollNumber: 1
+      }
+    },
+    {
+      id: 2,
+      studentId: 2,
+      subject: "Science",
+      examName: "Final Terminal Examination",
+      term: "Academic Term 1",
+      obtMarks: 92,
+      marksObtained: 92,
+      totalMarks: 100,
+      student: {
+        id: 2,
+        fullName: "Avadhut Vijay Suryawanshi",
+        registrationNumber: "REG1002",
+        rollNumber: 2
+      }
+    }
+  ]
 };
 
 // Add request interceptor to automatically inject Authorization header
@@ -337,7 +448,7 @@ api.interceptors.response.use(
         
         // Wrap in { data: [...] } for specific paths
         const needsDataWrap = cleanUrl.includes("/masters/") || 
-                            ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/attendance", "/notifications", "/messages", "/auditlogs", "/errorlogs"].some(p => cleanUrl.startsWith(p));
+                            ["/schools", "/users", "/navigation", "/teachers", "/staff", "/students", "/attendance", "/notifications", "/messages", "/auditlogs", "/errorlogs", "/fees"].some(p => cleanUrl.startsWith(p));
         
         const finalResponseData = needsDataWrap ? { data: mockData } : mockData;
           
@@ -406,6 +517,7 @@ export const apiService = {
 
   // Marks
   getMarks: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) => api.get("/marks", { params: { schoolId, academicYearId, ...params } }),
+  createMark: (data: any) => api.post("/marks", data),
 
   // Schools
   getSchools: (params?: PaginatedParams) => api.get("/schools", { params }),
@@ -459,6 +571,7 @@ export const apiService = {
 
   // Stats
   getStats: (schoolId?: number, academicYearId?: number) => api.get("/stats", { params: { schoolId, academicYearId } }),
+  getLiveStats: () => api.get("/stats/live"),
 
   // Attendance
   getAttendance: (date: string, schoolId?: number, academicYearId?: number, params?: PaginatedParams) =>
@@ -487,6 +600,9 @@ export const apiService = {
 
   // Fees
   getFees: (schoolId?: number, academicYearId?: number, params?: PaginatedParams) => api.get("/fees", { params: { schoolId, academicYearId, ...params } }),
+  createFee: (data: any) => api.post("/fees", data),
+  updateFee: (id: number, data: any) => api.put(`/fees/${id}`, data),
+  deleteFee: (id: number) => api.delete(`/fees/${id}`),
 
   // System Logs
   getAuditLogs: (params?: PaginatedParams) => api.get("/auditlogs", { params }),

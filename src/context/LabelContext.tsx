@@ -13,6 +13,14 @@ export interface SystemLabels {
   rollNo: string;
   employeeId: string;
   academicYear: string;
+  
+  // Custom Branding Configurations
+  logoTextPrimary?: string;
+  logoTextSecondary?: string;
+  logoSubtitle?: string;
+  loginHeading?: string;
+  loginSubtext?: string;
+  logoImage?: string;
 }
 
 // Default labels config list
@@ -27,6 +35,14 @@ const DEFAULT_LABELS: SystemLabels = {
   rollNo: "Roll No",
   employeeId: "Employee Code",
   academicYear: "Academic Year",
+
+  // Custom Branding Configurations
+  logoTextPrimary: "SCAN",
+  logoTextSecondary: "iD",
+  logoSubtitle: "SCANiD SYSTEMS PVT. LTD.",
+  loginHeading: "Member Login",
+  loginSubtext: "Institutional Multi-Branch Control Portal",
+  logoImage: "",
 };
 
 interface LabelContextType {
@@ -170,6 +186,13 @@ function getCategoryForKey(key: string): string {
     case "section":
     case "academicYear":
       return "Academic Structure";
+    case "logoTextPrimary":
+    case "logoTextSecondary":
+    case "logoSubtitle":
+    case "loginHeading":
+    case "loginSubtext":
+    case "logoImage":
+      return "Branding & Identity";
     default:
       return "General Identifiers";
   }

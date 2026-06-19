@@ -96,14 +96,18 @@ export default function MarksEntry({ user, forcedSchoolId }: { user: UserType, f
           apiService.getStandards(),
           apiService.getSections()
         ]);
-        setStandardsMaster(standardsRes.data || []);
-        setSectionsMaster(sectionsRes.data || []);
+        const normalize = (res: any) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        const standards = normalize(standardsRes);
+        const sections = normalize(sectionsRes);
+
+        setStandardsMaster(standards);
+        setSectionsMaster(sections);
         
-        if (standardsRes.data?.length > 0 && !standard) {
-          setStandard(standardsRes.data[0].name);
+        if (standards.length > 0 && !standard) {
+          setStandard(standards[0].name);
         }
-        if (sectionsRes.data?.length > 0 && !section) {
-          setSection(sectionsRes.data[0].name);
+        if (sections.length > 0 && !section) {
+          setSection(sections[0].name);
         }
       } catch (error) {
         console.error("Failed to fetch masters", error);
@@ -112,28 +116,85 @@ export default function MarksEntry({ user, forcedSchoolId }: { user: UserType, f
     fetchMasters();
   }, []);
 
+  // Fetch existing database marks to pre-populate inputs dynamically
+  useEffect(() => {
+    const fetchExistingMarks = async () => {
+      try {
+        const schoolId = forcedSchoolId || parseSafeInt(user.schoolId);
+        const academicYearId = parseSafeInt(user.academicYearId);
+        const res = await apiService.getMarks(schoolId, academicYearId);
+        const rawMarks = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        
+        // Map saved marks in-memory: { [subjectName]: { [studentId]: marksObtained } }
+        const newPersistentMarks: Record<string, Record<string, string>> = {};
+        rawMarks.forEach((m: any) => {
+          const subjectName = m.subject || m.Subject || "";
+          const studentId = (m.studentId || m.StudentId || "").toString();
+          const marksObtained = (m.marksObtained !== undefined ? m.marksObtained : 
+                                 (m.MarksObtained !== undefined ? m.MarksObtained : 
+                                 (m.obtMarks !== undefined ? m.obtMarks : ""))).toString();
+          
+          if (subjectName && studentId) {
+            if (!newPersistentMarks[subjectName]) {
+              newPersistentMarks[subjectName] = {};
+            }
+            newPersistentMarks[subjectName][studentId] = marksObtained;
+          }
+        });
+        
+        setPersistentMarks(newPersistentMarks);
+      } catch (error) {
+        console.error("Failed to load existing marks for school", error);
+      }
+    };
+    fetchExistingMarks();
+  }, [forcedSchoolId, user.schoolId, user.academicYearId]);
+
   useEffect(() => {
     const fetchStudents = async () => {
       setLoading(true);
       try {
         const schoolId = forcedSchoolId || parseSafeInt(user.schoolId);
-        const res = await apiService.getStudents(schoolId);
-        setStudents(res.data.map((s: any) => ({
+        
+        // Dynamic filters based on selections
+        const standardObj = standardsMaster.find(s => s.name === standard);
+        const sectionObj = sectionsMaster.find(s => s.name === section);
+        const standardId = standardObj ? parseSafeInt(standardObj.id) : undefined;
+        const sectionId = sectionObj ? parseSafeInt(sectionObj.id) : undefined;
+
+        const res = await apiService.getStudents(schoolId, parseSafeInt(user.academicYearId), {
+          standardId,
+          sectionId,
+          pageSize: 500
+        });
+
+        // Robust adapter supporting both direct arrays and enveloped JSON responses
+        const rawList = Array.isArray(res.data) ? res.data : (res.data && Array.isArray(res.data.data) ? res.data.data : []);
+        
+        // Retrieve standard-assigned marks
+        const marks = subject ? (persistentMarks[subject] || {}) : {};
+
+        setStudents(rawList.map((s: any) => ({
           id: s.id.toString(),
-          schoolId: s.schoolId.toString(),
-          grno: s.registrationNumber,
-          name: s.fullName,
-          roll: s.rollNumber || s.id.toString(),
-          marks: ""
+          schoolId: s.schoolId?.toString() || schoolId.toString(),
+          grno: s.registrationNumber || s.grNo || `GR-${s.id}`,
+          name: s.fullName || s.name || `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+          roll: s.rollNumber?.toString() || s.id.toString(),
+          marks: marks[s.id.toString()] || ""
         })));
       } catch (error) {
+        console.error("Failed to load students", error);
         toast.error("Failed to load students for marks entry");
       } finally {
         setLoading(false);
       }
     };
-    fetchStudents();
-  }, [forcedSchoolId, user.schoolId]);
+    
+    // Only fetch students when masters are successfully populated
+    if (standardsMaster.length > 0 && sectionsMaster.length > 0) {
+      fetchStudents();
+    }
+  }, [forcedSchoolId, user.schoolId, user.academicYearId, standard, section, standardsMaster, sectionsMaster, subject, persistentMarks === undefined]);
 
   const sortedStudents = useMemo(() => {
     let sortableItems = [...students];
@@ -443,7 +504,7 @@ export default function MarksEntry({ user, forcedSchoolId }: { user: UserType, f
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!subject) {
       toast.error("Please select a subject");
       return;
@@ -473,14 +534,48 @@ export default function MarksEntry({ user, forcedSchoolId }: { user: UserType, f
 
     setIsSaving(true);
     
-    toast.promise(new Promise((resolve) => setTimeout(resolve, 2000)), {
-      loading: `Saving ${subject} marks for Standard ${standard}...`,
-      success: () => {
+    try {
+      const activeEntries = students.filter(s => s.marks !== "");
+      if (activeEntries.length === 0) {
+        toast.info("No mark entries to save.", {
+          description: "Please enter marks for at least one student."
+        });
         setIsSaving(false);
-        return "Marks sheet updated successfully!";
-      },
-      error: "Failed to save marks",
-    });
+        return;
+      }
+
+      const examNames: Record<string, string> = {
+        unit_1: "Unit Test 1",
+        mid_term: "Mid-Term",
+        unit_2: "Unit Test 2",
+        final: "Final Terminal Examination"
+      };
+      const examNameStr = examNames[exam] || exam || "Periodic Test";
+
+      // Save each record to backend in parallel
+      const savePromises = activeEntries.map(s => {
+        const payload = {
+          studentId: parseInt(s.id),
+          subject: subject,
+          examName: examNameStr,
+          term: "Academic Term 1",
+          marksObtained: parseFloat(s.marks),
+          totalMarks: maxMarksNum
+        };
+        return apiService.createMark(payload);
+      });
+
+      await Promise.all(savePromises);
+
+      toast.success("Marks sheet updated successfully!", {
+        description: `Persisted ${activeEntries.length} academic records to the database.`
+      });
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Failed to save marks sheet entries to database.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const autoFillMock = () => {

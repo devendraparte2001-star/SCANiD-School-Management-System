@@ -375,17 +375,13 @@ BEGIN
     -- High Performance Composite Filter Index matching GetStudents queries
     IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Students_School_Academics_Filters' AND object_id = OBJECT_ID('dbo.Students'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_Students_School_Academics_Filters] 
-        ON [dbo].[Students] ([SchoolId], [AcademicYearId], [StandardId], [SectionId], [IsDeleted])
-        INCLUDE ([Id], [Name], [RollNumber], [GrNo]);
+        EXEC('CREATE NONCLUSTERED INDEX [IX_Students_School_Academics_Filters] ON [dbo].[Students] ([SchoolId], [AcademicYearId], [StandardId], [SectionId], [IsDeleted]) INCLUDE ([Id], [Name], [RollNumber], [GrNo]);');
     END;
 
     -- High Performance Index for Fast Dynamic Searching by Student details and GrNo
     IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Students_Name_Search' AND object_id = OBJECT_ID('dbo.Students'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_Students_Name_Search] 
-        ON [dbo].[Students] ([GrNo], [RollNumber])
-        INCLUDE ([Name]);
+        EXEC('CREATE NONCLUSTERED INDEX [IX_Students_Name_Search] ON [dbo].[Students] ([GrNo], [RollNumber]) INCLUDE ([Name]);');
     END;
 END;
 GO

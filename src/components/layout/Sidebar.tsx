@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { SimpleTooltip } from "@/components/shared/SimpleTooltip";
 import { Logo } from "@/components/shared/Logo";
 import { useSystemLabels } from "@/context/LabelContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface NavItem {
   id: number;
@@ -54,15 +55,41 @@ const getIcon = (iconName: string | null) => {
 
 export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }: SidebarProps) {
   const { labels } = useSystemLabels();
+  const { t } = useLanguage();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [menuItems, setMenuItems] = useState<NavItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper taxonomy translation mapping for white labelling
+  // Helper taxonomy translation mapping for white labelling & multilingual support
   const translateTitle = (title: string) => {
-    if (!title || !labels) return title;
+    if (!title) return title;
+    
+    // Map sidebar titles to language context keys
+    const navigationDictionary: { [key: string]: string } = {
+      "Dashboard": "dashboard",
+      "Student Registry": "studentRegistry",
+      "Attendance Tracking": "attendanceTracking",
+      "Examination & Marks": "examinationMarks",
+      "Staff Directory": "staffDirectory",
+      "Manage Users": "manageUsers",
+      "Fee Management": "feeManagement",
+      "Communication Hub": "communicationHub",
+      "Masters & Config": "mastersConfig",
+      "Settings": "settings",
+      "Logout": "logout",
+      "Roll Call": "rollCall",
+      "Manual Upload": "manualUpload",
+      "Leaves Register": "leavesRegister"
+    };
+
+    const translationKey = navigationDictionary[title];
+    if (translationKey) {
+      return t(translationKey);
+    }
+
+    if (!labels) return title;
     let res = title;
     if (res === "Student Registry") {
       res = `${labels.student} Registry`;
@@ -841,7 +868,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
         "p-3 border-t border-slate-800/50 space-y-1.5",
         isCollapsed && "px-3"
       )}>
-        <SimpleTooltip content={isCollapsed ? "Settings" : ""} side="right" nativeButton={false}>
+        <SimpleTooltip content={isCollapsed ? t("settings") : ""} side="right" nativeButton={false}>
           <Link 
             to="/settings"
             className={cn(
@@ -863,12 +890,12 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
               <span className={cn(
                 "ml-3 font-semibold text-sm tracking-tight",
                 location.pathname === "/settings" ? "text-slate-100" : "text-slate-400"
-              )}>Settings</span>
+              )}>{t("settings")}</span>
             )}
           </Link>
         </SimpleTooltip>
         
-        <SimpleTooltip content={isCollapsed ? "Logout" : ""} side="right" nativeButton={true}>
+        <SimpleTooltip content={isCollapsed ? t("logout") : ""} side="right" nativeButton={true}>
           <button 
             onClick={onLogout}
             className={cn(
@@ -880,7 +907,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
               <LogOut size={20} />
             </div>
             {!isCollapsed && (
-              <span className="ml-3 font-semibold text-sm tracking-tight text-red-400/80">Logout</span>
+              <span className="ml-3 font-semibold text-sm tracking-tight text-red-400/80">{t("logout")}</span>
             )}
           </button>
         </SimpleTooltip>

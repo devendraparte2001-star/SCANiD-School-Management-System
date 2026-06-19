@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSystemLabels, SystemLabels } from "@/context/LabelContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface SettingsProps {
   user: UserType;
@@ -30,12 +31,40 @@ interface SettingsProps {
 
 export default function Settings({ user }: SettingsProps) {
   const { labels, updateLabels, resetLabels } = useSystemLabels();
+  const { language, setLanguage, t } = useLanguage();
   const [localLabels, setLocalLabels] = useState<SystemLabels>({ ...labels });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setLocalLabels({ ...labels });
   }, [labels]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 150 * 1024) {
+        toast.error("Please select a smaller logo image (under 150KB) for optimal performance.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLocalLabels((prev) => ({
+          ...prev,
+          logoImage: reader.result as string,
+        }));
+        toast.success("New brand logo image selected and loaded successfully.");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearLogoImage = () => {
+    setLocalLabels((prev) => ({
+      ...prev,
+      logoImage: "",
+    }));
+    toast.info("Base64 visual logo cleared. Reverted back to custom premium styled text logo.");
+  };
 
   const [notifications, setNotifications] = useState({
     email: true,
@@ -53,7 +82,7 @@ export default function Settings({ user }: SettingsProps) {
     try {
       const success = await updateLabels(localLabels);
       if (success) {
-        toast.success("System white-label taxomonies updated successfully");
+        toast.success("System taxonomy & branding configurations updated successfully");
       }
     } catch (err) {
       toast.error("Failed to post configuration to backend API context");
@@ -123,19 +152,29 @@ export default function Settings({ user }: SettingsProps) {
           <TabsContent value="general" className="space-y-6 m-0 animate-in fade-in duration-300">
           <Card className="border-slate-200">
             <CardHeader>
-              <CardTitle className="text-lg">Language and Region</CardTitle>
+              <CardTitle className="text-lg">{t("language")}</CardTitle>
               <CardDescription>Customize how the platform appears for you</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Languages size={16} className="text-slate-400" />
-                    Language
+                  <div className="flex items-center gap-2 font-semibold text-slate-700">
+                    <Languages size={16} className="text-blue-500" />
+                    {t("language")}
                   </div>
-                  <p className="text-xs text-slate-500">Select your preferred platform language</p>
+                  <p className="text-xs text-slate-500">{t("selectLanguage")}</p>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-1 text-sm font-medium">English (US)</div>
+                <select 
+                  value={language} 
+                  onChange={(e) => setLanguage(e.target.value as any)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 cursor-pointer shadow-sm transition-all"
+                >
+                  <option value="en">English (US)</option>
+                  <option value="hi">हिन्दी (Hindi)</option>
+                  <option value="es">Español (Spanish)</option>
+                  <option value="ar">العربية (Arabic)</option>
+                  <option value="fr">Français (French)</option>
+                </select>
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -147,6 +186,159 @@ export default function Settings({ user }: SettingsProps) {
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-1 text-sm font-medium">UTC+05:30 (IST)</div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+            <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+              <CardTitle className="text-lg flex items-center gap-2 text-slate-850">
+                <Sliders className="text-blue-600" size={20} />
+                Portal Branding & Customization
+              </CardTitle>
+              <CardDescription>
+                Customize dynamic company texts, login headers, sub-badges, and visual brand logo images globally.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Brand Identity Texts */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl bg-white shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Brand Identity Labels</h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Logo Primary Text</Label>
+                      <Input 
+                        value={localLabels.logoTextPrimary || ""}
+                        onChange={(e) => setLocalLabels({ ...localLabels, logoTextPrimary: e.target.value })}
+                        placeholder="e.g. SCAN"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-700">Logo Accent Suffix</Label>
+                      <Input 
+                        value={localLabels.logoTextSecondary || ""}
+                        onChange={(e) => setLocalLabels({ ...localLabels, logoTextSecondary: e.target.value })}
+                        placeholder="e.g. iD"
+                        className="h-10 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Corporate Subtitle Badge</Label>
+                    <Input 
+                      value={localLabels.logoSubtitle || ""}
+                      onChange={(e) => setLocalLabels({ ...localLabels, logoSubtitle: e.target.value })}
+                      placeholder="e.g. SCANID SYSTEMS PVT. LTD."
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Login Page Customizer */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl bg-white shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Login Card Overrides</h3>
+                  
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Login Greeting Header</Label>
+                    <Input 
+                      value={localLabels.loginHeading || ""}
+                      onChange={(e) => setLocalLabels({ ...localLabels, loginHeading: e.target.value })}
+                      placeholder="e.g. Member Login"
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Portal Subheading / Description</Label>
+                    <Input 
+                      value={localLabels.loginSubtext || ""}
+                      onChange={(e) => setLocalLabels({ ...localLabels, loginSubtext: e.target.value })}
+                      placeholder="e.g. Institutional Multi-Branch Control Portal"
+                      className="h-10 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Corporate Visual Image Logo */}
+                <div className="space-y-4 border border-slate-100 p-4 rounded-xl md:col-span-2 bg-white shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Corporate Visual Image Logo</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Upload a high-quality visual PNG, JPG, or SVG image logo to replace the default typographic "SCANiD" styled text logo globally in both Left Sidebar Header and Login card panels.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-slate-50 rounded-xl">
+                    {/* Preview box */}
+                    <div className="w-24 h-24 bg-slate-900 border border-slate-850 rounded-2xl flex items-center justify-center p-2.5 relative shrink-0 shadow-inner">
+                      {localLabels.logoImage ? (
+                        <img 
+                          src={localLabels.logoImage} 
+                          alt="Custom logo preview" 
+                          className="max-h-full max-w-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-tight">Standard</p>
+                          <p className="text-xs font-extrabold text-blue-500">{localLabels.logoTextPrimary || "SCAN"}{localLabels.logoTextSecondary || "iD"}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-2 w-full">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-9 font-semibold bg-white border-slate-200 shadow-sm"
+                          onClick={() => document.getElementById("branding-logo-file")?.click()}
+                        >
+                          Select Image Logo
+                        </Button>
+                        {localLabels.logoImage && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-9 font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                            onClick={handleClearLogoImage}
+                          >
+                            Reset to Default Text
+                          </Button>
+                        )}
+                      </div>
+                      <input 
+                        type="file" 
+                        id="branding-logo-file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                      />
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        * Supports PNG, SVG, or JPEG files. Recommended height: 48px to 100px. Standard fallback text will be utilized otherwise.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              
+              <div className="pt-4 border-t border-slate-100 flex justify-end">
+                <Button 
+                  onClick={handleSaveTaxonomy} 
+                  className="bg-blue-600 hover:bg-blue-700 text-xs gap-1.5 shadow-sm font-semibold rounded-lg h-9 px-4"
+                  disabled={isSaving}
+                >
+                  {isSaving && <RefreshCw size={14} className="animate-spin" />}
+                  <CheckCircle2 size={14} /> Deploy Branding & Image Config
+                </Button>
+              </div>
+
             </CardContent>
           </Card>
 

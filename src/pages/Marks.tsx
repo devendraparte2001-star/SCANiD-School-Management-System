@@ -68,8 +68,26 @@ export default function Marks({ user }: { user: UserType }) {
         const schoolIdToUse = user.role === "superadmin" ? parseSafeInt(selectedSchoolId) : parseSafeInt(user.schoolId);
         const academicYearIdToUse = parseSafeInt(user.academicYearId);
         const res = await apiService.getMarks(schoolIdToUse, academicYearIdToUse);
-        const marksData = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-        setMarks(marksData);
+        const rawMarks = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        
+        // Handle C# backend naming (marksObtained/MarksObtained -> obtMarks, TotalMarks -> totalMarks)
+        const mappedMarks = rawMarks.map((m: any) => {
+          const studentInfo = m.student || { name: m.StudentName || m.studentName || "Student" };
+          const obtained = m.obtMarks !== undefined ? m.obtMarks : 
+                           (m.marksObtained !== undefined ? m.marksObtained : 
+                           (m.MarksObtained !== undefined ? m.MarksObtained : 0));
+          const total = m.totalMarks !== undefined ? m.totalMarks : 
+                        (m.TotalMarks !== undefined ? m.TotalMarks : 100);
+          return {
+            ...m,
+            obtMarks: parseFloat(obtained),
+            totalMarks: parseFloat(total),
+            term: m.term || "Term 1",
+            examName: m.examName || m.ExamName || "Periodic Test",
+            student: studentInfo
+          };
+        });
+        setMarks(mappedMarks);
       } catch (error) {
         console.error("Marks error:", error);
       } finally {
@@ -301,6 +319,7 @@ export default function Marks({ user }: { user: UserType }) {
                             <TableCell className="text-right pr-8">
                               <Dialog>
                                 <DialogTrigger
+                                  nativeButton={true}
                                   render={
                                     <Button variant="ghost" size="sm" className="h-9 px-4 rounded-xl gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all active:scale-95" onClick={() => setSelectedStudent(result)}>
                                       <Eye size={14} className="stroke-[3]" /> Certificate

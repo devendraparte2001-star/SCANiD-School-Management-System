@@ -926,6 +926,40 @@ INSERT INTO [dbo].[AlertTypes] ([Code], [Name], [IsActive], [CreatedOn], [Modifi
 END
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND type in (N'U'))
+BEGIN
+CREATE TABLE [dbo].[SystemLabels](
+    [Id] [int] IDENTITY(1,1) NOT NULL,
+    [Key] [nvarchar](255) NOT NULL UNIQUE,
+    [DefaultValue] [nvarchar](max) NOT NULL,
+    [CustomizedValue] [nvarchar](max) NOT NULL,
+    [Category] [nvarchar](100) NOT NULL DEFAULT (N'General'),
+    [IsActive] [bit] NOT NULL DEFAULT (1),
+    [IsDeleted] [bit] NOT NULL DEFAULT (0),
+    [CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+ CONSTRAINT [PK_SystemLabels] PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'student', N'Student', N'Student', N'Student Records', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'students', N'Students', N'Students', N'Student Records', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'staff', N'Staff/Faculty', N'Staff/Faculty', N'Staff Records', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'staffs', N'Staff & Faculty', N'Staff & Faculty', N'Staff Records', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'standard', N'Class/Standard', N'Class/Standard', N'Academic Structure', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'section', N'Section/Division', N'Section/Division', N'Academic Structure', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'grNo', N'GR No', N'GR No', N'Identifiers', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'rollNo', N'Roll No', N'Roll No', N'Identifiers', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'employeeId', N'Employee Code', N'Employee Code', N'Identifiers', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'academicYear', N'Academic Year', N'Academic Year', N'Academic Structure', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'logoTextPrimary', N'SCAN', N'SCAN', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'logoTextSecondary', N'iD', N'iD', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'logoSubtitle', N'SCANiD SYSTEMS PVT. LTD.', N'SCANiD SYSTEMS PVT. LTD.', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'loginHeading', N'Member Login', N'Member Login', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'loginSubtext', N'Institutional Multi-Branch Control Portal', N'Institutional Multi-Branch Control Portal', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]) VALUES (N'logoImage', N'', N'', N'Branding & Identity', 1, 0, GETUTCDATE(), GETUTCDATE());
+END
+GO
+
 -- 9. Sample Infrastructure Data
 IF NOT EXISTS (SELECT * FROM [dbo].[ErrorLogs] WHERE [Id] = 1)
 BEGIN
@@ -953,7 +987,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @SQL NVARCHAR(MAX);
-    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations')
+    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations', 'SystemLabels')
     BEGIN
         SET @SQL = N'SELECT * FROM [dbo].[' + @TableName + N'] WHERE [IsDeleted] = 0';
         EXEC sp_executesql @SQL;
@@ -981,7 +1015,7 @@ BEGIN
     DECLARE @SQL NVARCHAR(MAX);
     DECLARE @Params NVARCHAR(MAX);
 
-    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations')
+    IF @TableName IN ('Standards', 'Sections', 'AcademicYears', 'Castes', 'Religions', 'Categories', 'BloodGroups', 'Houses', 'AdmissionTypes', 'Shifts', 'SubCastes', 'Cities', 'Subjects', 'ExamTypes', 'Designations', 'Occupations', 'SystemLabels')
     BEGIN
         IF @Action = 'INSERT'
         BEGIN
