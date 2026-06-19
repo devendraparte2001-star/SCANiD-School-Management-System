@@ -411,7 +411,7 @@ namespace ScanID.Api.Controllers
                 {
                     string searchLower = search.ToLower().Trim();
                     calculated = calculated.Where(row =>
-                        row.Values.Any(val => val != null && val.ToString().ToLower().Contains(searchLower))
+                        row.Values.Any(val => val != null && val.ToString()?.ToLower().Contains(searchLower) == true)
                     ).ToList();
                 }
 

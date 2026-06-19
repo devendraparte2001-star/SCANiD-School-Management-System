@@ -96,7 +96,7 @@ namespace ScanID.Api.Controllers
         /// Resets all system configurations back to default templates.
         /// </summary>
         [HttpPost("reset")]
-        public async Task<IActionResult> ResetToDefaults()
+        public async Task<ActionResult<IEnumerable<SystemLabel>>> ResetToDefaults()
         {
             var existingItems = await _context.SystemLabels.ToListAsync();
             _context.SystemLabels.RemoveRange(existingItems);
