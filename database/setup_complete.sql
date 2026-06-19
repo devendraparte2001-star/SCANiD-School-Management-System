@@ -1043,6 +1043,75 @@ BEGIN
 END;
 GO
 
+-- 1b. Specific System Taxonomy and Custom Branding Procedures
+IF OBJECT_ID('dbo.sp_GetSystemLabels', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetSystemLabels;
+GO
+CREATE PROCEDURE dbo.sp_GetSystemLabels
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT [Id], [Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn]
+    FROM [dbo].[SystemLabels] 
+    WHERE [IsDeleted] = 0;
+END;
+GO
+
+IF OBJECT_ID('dbo.sp_SaveSystemLabel', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_SaveSystemLabel;
+GO
+CREATE PROCEDURE dbo.sp_SaveSystemLabel
+    @Key NVARCHAR(255),
+    @CustomizedValue NVARCHAR(MAX),
+    @ModifiedBy NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM [dbo].[SystemLabels] WHERE [Key] = @Key)
+    BEGIN
+        UPDATE [dbo].[SystemLabels]
+        SET [CustomizedValue] = @CustomizedValue,
+            [ModifiedOn] = GETUTCDATE(),
+            [ModifiedBy] = @ModifiedBy
+        WHERE [Key] = @Key;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn], [CreatedBy])
+        VALUES (@Key, @CustomizedValue, @CustomizedValue, N'General', 1, 0, GETUTCDATE(), GETUTCDATE(), @ModifiedBy);
+    END
+END;
+GO
+
+IF OBJECT_ID('dbo.sp_BulkSaveSystemLabels', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_BulkSaveSystemLabels;
+GO
+CREATE PROCEDURE dbo.sp_BulkSaveSystemLabels
+    @JsonData NVARCHAR(MAX),
+    @ModifiedBy NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Parse JSON list & update matched keys or insert unmatched keys
+    MERGE INTO [dbo].[SystemLabels] AS Target
+    USING (
+        SELECT [key], [customizedValue]
+        FROM OPENJSON(@JsonData)
+        WITH (
+            [key] NVARCHAR(255) '$.key',
+            [customizedValue] NVARCHAR(MAX) '$.customizedValue'
+        )
+    ) AS Source
+    ON Target.[Key] = Source.[key]
+    WHEN MATCHED THEN
+        UPDATE SET 
+            Target.[CustomizedValue] = Source.[customizedValue],
+            Target.[ModifiedOn] = GETUTCDATE(),
+            Target.[ModifiedBy] = @ModifiedBy
+    WHEN NOT MATCHED THEN
+        INSERT ([Key], [DefaultValue], [CustomizedValue], [Category], [IsActive], [IsDeleted], [CreatedOn], [ModifiedOn], [CreatedBy])
+        VALUES (Source.[key], Source.[customizedValue], Source.[customizedValue], N'General', 1, 0, GETUTCDATE(), GETUTCDATE(), @ModifiedBy);
+END;
+GO
+
 -- 2. Student Management Procedures
 IF OBJECT_ID('dbo.sp_GetStudents', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_GetStudents;
 GO
