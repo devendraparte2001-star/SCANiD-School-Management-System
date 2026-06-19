@@ -964,6 +964,41 @@ INSERT INTO [dbo].[SystemLabels] ([Key], [DefaultValue], [CustomizedValue], [Cat
 END
 GO
 
+-- Ensure older versions of SystemLabels table are updated with newer columns before stored procedures run
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND type in (N'U'))
+BEGIN
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'CreatedBy')
+    BEGIN
+        ALTER TABLE [dbo].[SystemLabels] ADD [CreatedBy] [nvarchar](255) NULL;
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'CreatedOn')
+    BEGIN
+        ALTER TABLE [dbo].[SystemLabels] ADD [CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE());
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'ModifiedBy')
+    BEGIN
+        ALTER TABLE [dbo].[SystemLabels] ADD [ModifiedBy] [nvarchar](255) NULL;
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'ModifiedOn')
+    BEGIN
+        ALTER TABLE [dbo].[SystemLabels] ADD [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE());
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'SchoolId')
+    BEGIN
+        ALTER TABLE [dbo].[SystemLabels] ADD [SchoolId] [int] NULL;
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[SystemLabels]') AND name = 'AcademicYearId')
+    BEGIN
+         ALTER TABLE [dbo].[SystemLabels] ADD [AcademicYearId] [int] NULL;
+    END
+END
+GO
+
 -- 9. Sample Infrastructure Data
 IF NOT EXISTS (SELECT * FROM [dbo].[ErrorLogs] WHERE [Id] = 1)
 BEGIN
