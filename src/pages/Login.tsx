@@ -22,6 +22,17 @@ interface LoginProps {
   onLogin: (user: User) => void;
 }
 
+const getSafeStringId = (obj: any): string => {
+  if (!obj) return "";
+  const idValue = obj.id ?? obj.Id ?? obj.ID ?? obj.schoolId ?? obj.SchoolId ?? obj.academicYearId ?? obj.AcademicYearId;
+  return idValue !== undefined && idValue !== null ? idValue.toString() : "";
+};
+
+const getSafeNameVal = (obj: any): string => {
+  if (!obj) return "";
+  return obj.name ?? obj.Name ?? obj.fullName ?? obj.FullName ?? "";
+};
+
 export default function Login({ onLogin }: LoginProps) {
   const { labels } = useSystemLabels();
   const [username, setUsername] = useState("devendraparte2001@gmail.com");
@@ -67,13 +78,13 @@ export default function Login({ onLogin }: LoginProps) {
       // Find the current academic year (IsCurrent === true) by default as per user request
       const currentYear = finalYears.find((y: any) => y.IsCurrent || y.isCurrent || y.isCurrentYear);
       if (currentYear) {
-        setSelectedYear(currentYear.id.toString());
+        setSelectedYear(getSafeStringId(currentYear));
       } else if (finalYears.length > 0) {
-        setSelectedYear(finalYears[0].id.toString());
+        setSelectedYear(getSafeStringId(finalYears[0]));
       } else {
         setSelectedYear("");
       }
-      setSelectedSchool(finalSchools[0]?.id?.toString() || "");
+      setSelectedSchool(getSafeStringId(finalSchools[0]));
     } catch (error) {
       console.error("Fetch lookups error:", error);
       const fallbackSchools = [
@@ -123,7 +134,7 @@ export default function Login({ onLogin }: LoginProps) {
       const isRoleAdminOrSuperAdmin = role === "superadmin" || role === "admin";
       if (!isRoleAdminOrSuperAdmin) {
         const currentYear = academicYears.find((y: any) => y.IsCurrent || y.isCurrent || y.isCurrentYear) || academicYears[0];
-        setSelectedYear(currentYear.id.toString());
+        setSelectedYear(getSafeStringId(currentYear));
       }
     }
   }, [role, academicYears]);
@@ -191,19 +202,19 @@ export default function Login({ onLogin }: LoginProps) {
       // PERSIST LOGIN SELECTIONS TO USER OBJECT
       // This ensures the Navbar and other components reflect the choices made during login
       userData.academicYearId = selectedYear;
-      const year = (Array.isArray(academicYears) ? academicYears : []).find(y => y.id.toString() === selectedYear);
-      if (year) userData.academicYearName = year.name;
+      const year = (Array.isArray(academicYears) ? academicYears : []).find(y => getSafeStringId(y) === selectedYear);
+      if (year) userData.academicYearName = getSafeNameVal(year);
 
       if (selectedSchool && selectedSchool !== "all") {
         userData.schoolId = selectedSchool;
-        userData.schoolName = (Array.isArray(schools) ? schools : []).find(s => s.id.toString() === selectedSchool)?.name;
+        userData.schoolName = getSafeNameVal((Array.isArray(schools) ? schools : []).find(s => getSafeStringId(s) === selectedSchool));
       } else if (selectedSchool === "all") {
         userData.schoolId = "all";
         userData.schoolName = "All Schools";
       } else if (role !== "superadmin" && Array.isArray(schools) && schools.length > 0) {
         // For non-superadmin, they are locked to their primary school
-        userData.schoolId = schools[0].id.toString();
-        userData.schoolName = schools[0].name;
+        userData.schoolId = getSafeStringId(schools[0]);
+        userData.schoolName = getSafeNameVal(schools[0]);
       }
       
       localStorage.setItem("user", JSON.stringify(userData));
@@ -216,8 +227,8 @@ export default function Login({ onLogin }: LoginProps) {
       if (isConnectionError) {
         console.warn("API Error/Offline - Using connection fallback");
         const isAll = selectedSchool === "all";
-        const school = (Array.isArray(schools) ? schools : []).find(s => s.id.toString() === selectedSchool);
-        const year = (Array.isArray(academicYears) ? academicYears : []).find(y => y.id.toString() === selectedYear);
+        const school = (Array.isArray(schools) ? schools : []).find(s => getSafeStringId(s) === selectedSchool);
+        const year = (Array.isArray(academicYears) ? academicYears : []).find(y => getSafeStringId(y) === selectedYear);
         
         const ROLE_MAP: Record<string, number> = {
           "superadmin": 1,
@@ -417,14 +428,14 @@ export default function Login({ onLogin }: LoginProps) {
                         formErrors.school && "border-red-500/40"
                       )}>
                         <SelectValue placeholder="Select School">
-                          {selectedSchool ? (selectedSchool === "all" ? "All" : schools.find(s => s.id.toString() === selectedSchool)?.name) : undefined}
+                          {selectedSchool ? (selectedSchool === "all" ? "All" : getSafeNameVal(schools.find(s => getSafeStringId(s) === selectedSchool))) : undefined}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
                         <SelectItem value="" className="text-xs italic text-slate-500">Select School</SelectItem>
                         <SelectItem value="all" className="text-xs font-black text-blue-400 uppercase tracking-widest">System-Wide</SelectItem>
                         {Array.isArray(schools) && schools.map(s => (
-                          <SelectItem key={s.id || Math.random()} value={s.id ? s.id.toString() : ""} className="text-xs">{s.name}</SelectItem>
+                          <SelectItem key={getSafeStringId(s) || Math.random()} value={getSafeStringId(s)} className="text-xs">{getSafeNameVal(s)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -435,7 +446,7 @@ export default function Login({ onLogin }: LoginProps) {
                       <School size={12} /> <span>School</span>
                     </Label>
                     <div className="h-10 flex items-center px-3 rounded-xl bg-slate-950/20 border border-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-widest overflow-hidden truncate">
-                      {Array.isArray(schools) && schools.length > 0 ? schools[0].name : "No Schools"}
+                      {Array.isArray(schools) && schools.length > 0 ? getSafeNameVal(schools[0]) : "No Schools"}
                     </div>
                   </div>
                 )}
@@ -450,7 +461,7 @@ export default function Login({ onLogin }: LoginProps) {
                       formErrors.year && "border-red-500/40"
                     )}>
                       <SelectValue placeholder="Select Year">
-                        {selectedYear ? academicYears.find(y => y.id.toString() === selectedYear)?.name : undefined}
+                        {selectedYear ? getSafeNameVal(academicYears.find(y => getSafeStringId(y) === selectedYear)) : undefined}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="bg-slate-950 border-slate-800 text-white rounded-xl">
@@ -458,8 +469,8 @@ export default function Login({ onLogin }: LoginProps) {
                         {Array.isArray(academicYears) && academicYears
                           .filter(y => (role === "superadmin" || role === "admin") || y.IsCurrent || y.isCurrent || y.isCurrentYear)
                           .map(y => (
-                            <SelectItem key={y.id || Math.random()} value={y.id ? y.id.toString() : ""} className="text-xs">
-                              {y.name} {(y.IsCurrent || y.isCurrent || y.isCurrentYear) ? "★" : ""}
+                            <SelectItem key={getSafeStringId(y) || Math.random()} value={getSafeStringId(y)} className="text-xs">
+                              {getSafeNameVal(y)} {(y.IsCurrent || y.isCurrent || y.isCurrentYear) ? "★" : ""}
                             </SelectItem>
                           ))
                         }
