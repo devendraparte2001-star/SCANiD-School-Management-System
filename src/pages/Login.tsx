@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -63,6 +64,7 @@ export default function Login({ onLogin }: LoginProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { labels } = useSystemLabels();
+  const { language, setLanguage, t } = useLanguage();
   const [username, setUsername] = useState("devendraparte2001@gmail.com");
   const [password, setPassword] = useState("admin123");
   const [role, setRole] = useState<Role>("admin");
@@ -162,7 +164,7 @@ export default function Login({ onLogin }: LoginProps) {
         setSelectedSchool(getSafeStringId(finalSchools[0]));
       }
     } catch (error) {
-      console.error("Fetch lookups error:", error);
+      console.warn("Fetch lookups error (using mock lookups fallback):", error);
       const fallbackSchools = [
         { 
           id: 1, 
@@ -340,10 +342,9 @@ export default function Login({ onLogin }: LoginProps) {
       localStorage.setItem("user", JSON.stringify(userData));
       onLogin(userData);
     } catch (err: any) {
-      console.error("Login Server Fault:", err);
       const isConnectionError = !err.response || err.response.status >= 500;
-      
       if (isConnectionError) {
+        console.warn("Login Server Connection Issue - activating offline fallback:", err.message || err);
         console.warn("API Server Issue Fallback Activated");
         const isAll = selectedSchool === "all";
         const schoolObj = (Array.isArray(schools) ? schools : []).find(s => getSafeStringId(s) === selectedSchool) || schools[0];
@@ -971,6 +972,23 @@ export default function Login({ onLogin }: LoginProps) {
           <div className="relative w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-325">
             <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-500" />
             
+            {/* Language Selection Trigger (Low-profile) */}
+            <div className="absolute top-4 left-4 flex items-center gap-1 bg-slate-950/60 border border-slate-850 py-1 px-2 rounded-xl text-slate-300 z-30">
+              <Globe size={11} className="text-blue-400 animate-pulse" />
+              <select 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value as any)}
+                className="bg-transparent text-[9px] font-black text-slate-300 uppercase tracking-widest border-none outline-none cursor-pointer pr-0.5"
+              >
+                <option value="en" className="bg-slate-950 text-white">EN</option>
+                <option value="hi" className="bg-slate-950 text-white">HI</option>
+                <option value="es" className="bg-slate-950 text-white">ES</option>
+                <option value="ar" className="bg-slate-950 text-white">AR</option>
+                <option value="fr" className="bg-slate-950 text-white">FR</option>
+                <option value="mr" className="bg-slate-950 text-white">MR</option>
+              </select>
+            </div>
+
             {/* Close trigger button */}
             <button 
               onClick={() => {
@@ -979,7 +997,7 @@ export default function Login({ onLogin }: LoginProps) {
                 setErrorVisible(null);
                 setRecoverySuccess(false);
               }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 bg-slate-950/50 border border-slate-850 hover:border-slate-750 transition-all rounded-lg"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 bg-slate-950/50 border border-slate-850 hover:border-slate-750 transition-all rounded-lg z-30"
               aria-label="Close portal window"
             >
               <X size={15} />
@@ -991,10 +1009,10 @@ export default function Login({ onLogin }: LoginProps) {
               </div>
               <div className="space-y-1">
                 <h3 className="text-white text-lg font-extrabold tracking-tight uppercase">
-                  {showForgot ? "Forgot Passkey" : (labels.loginHeading || "Member Portal Access")}
+                  {showForgot ? t("Forgot Passkey") : t(labels.loginHeading || "Member Portal Access")}
                 </h3>
                 <p className="text-slate-500 font-black text-[9px] tracking-widest uppercase">
-                  {showForgot ? "System credential retrieval dispatch Desk" : (labels.loginSubtext || "Encrypted Branch Management Interface")}
+                  {showForgot ? t("System credential retrieval dispatch Desk") : t(labels.loginSubtext || "Encrypted Branch Management Interface")}
                 </p>
               </div>
             </div>
@@ -1004,9 +1022,9 @@ export default function Login({ onLogin }: LoginProps) {
                 <form onSubmit={handleForgotPassword} className="space-y-6">
                   {recoverySuccess ? (
                     <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 text-xs text-center font-semibold animate-in zoom-in duration-200">
-                      <p className="font-extrabold mb-1 uppercase tracking-wider">DESPATCH NOTIFICATION</p>
+                      <p className="font-extrabold mb-1 uppercase tracking-wider">{t("DESPATCH NOTIFICATION")}</p>
                       <p className="text-[10px] text-emerald-400/80 leading-relaxed leading-snug">
-                        Recovery passkey dispatched successfully. Please check your registered mail stream or contact executive control.
+                        {t("Recovery passkey dispatched successfully. Please check your registered mail stream or contact executive control.")}
                       </p>
                     </div>
                   ) : (
@@ -1019,12 +1037,12 @@ export default function Login({ onLogin }: LoginProps) {
                       
                       <div className="space-y-2">
                         <Label htmlFor="recovery-username" className="text-slate-350 text-[10px] font-black uppercase tracking-wider">
-                          Admin/User Mail Identifier
+                          {t("Admin/User Mail Identifier")}
                         </Label>
                         <Input 
                           id="recovery-username" 
                           type="text" 
-                          placeholder="Enter your system identifier" 
+                          placeholder={t("Enter your system identifier")} 
                           required 
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
@@ -1037,7 +1055,7 @@ export default function Login({ onLogin }: LoginProps) {
                         disabled={loading}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-xs font-black shadow-lg shadow-blue-600/25 rounded-xl uppercase tracking-widest transition-all duration-300 disabled:opacity-50"
                       >
-                        {loading ? "Processing..." : "Retrieve credentials"}
+                        {loading ? t("Processing...") : t("Retrieve credentials")}
                       </Button>
                     </>
                   )}
@@ -1052,7 +1070,7 @@ export default function Login({ onLogin }: LoginProps) {
                     }}
                     className="w-full text-slate-400 hover:text-white text-xs font-bold tracking-wide"
                   >
-                    ← Back to Login
+                    {t("← Back to Login")}
                   </Button>
                 </form>
               ) : (
@@ -1065,7 +1083,7 @@ export default function Login({ onLogin }: LoginProps) {
                   
                   <div className="space-y-2">
                     <Label htmlFor="username" className={cn("text-slate-300 text-[10px] font-black uppercase tracking-wider flex justify-between items-center", formErrors.username && "text-red-400")}>
-                      <span>Username / Mail ID</span>
+                      <span>{t("Username / Mail ID")}</span>
                       {formErrors.username && (
                         <span className="text-[9px] font-black italic text-red-400 lowercase animate-pulse">
                           {formErrors.username}
@@ -1075,7 +1093,7 @@ export default function Login({ onLogin }: LoginProps) {
                     <Input 
                       id="username" 
                       type="text" 
-                      placeholder="Enter system identifier" 
+                      placeholder={t("Enter system identifier")} 
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className={cn(
@@ -1088,7 +1106,7 @@ export default function Login({ onLogin }: LoginProps) {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password" className={cn("text-slate-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1", formErrors.password && "text-red-400")}>
-                        <span>Password code</span>
+                        <span>{t("Password code")}</span>
                         {formErrors.password && (
                           <span className="text-[9px] font-black italic text-red-400 lowercase animate-pulse">
                             - {formErrors.password}
@@ -1100,7 +1118,7 @@ export default function Login({ onLogin }: LoginProps) {
                         onClick={() => setShowForgot(true)}
                         className="text-[9px] text-blue-400 hover:text-blue-300 font-extrabold uppercase tracking-widest bg-transparent border-none p-0 cursor-pointer transition-colors"
                       >
-                        Forgot?
+                        {t("Forgot?")}
                       </button>
                     </div>
                     <Input 
@@ -1121,7 +1139,7 @@ export default function Login({ onLogin }: LoginProps) {
                     {/* Selected School label preview */}
                     <div className="space-y-1.5 col-span-1">
                       <Label className="text-slate-500 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                        <School size={10} /> <span>Secured node</span>
+                        <School size={10} /> <span>{t("Secured node")}</span>
                       </Label>
                       <div className="h-9 flex items-center px-3 rounded-xl bg-slate-950 border border-slate-900 text-slate-400 text-[9px] font-extrabold uppercase tracking-widest overflow-hidden truncate">
                         {currentSchoolObj ? getSafeNameVal(currentSchoolObj).replace("SCANiD ", "") : "PORTAL MASTER"}
@@ -1131,14 +1149,14 @@ export default function Login({ onLogin }: LoginProps) {
                     {/* Academic Session Choice */}
                     <div className="space-y-1.5 col-span-1">
                       <Label className={cn("text-slate-350 text-[9px] font-black uppercase tracking-wider flex items-center gap-1", formErrors.year && "text-red-400")}>
-                        <Calendar size={10} className="text-blue-400" /> <span>Session</span>
+                        <Calendar size={10} className="text-blue-400" /> <span>{t("Session")}</span>
                       </Label>
                       <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v || ""); setFormErrors(prev => ({...prev, year: ""})); }}>
                         <SelectTrigger className={cn(
                           "bg-slate-950 border-slate-850 text-white h-9 text-xs rounded-xl focus:ring-blue-500/10 border-none outline-none",
                           formErrors.year && "border-red-500/40"
                         )}>
-                          <SelectValue placeholder="Year">
+                          <SelectValue placeholder={t("Year")}>
                             {selectedYear ? getSafeNameVal(academicYears.find(y => getSafeStringId(y) === selectedYear)) : undefined}
                           </SelectValue>
                         </SelectTrigger>
@@ -1161,14 +1179,14 @@ export default function Login({ onLogin }: LoginProps) {
                     disabled={loading}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 text-xs font-black shadow-lg shadow-blue-600/20 mt-4 rounded-xl uppercase tracking-widest transition-all duration-300 active:scale-[0.98] disabled:opacity-50"
                   >
-                    {loading ? "Decrypting credentials..." : "Decrypt authorization"}
+                    {loading ? t("Decrypting credentials...") : t("Decrypt authorization")}
                   </Button>
                 </form>
               )}
             </div>
 
             <div className="bg-slate-950/45 py-4 border-t border-slate-900/60 text-center text-[8px] text-slate-505 font-extrabold uppercase tracking-[0.25em]">
-              Authorized SEC-RING Node Online
+              {t("Authorized SEC-RING Node Online")}
             </div>
           </div>
 

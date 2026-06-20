@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 
 export type LanguageCode = "en" | "hi" | "es" | "ar" | "fr" | "mr";
 
@@ -258,7 +258,7 @@ export const TRANSLATIONS: TranslationDictionary = {
 interface LanguageContextType {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => void;
-  t: (key: string) => string;
+  t: (key: string, defaultText?: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -268,6 +268,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const saved = localStorage.getItem("system_preferred_language");
     return (saved as LanguageCode) || "en";
   });
+
+  const [dynamicTranslations, setDynamicTranslations] = useState<Record<string, string>>({});
+  const activeFetches = useRef<Set<string>>(new Set());
 
   const setLanguage = (lang: LanguageCode) => {
     setLangState(lang);
@@ -291,10 +294,67 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  const t = (key: string): string => {
-    const translation = TRANSLATIONS[key];
-    if (!translation) return key;
-    return translation[language] || translation["en"] || key;
+  const fetchTranslation = async (text: string, lang: string) => {
+    const cacheKey = `t_${lang}_${text}`;
+    if (activeFetches.current.has(cacheKey)) return;
+    activeFetches.current.add(cacheKey);
+
+    try {
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, targetLang: lang }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.translation) {
+          localStorage.setItem(cacheKey, data.translation);
+          setDynamicTranslations(prev => ({
+            ...prev,
+            [cacheKey]: data.translation
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to translate dynamically:", err);
+    } finally {
+      activeFetches.current.delete(cacheKey);
+    }
+  };
+
+  const t = (key: string, defaultText?: string): string => {
+    const textToTranslate = defaultText || key;
+    if (!textToTranslate) return "";
+
+    // 1. Check static TRANSLATIONS dictionary
+    const staticEntry = TRANSLATIONS[key];
+    if (staticEntry && staticEntry[language]) {
+      return staticEntry[language];
+    }
+
+    // If English, return immediately
+    if (language === "en") {
+      return textToTranslate;
+    }
+
+    // 2. Check in-memory/state dynamic cache
+    const cacheKey = `t_${language}_${textToTranslate}`;
+    if (dynamicTranslations[cacheKey]) {
+      return dynamicTranslations[cacheKey];
+    }
+
+    // 3. Check localStorage persistent cache
+    const cachedVal = localStorage.getItem(cacheKey);
+    if (cachedVal) {
+      // cache in-memory to prevent future lookup slowdown
+      dynamicTranslations[cacheKey] = cachedVal;
+      return cachedVal;
+    }
+
+    // 4. Fallback to server-side translation using Gemini in background
+    fetchTranslation(textToTranslate, language);
+
+    return textToTranslate;
   };
 
   return (

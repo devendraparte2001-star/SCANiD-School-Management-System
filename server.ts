@@ -9,6 +9,7 @@ import axios from "axios";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import fs from "fs";
 import multer from "multer";
+import { GoogleGenAI } from "@google/genai";
 
 async function startServer() {
   const app = express();
@@ -987,6 +988,72 @@ async function startServer() {
       });
     } else {
       res.status(401).json({ message: "Invalid credentials. Unauthorized logins are blocked." });
+    }
+  });
+
+  // Multilingual Dynamic Translation Service via Google GenAI SDK (Gemini)
+  async function translateText(text: string, targetLang: string): Promise<string> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY env variable not set for translation. Returning original.");
+      return text;
+    }
+    try {
+      const aiClient = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      const response = await aiClient.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `You are an automated, high-fidelity system-wide localizer translating text from English into ${targetLang}. 
+Translate the text exactly. Preserve formatting, casing, numbers, punctuation, and do not add quotes, notes, comments, or prefix explanations. 
+Only return the translated string and nothing else.
+
+Text to translate: "${text}"`,
+      });
+      const result = response.text?.trim() || "";
+      if (result) {
+        // Strip out enclosing double quotes if Gemini accidentally added them
+        if (result.startsWith('"') && result.endsWith('"') && !text.startsWith('"')) {
+          return result.substring(1, result.length - 1).trim();
+        }
+        return result;
+      }
+    } catch (error: any) {
+      console.error("[Translation Service Error]", error.message || error);
+    }
+    return text;
+  }
+
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { text, targetLang } = req.body;
+      if (!text || !targetLang) {
+        return res.status(400).json({ error: "Missing parameters" });
+      }
+      
+      const targetLangMap: Record<string, string> = {
+        en: "English",
+        hi: "Hindi",
+        es: "Spanish",
+        ar: "Arabic",
+        fr: "French",
+        mr: "Marathi"
+      };
+      
+      const mappedLang = targetLangMap[targetLang] || targetLang;
+      if (targetLang === "en") {
+        return res.json({ translation: text });
+      }
+      
+      const translation = await translateText(text, mappedLang);
+      res.json({ translation });
+    } catch (err: any) {
+      res.status(500).json({ error: "Internal Server Translation error", details: err.message });
     }
   });
 

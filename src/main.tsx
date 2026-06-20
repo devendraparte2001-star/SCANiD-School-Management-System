@@ -64,6 +64,26 @@ if (typeof window !== "undefined") {
     }
   };
   window.addEventListener("error", preventResizeObserverError);
+
+  // Monkey-patch Node.prototype.removeChild and insertBefore to prevent crash
+  // when browser translations or extensions modify the DOM nodes React is managing
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function<T extends Node>(child: T): T {
+    if (child && child.parentNode !== this) {
+      console.warn("[DOM Patch] removeChild: child is not a child of this node. Suppressed crash.", child, this);
+      return child;
+    }
+    return originalRemoveChild.call(this, child) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function<T extends Node>(newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      console.warn("[DOM Patch] insertBefore: referenceNode is not a child of this node. Appending instead.", referenceNode, this);
+      return this.appendChild(newNode);
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T;
+  };
 }
 
 console.log("[main.tsx] Mounting React root...");
@@ -72,7 +92,12 @@ try {
   if (!container) {
     console.error("[main.tsx] Fatal: Root element '#root' not found in document!");
   } else {
-    const root = createRoot(container);
+    // Reuse existing root if it exists globally to avoid react-dom createRoot warnings
+    let root = (window as any).__reactRoot;
+    if (!root) {
+      root = createRoot(container);
+      (window as any).__reactRoot = root;
+    }
     root.render(
       <React.StrictMode>
         <ErrorBoundary>
