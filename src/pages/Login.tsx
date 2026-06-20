@@ -42,6 +42,8 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 
+import { useLocation, useNavigate } from "react-router-dom";
+
 interface LoginProps {
   onLogin: (user: User) => void;
 }
@@ -58,6 +60,8 @@ const getSafeNameVal = (obj: any): string => {
 };
 
 export default function Login({ onLogin }: LoginProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { labels } = useSystemLabels();
   const [username, setUsername] = useState("devendraparte2001@gmail.com");
   const [password, setPassword] = useState("admin123");
@@ -74,7 +78,15 @@ export default function Login({ onLogin }: LoginProps) {
   const [activeSection, setActiveSection] = useState<"overview" | "notices" | "philosophy">("overview");
 
   // Portal Login Overlay State
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(location.pathname === "/login");
+
+  useEffect(() => {
+    if (location.pathname === "/login") {
+      setIsLoginModalOpen(true);
+    } else {
+      setIsLoginModalOpen(false);
+    }
+  }, [location.pathname]);
   
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -198,9 +210,9 @@ export default function Login({ onLogin }: LoginProps) {
     const params = new URLSearchParams(window.location.search);
     if (params.get("expired") === "true") {
       setErrorVisible("Your session has expired. Please login again to continue.");
-      setIsLoginModalOpen(true);
+      navigate("/login", { replace: true });
     }
-  }, [fetchLookups]);
+  }, [fetchLookups, navigate]);
 
   // Automatically configure current role state on the basis of username input for developer ease
   useEffect(() => {
@@ -485,7 +497,7 @@ export default function Login({ onLogin }: LoginProps) {
 
             {/* Glowing Action Trigger to Login Overlay */}
             <Button
-              onClick={() => setIsLoginModalOpen(true)}
+              onClick={() => navigate("/login")}
               className="bg-blue-600 hover:bg-blue-700 text-white h-7.5 sm:h-9 rounded-xl px-2 sm:px-4 text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-600/25 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center gap-1 shrink-0"
             >
               <Lock size={10} className="stroke-[2.5]" />
@@ -960,7 +972,7 @@ export default function Login({ onLogin }: LoginProps) {
             {/* Close trigger button */}
             <button 
               onClick={() => {
-                setIsLoginModalOpen(false);
+                navigate("/");
                 setShowForgot(false);
                 setErrorVisible(null);
                 setRecoverySuccess(false);
