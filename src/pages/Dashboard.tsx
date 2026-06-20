@@ -373,7 +373,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 <Select
                   value={selectedCmsSchoolId}
                   onValueChange={(val) => {
-                    setSelectedCmsSchoolId(val);
+                    if (val) setSelectedCmsSchoolId(val);
                   }}
                 >
                   <SelectTrigger className="h-7 w-full bg-slate-950/40 hover:bg-slate-920 transition-all border border-white/15 rounded-lg text-white font-extrabold text-[11px] py-0 px-2.5 focus:ring-0">
@@ -496,7 +496,7 @@ export default function Dashboard({ user }: DashboardProps) {
                           <Select
                             value={selectedCmsSchoolId}
                             onValueChange={(val) => {
-                              setSelectedCmsSchoolId(val);
+                              if (val) setSelectedCmsSchoolId(val);
                             }}
                           >
                             <SelectTrigger className="w-full bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20">
