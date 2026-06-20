@@ -342,6 +342,13 @@ namespace ScanID.Api.Models
         public DateTime CreatedOn { get; set; }
         public string? ModifiedBy { get; set; }
         public DateTime ModifiedOn { get; set; }
+        public string? DashboardTheme { get; set; }
+        public int? CmsTotalStudents { get; set; }
+        public int? CmsTotalTeachers { get; set; }
+        public string? CmsFeeCollection { get; set; }
+        public string? CmsAttendanceRate { get; set; }
+        public string? CmsAnnouncements { get; set; }
+        public string? CmsEvents { get; set; }
     }
 
     /// <summary>
@@ -375,6 +382,13 @@ namespace ScanID.Api.Models
         public string? InChargeContact { get; set; }
         public string? CreatedBy { get; set; }
         public string? ModifiedBy { get; set; }
+        public string? DashboardTheme { get; set; }
+        public int? CmsTotalStudents { get; set; }
+        public int? CmsTotalTeachers { get; set; }
+        public string? CmsFeeCollection { get; set; }
+        public string? CmsAttendanceRate { get; set; }
+        public string? CmsAnnouncements { get; set; }
+        public string? CmsEvents { get; set; }
     }
 
     /// <summary>

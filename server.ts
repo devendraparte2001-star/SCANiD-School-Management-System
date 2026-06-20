@@ -1448,6 +1448,47 @@ async function startServer() {
 
   // Stats
   app.get("/api/stats", (req, res) => {
+    const schoolId = req.query.schoolId ? parseInt(req.query.schoolId as string) : null;
+    if (schoolId) {
+      const school = schools.find((s: any) => s.id === schoolId);
+      if (school) {
+        res.json({
+          data: {
+            totalStudents: school.cmsTotalStudents !== undefined ? school.cmsTotalStudents : (students.filter((st: any) => st.schoolId === schoolId).length || 450),
+            totalTeachers: school.cmsTotalTeachers !== undefined ? school.cmsTotalTeachers : (teachers.filter((te: any) => te.schoolId === schoolId).length || 34),
+            totalSchools: schools.length,
+            feeCollection: school.cmsFeeCollection || "₹45.2L",
+            attendanceRate: school.cmsAttendanceRate || "94.8%",
+            recentAnnouncements: school.cmsAnnouncements || [
+              { title: "Annual Sports Day 2024", date: "May 15, 2024", desc: "Registration open for all tracks and field events." },
+              { title: "Parent-Teacher Meeting", date: "May 20, 2024", desc: "Final term progress discussion for Standard 5-10." },
+              { title: "Summer Break Notice", date: "June 1, 2024", desc: "School will remain closed from June 1st to July 5th." }
+            ].slice(0, 3),
+            upcomingEvents: school.cmsEvents || [
+              { time: "09:00 AM", label: "Math Finals - Standard 8", type: "Exam", color: "bg-red-50 text-red-600" },
+              { time: "11:30 AM", label: "Choir Practice - Auditorium", type: "Activity", color: "bg-indigo-50 text-indigo-600" },
+              { time: "02:00 PM", label: "Staff Briefing - Room 402", type: "Meeting", color: "bg-slate-50 text-slate-600" },
+              { time: "04:15 PM", label: "Football Match - Away", type: "Sports", color: "bg-blue-50 text-blue-600" },
+            ].slice(0, 4),
+            attendanceTrend: school.cmsAttendanceTrend || [
+              { day: "Mon", attendance: 92 },
+              { day: "Tue", attendance: 95 },
+              { day: "Wed", attendance: 88 },
+              { day: "Thu", attendance: 94 },
+              { day: "Fri", attendance: 91 },
+            ],
+            performanceData: school.cmsPerformanceData || [
+              { name: "Term 1", avg: 72, top: 94 },
+              { name: "Term 2", avg: 78, top: 96 },
+              { name: "Term 3", avg: 75, top: 93 },
+              { name: "Term 4", avg: 82, top: 98 },
+            ]
+          }
+        });
+        return;
+      }
+    }
+
     res.json({
       data: {
         totalStudents: dashboardStats.totalStudents !== undefined ? dashboardStats.totalStudents : students.length,
@@ -1465,9 +1506,37 @@ async function startServer() {
 
   app.post("/api/stats", (req, res) => {
     try {
-      dashboardStats = { ...dashboardStats, ...req.body };
-      saveDb();
-      res.json({ success: true, data: dashboardStats });
+      const schoolId = req.body.schoolId ? parseInt(req.body.schoolId) : null;
+      if (schoolId) {
+        const index = schools.findIndex((s: any) => s.id === schoolId);
+        if (index !== -1) {
+          schools[index].cmsTotalStudents = req.body.totalStudents;
+          schools[index].cmsTotalTeachers = req.body.totalTeachers;
+          schools[index].cmsFeeCollection = req.body.feeCollection;
+          schools[index].cmsAttendanceRate = req.body.attendanceRate;
+          schools[index].cmsAttendanceTrend = req.body.attendanceTrend;
+          schools[index].cmsPerformanceData = req.body.performanceData;
+          schools[index].cmsAnnouncements = req.body.recentAnnouncements;
+          schools[index].cmsEvents = req.body.upcomingEvents;
+          saveDb();
+          res.json({ success: true, data: {
+            totalStudents: schools[index].cmsTotalStudents,
+            totalTeachers: schools[index].cmsTotalTeachers,
+            feeCollection: schools[index].cmsFeeCollection,
+            attendanceRate: schools[index].cmsAttendanceRate,
+            attendanceTrend: schools[index].cmsAttendanceTrend,
+            performanceData: schools[index].cmsPerformanceData,
+            recentAnnouncements: schools[index].cmsAnnouncements,
+            upcomingEvents: schools[index].cmsEvents
+          }});
+        } else {
+          res.status(404).json({ success: false, error: "School not found" });
+        }
+      } else {
+        dashboardStats = { ...dashboardStats, ...req.body };
+        saveDb();
+        res.json({ success: true, data: dashboardStats });
+      }
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

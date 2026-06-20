@@ -483,7 +483,9 @@ export default function Login({ onLogin }: LoginProps) {
                 }}
               >
                 <SelectTrigger className="w-24 sm:w-36 bg-slate-950 border-slate-800 text-white text-[10px] sm:text-[11px] h-7 font-black rounded-lg focus:ring-1 focus:ring-blue-500/20 border-none outline-none">
-                  <SelectValue placeholder="Changer" />
+                  <SelectValue placeholder="Changer">
+                    {selectedSchool ? getSafeNameVal(schools.find(s => getSafeStringId(s) === selectedSchool)) : "Changer"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-slate-950 border-slate-850 text-white rounded-xl">
                   {schools.map(s => (

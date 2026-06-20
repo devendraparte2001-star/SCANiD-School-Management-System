@@ -367,6 +367,13 @@ CREATE TABLE [dbo].[Schools](
 	[CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
     [ModifiedBy] [nvarchar](max) NULL,
     [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [DashboardTheme] [nvarchar](50) NULL,
+    [CmsTotalStudents] [int] NULL,
+    [CmsTotalTeachers] [int] NULL,
+    [CmsFeeCollection] [nvarchar](50) NULL,
+    [CmsAttendanceRate] [nvarchar](50) NULL,
+    [CmsAnnouncements] [nvarchar](max) NULL,
+    [CmsEvents] [nvarchar](max) NULL,
  CONSTRAINT [PK_Schools] PRIMARY KEY CLUSTERED ([Id] ASC)
 )
 END
@@ -2175,6 +2182,46 @@ BEGIN
     ELSE IF @Action = 'DELETE'
     BEGIN
         UPDATE [dbo].[Schools] SET IsDeleted = 1, IsActive = 0, ModifiedOn = GETUTCDATE() WHERE Id = @Id;
+    END
+END;
+GO
+
+-- 11.1 School Dashboard CMS Procedure
+IF OBJECT_ID('dbo.sp_ManageSchoolDashboard', 'P') IS NOT NULL DROP PROCEDURE dbo.sp_ManageSchoolDashboard;
+GO
+CREATE PROCEDURE [dbo].[sp_ManageSchoolDashboard]
+    @Action NVARCHAR(10), -- 'GET', 'UPDATE'
+    @SchoolId INT,
+    @DashboardTheme NVARCHAR(50) = NULL,
+    @CmsTotalStudents INT = NULL,
+    @CmsTotalTeachers INT = NULL,
+    @CmsFeeCollection NVARCHAR(50) = NULL,
+    @CmsAttendanceRate NVARCHAR(50) = NULL,
+    @CmsAnnouncements NVARCHAR(MAX) = NULL,
+    @CmsEvents NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @Action = 'GET'
+    BEGIN
+        SELECT 
+            Id, Name, Code, Email, Phone, Status, ProfilePhotoPath, ShortName,
+            DashboardTheme, CmsTotalStudents, CmsTotalTeachers, CmsFeeCollection, CmsAttendanceRate, CmsAnnouncements, CmsEvents
+        FROM [dbo].[Schools]
+        WHERE Id = @SchoolId AND IsDeleted = 0;
+    END
+    ELSE IF @Action = 'UPDATE'
+    BEGIN
+        UPDATE [dbo].[Schools] SET
+            DashboardTheme = ISNULL(@DashboardTheme, DashboardTheme),
+            CmsTotalStudents = ISNULL(@CmsTotalStudents, CmsTotalStudents),
+            CmsTotalTeachers = ISNULL(@CmsTotalTeachers, CmsTotalTeachers),
+            CmsFeeCollection = ISNULL(@CmsFeeCollection, CmsFeeCollection),
+            CmsAttendanceRate = ISNULL(@CmsAttendanceRate, CmsAttendanceRate),
+            CmsAnnouncements = ISNULL(@CmsAnnouncements, CmsAnnouncements),
+            CmsEvents = ISNULL(@CmsEvents, CmsEvents),
+            ModifiedOn = GETUTCDATE()
+        WHERE Id = @SchoolId;
     END
 END;
 GO

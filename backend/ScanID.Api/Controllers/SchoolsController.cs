@@ -67,7 +67,14 @@ namespace ScanID.Api.Controllers
             CreatedBy = school.CreatedBy,
             CreatedOn = school.CreatedOn,
             ModifiedBy = school.ModifiedBy,
-            ModifiedOn = school.ModifiedOn
+            ModifiedOn = school.ModifiedOn,
+            DashboardTheme = school.DashboardTheme,
+            CmsTotalStudents = school.CmsTotalStudents,
+            CmsTotalTeachers = school.CmsTotalTeachers,
+            CmsFeeCollection = school.CmsFeeCollection,
+            CmsAttendanceRate = school.CmsAttendanceRate,
+            CmsAnnouncements = school.CmsAnnouncements,
+            CmsEvents = school.CmsEvents
         };
 
         /// <summary>
@@ -101,7 +108,14 @@ namespace ScanID.Api.Controllers
             SCANiDEmail = dto.SCANiDEmail,
             InChargeContact = dto.InChargeContact,
             CreatedBy = dto.CreatedBy,
-            ModifiedBy = dto.ModifiedBy
+            ModifiedBy = dto.ModifiedBy,
+            DashboardTheme = dto.DashboardTheme,
+            CmsTotalStudents = dto.CmsTotalStudents,
+            CmsTotalTeachers = dto.CmsTotalTeachers,
+            CmsFeeCollection = dto.CmsFeeCollection,
+            CmsAttendanceRate = dto.CmsAttendanceRate,
+            CmsAnnouncements = dto.CmsAnnouncements,
+            CmsEvents = dto.CmsEvents
         };
 
         /// <summary>

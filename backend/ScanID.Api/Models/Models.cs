@@ -97,6 +97,13 @@ namespace ScanID.Api.Models
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
         public string? ModifiedBy { get; set; }
         public DateTime ModifiedOn { get; set; } = DateTime.UtcNow;
+        public string? DashboardTheme { get; set; }
+        public int? CmsTotalStudents { get; set; }
+        public int? CmsTotalTeachers { get; set; }
+        public string? CmsFeeCollection { get; set; }
+        public string? CmsAttendanceRate { get; set; }
+        public string? CmsAnnouncements { get; set; }
+        public string? CmsEvents { get; set; }
     }
 
     /// <summary>

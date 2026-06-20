@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiService } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -103,6 +104,28 @@ export default function Dashboard({ user }: DashboardProps) {
   const [isSavingCms, setIsSavingCms] = useState(false);
   const [cmsError, setCmsError] = useState<string | null>(null);
   const [cmsSuccess, setCmsSuccess] = useState<string | null>(null);
+
+  // Schools state for Superadmin CMS selection tracking
+  const [schoolsList, setSchoolsList] = useState<any[]>([]);
+  const [selectedCmsSchoolId, setSelectedCmsSchoolId] = useState<string>("");
+
+  useEffect(() => {
+    const loadSchoolsList = async () => {
+      try {
+        const res = await apiService.getSchools();
+        const schoolsData = res.data?.data || res.data || [];
+        setSchoolsList(schoolsData);
+        if (user.schoolId && user.schoolId !== "all") {
+          setSelectedCmsSchoolId(user.schoolId.toString());
+        } else if (schoolsData.length > 0) {
+          setSelectedCmsSchoolId(schoolsData[0].id.toString());
+        }
+      } catch (err) {
+        console.error("Failed to load schools list on dashboard:", err);
+      }
+    };
+    loadSchoolsList();
+  }, [user.schoolId]);
 
   // New item adding inline inputs state
   const [newAnnTitle, setNewAnnTitle] = useState("");
@@ -249,7 +272,8 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const fetchStats = async () => {
     try {
-      const parsedSchoolId = parseSafeInt(user.schoolId);
+      const activeSchoolId = (user.schoolId && user.schoolId !== "all") ? user.schoolId.toString() : selectedCmsSchoolId;
+      const parsedSchoolId = activeSchoolId ? parseSafeInt(activeSchoolId) : undefined;
       const parsedYearId = parseSafeInt(user.academicYearId);
 
       const res = await apiService.getStats(parsedSchoolId, parsedYearId);
@@ -276,7 +300,7 @@ export default function Dashboard({ user }: DashboardProps) {
     const timer = setTimeout(() => setIsMounted(true), 500); // Increased delay for layout stability
     fetchStats();
     return () => clearTimeout(timer);
-  }, [user.schoolId, user.academicYearId]);
+  }, [user.schoolId, user.academicYearId, selectedCmsSchoolId]);
 
   const handleSaveCms = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,7 +308,9 @@ export default function Dashboard({ user }: DashboardProps) {
     setCmsError(null);
     setCmsSuccess(null);
     try {
+      const activeSchoolId = (user.schoolId && user.schoolId !== "all") ? user.schoolId.toString() : selectedCmsSchoolId;
       const payload = {
+        schoolId: activeSchoolId ? parseSafeInt(activeSchoolId) : undefined,
         totalStudents: cmsTotalStudents ? parseInt(cmsTotalStudents) : undefined,
         totalTeachers: cmsTotalTeachers ? parseInt(cmsTotalTeachers) : undefined,
         feeCollection: cmsFeeCollection,
@@ -341,12 +367,35 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
           
           <div className="flex flex-wrap gap-3 sm:gap-4 shrink-0 w-full md:w-auto">
-            <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Institutional Branch</span>
-              <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100 truncate max-w-[150px]" title={user.schoolName || "Global Control"}>
-                {user.schoolName || "Global Control"}
-              </span>
-            </div>
+            {user.schoolId === "all" && schoolsList.length > 0 ? (
+              <div className="flex-1 md:flex-none px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex flex-col min-w-[180px]">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-300 mb-1">Institutional Branch</span>
+                <Select
+                  value={selectedCmsSchoolId}
+                  onValueChange={(val) => {
+                    setSelectedCmsSchoolId(val);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-full bg-slate-950/40 hover:bg-slate-920 transition-all border border-white/15 rounded-lg text-white font-extrabold text-[11px] py-0 px-2.5 focus:ring-0">
+                    <SelectValue placeholder="Select branch..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
+                    {schoolsList.map((schoolItem) => (
+                      <SelectItem key={schoolItem.id} value={schoolItem.id.toString()} className="font-bold text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
+                        {schoolItem.name || schoolItem.Name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Institutional Branch</span>
+                <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100 truncate max-w-[150px]" title={user.schoolName || "Global Control"}>
+                  {user.schoolName || "Global Control"}
+                </span>
+              </div>
+            )}
             <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
               <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Academic Term</span>
               <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100">
@@ -432,6 +481,37 @@ export default function Dashboard({ user }: DashboardProps) {
                     <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-3 text-rose-800 text-xs font-bold animate-in zoom-in-95 duration-200">
                       <AlertTriangle className="text-rose-600 h-5 w-5 shrink-0" />
                       <span>{cmsError}</span>
+                    </div>
+                  )}
+
+                  {/* School Profile Target Selector (CMS) */}
+                  {user.schoolId === "all" && schoolsList.length > 0 && (
+                    <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-3xl space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="text-left">
+                          <h4 className="text-sm font-extrabold text-slate-900 tracking-tight">Active Target School Profile</h4>
+                          <p className="text-[10px] text-slate-500 font-medium">Select which school's dashboard and landing properties you want to update.</p>
+                        </div>
+                        <div className="w-full sm:w-72">
+                          <Select
+                            value={selectedCmsSchoolId}
+                            onValueChange={(val) => {
+                              setSelectedCmsSchoolId(val);
+                            }}
+                          >
+                            <SelectTrigger className="w-full bg-white border border-slate-300 rounded-xl font-bold text-xs text-slate-800 focus:ring-2 focus:ring-blue-500/20">
+                              <SelectValue placeholder="Select target school..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
+                              {schoolsList.map((schoolItem) => (
+                                <SelectItem key={schoolItem.id} value={schoolItem.id.toString()} className="font-semibold text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                  {schoolItem.name || schoolItem.Name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </div>
                   )}
 
