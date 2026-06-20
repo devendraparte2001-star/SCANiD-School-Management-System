@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+
 
 @theme {
   --font-sans: "Inter", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
@@ -60,8 +63,7 @@
     @apply bg-slate-300 rounded-full transition-colors hover:bg-slate-400;
   }
 }
-@import "tw-animate-css";
-@import "@fontsource-variable/geist";
+
 
 @custom-variant dark (&:is(.dark *));
 
