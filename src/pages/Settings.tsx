@@ -174,6 +174,7 @@ export default function Settings({ user }: SettingsProps) {
                   <option value="es">Español (Spanish)</option>
                   <option value="ar">العربية (Arabic)</option>
                   <option value="fr">Français (French)</option>
+                  <option value="mr">मराठी (Marathi)</option>
                 </select>
               </div>
               <div className="flex items-center justify-between">

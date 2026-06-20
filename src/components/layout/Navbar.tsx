@@ -559,6 +559,13 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
                 <span>Français</span>
                 {language === "fr" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage("mr")}
+                className={cn("cursor-pointer rounded-md px-2.5 py-2 text-xs font-bold flex items-center justify-between", language === "mr" ? "bg-blue-50 text-blue-600" : "text-slate-700")}
+              >
+                <span>मराठी (Marathi)</span>
+                {language === "mr" && <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>}
+              </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
