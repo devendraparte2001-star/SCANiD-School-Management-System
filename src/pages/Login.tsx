@@ -465,7 +465,7 @@ export default function Login({ onLogin }: LoginProps) {
               <Select 
                 value={selectedSchool} 
                 onValueChange={(v) => {
-                  setSelectedSchool(v);
+                  setSelectedSchool(v || "");
                   setActiveSlide(0);
                   setErrorVisible(null);
                 }}
@@ -501,7 +501,7 @@ export default function Login({ onLogin }: LoginProps) {
       <section className="relative w-full max-w-7xl mx-auto px-4 mt-6 z-10 transition-all duration-300">
         <div className="relative w-full aspect-[21/9] sm:aspect-[21/10] md:aspect-[2.35/1] rounded-3xl overflow-hidden border border-slate-900 shadow-2xl group bg-slate-950">
           
-          {slides.map((slideSrc, idx) => (
+          {slides.map((slideSrc: string, idx: number) => (
             <div 
               key={idx}
               className={cn(
@@ -549,7 +549,7 @@ export default function Login({ onLogin }: LoginProps) {
 
           {/* Dots Indicator */}
           <div className="absolute bottom-6 right-10 flex gap-2 z-20">
-            {slides.map((_, idx) => (
+            {slides.map((_: any, idx: number) => (
               <button
                 key={idx}
                 onClick={() => setActiveSlide(idx)}
@@ -1119,7 +1119,7 @@ export default function Login({ onLogin }: LoginProps) {
                       <Label className={cn("text-slate-350 text-[9px] font-black uppercase tracking-wider flex items-center gap-1", formErrors.year && "text-red-400")}>
                         <Calendar size={10} className="text-blue-400" /> <span>Session</span>
                       </Label>
-                      <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); setFormErrors(prev => ({...prev, year: ""})); }}>
+                      <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v || ""); setFormErrors(prev => ({...prev, year: ""})); }}>
                         <SelectTrigger className={cn(
                           "bg-slate-950 border-slate-850 text-white h-9 text-xs rounded-xl focus:ring-blue-500/10 border-none outline-none",
                           formErrors.year && "border-red-500/40"
