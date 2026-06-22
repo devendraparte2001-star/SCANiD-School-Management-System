@@ -899,7 +899,7 @@ export default function Dashboard({ user }: DashboardProps) {
           onClick={() => navigate(isAdmin || isTeacher ? "/students" : "/attendance")}
         />
         <StatCard 
-          title={isAdmin || isTeacher ? t("activeEmployees") : "Class Rank"}
+          title={isAdmin || isTeacher ? t("activeEmployees") : t("Class Rank")}
           value={stats?.totalTeachers?.toLocaleString() || "..."}
           trend="+4"
           icon={Users}
@@ -907,9 +907,9 @@ export default function Dashboard({ user }: DashboardProps) {
           onClick={() => navigate(isAdmin ? "/staff" : "/students")}
         />
         <StatCard 
-          title={isAdmin ? "Fee Collection" : "Upcoming Exams"}
+          title={isAdmin ? t("Fee Collection") : t("Upcoming Exams")}
           value={stats?.feeCollection || "..."}
-          trend={isAdmin ? "85% Paid" : "Next: Math"}
+          trend={isAdmin ? t("85% Paid") : t("Next: Math")}
           icon={isAdmin ? IndianRupee : BookOpen}
           color="bg-emerald-50 text-emerald-600"
           onClick={() => navigate(isAdmin ? "/fees" : "/marks")}
@@ -1162,8 +1162,8 @@ export default function Dashboard({ user }: DashboardProps) {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-xl font-bold text-slate-900 leading-tight">Academic Performance</CardTitle>
-                <CardDescription className="font-medium text-slate-400">Average vs Top scores across all standards</CardDescription>
+                <CardTitle className="text-xl font-bold text-slate-900 leading-tight">{t("Academic Performance")}</CardTitle>
+                <CardDescription className="font-medium text-slate-400">{t("Average vs Top scores across all standards")}</CardDescription>
               </div>
               <div className="flex items-center gap-3">
                 <Button 
@@ -1172,7 +1172,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8 flex items-center gap-1 cursor-pointer"
                   onClick={() => navigate("/marks")}
                 >
-                  View Details <ArrowUpRight size={14} />
+                  {t("View Details")} <ArrowUpRight size={14} />
                 </Button>
                 <div className="hidden sm:flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full">
                   <div className="flex items-center gap-1.5">
@@ -1244,8 +1244,8 @@ export default function Dashboard({ user }: DashboardProps) {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-xl font-bold text-slate-900 leading-tight">Weekly Attendance</CardTitle>
-                <CardDescription className="font-medium text-slate-400">Daily student presence status</CardDescription>
+                <CardTitle className="text-xl font-bold text-slate-900 leading-tight">{t("Weekly Attendance")}</CardTitle>
+                <CardDescription className="font-medium text-slate-400">{t("Daily student presence status")}</CardDescription>
               </div>
               <Button 
                 variant="ghost" 
@@ -1253,7 +1253,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8 flex items-center gap-1 cursor-pointer"
                 onClick={() => navigate("/attendance")}
               >
-                View Details <ArrowUpRight size={14} />
+                {t("View Details")} <ArrowUpRight size={14} />
               </Button>
             </div>
           </CardHeader>
@@ -1294,14 +1294,14 @@ export default function Dashboard({ user }: DashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
         <Card className="border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold text-slate-900">Recent Announcements</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-900">{t("Recent Announcements")}</CardTitle>
             <Button 
               variant="ghost" 
               size="sm" 
               className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8"
               onClick={() => navigate("/notifications")}
             >
-              View All
+              {t("View All")}
             </Button>
           </CardHeader>
           <CardContent className="p-0">
@@ -1321,7 +1321,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
         <Card className="border-none shadow-sm rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
           <CardHeader className="bg-white border-b border-slate-50 px-8 py-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold text-slate-900">Upcoming Events</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-900">{t("Upcoming Events")}</CardTitle>
             {isAdmin && (
               <Button 
                 variant="ghost" 
@@ -1329,7 +1329,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl px-3 h-8"
                 onClick={() => navigate("/configuration/holidays")}
               >
-                Manage
+                {t("Manage")}
               </Button>
             )}
           </CardHeader>

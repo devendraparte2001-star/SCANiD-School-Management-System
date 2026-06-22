@@ -515,12 +515,13 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
                 variant="ghost" 
                 size="icon" 
                 className="text-slate-600 hover:bg-slate-50 outline-none flex items-center justify-center cursor-pointer"
+                data-no-translate="true"
               >
                 <Languages size={20} />
               </Button>
             </DropdownMenuTrigger>
           </SimpleTooltip>
-          <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-slate-100 shadow-xl p-1 bg-white">
+          <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-slate-100 shadow-xl p-1 bg-white" data-no-translate="true">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-slate-400 font-black px-3 py-1.5 uppercase tracking-wider">{t("selectLanguage")}</DropdownMenuLabel>
               <DropdownMenuSeparator className="my-1 bg-slate-100" />

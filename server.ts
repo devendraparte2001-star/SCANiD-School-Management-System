@@ -9,7 +9,7 @@ import axios from "axios";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import fs from "fs";
 import multer from "multer";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 async function startServer() {
   const app = express();
@@ -1008,7 +1008,7 @@ async function startServer() {
         }
       });
       const response = await aiClient.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: `You are an automated, high-fidelity system-wide localizer translating text from English into ${targetLang}. 
 Translate the text exactly. Preserve formatting, casing, numbers, punctuation, and do not add quotes, notes, comments, or prefix explanations. 
 Only return the translated string and nothing else.
@@ -1042,6 +1042,12 @@ Text to translate: "${text}"`,
 
     let translationsArray: string[] = [];
 
+    const chunkSize = 15;
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueTexts.length; i += chunkSize) {
+      chunks.push(uniqueTexts.slice(i, i + chunkSize));
+    }
+
     try {
       const aiClient = new GoogleGenAI({
         apiKey,
@@ -1052,54 +1058,57 @@ Text to translate: "${text}"`,
         }
       });
 
-      const response = await aiClient.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `You are an automated, high-fidelity system-wide localizer translating an array of English text phrases into ${targetLang}.
-Translate each phrase exactly while maintaining formatting, casing, numbers, punctuation, and intent.
-Provide a JSON array of strings corresponding exactly to the index of each input item.
+      for (const chunk of chunks) {
+        try {
+          const response = await aiClient.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Translate the following list of English phrases into ${targetLang}.
+Return a JSON array where each item is the exact translation of the corresponding English phrase in the input array.
+Maintain formatting, capitalization, numbers, and punctuation. Do not skip or alter any elements.
 
-Input array to translate:
-${JSON.stringify(uniqueTexts, null, 2)}`,
-        config: {
-          responseMimeType: "application/json"
+Input array: ${JSON.stringify(chunk)}`,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.STRING
+                }
+              }
+            }
+          });
+
+          const resultText = response.text?.trim() || "";
+          const parsedChunk = JSON.parse(resultText);
+          if (Array.isArray(parsedChunk)) {
+            const alignedChunk = [...parsedChunk];
+            while (alignedChunk.length < chunk.length) {
+              alignedChunk.push(chunk[alignedChunk.length]);
+            }
+            translationsArray = translationsArray.concat(alignedChunk);
+          } else {
+            throw new Error("Response is not a JSON array");
+          }
+        } catch (chunkErr) {
+          console.error("Chunk batch translation failed, reverting to item-by-item:", chunkErr);
+          const chunkTranslations: string[] = [];
+          for (const text of chunk) {
+            try {
+              const res = await translateText(text, targetLang);
+              chunkTranslations.push(res);
+            } catch (singleErr) {
+              chunkTranslations.push(text);
+            }
+          }
+          translationsArray = translationsArray.concat(chunkTranslations);
         }
-      });
-
-      const resultText = response.text?.trim() || "";
-
-      try {
-        let cleanJson = resultText;
-        const firstBracket = cleanJson.indexOf("[");
-        const lastBracket = cleanJson.lastIndexOf("]");
-        if (firstBracket !== -1 && lastBracket !== -1) {
-          cleanJson = cleanJson.substring(firstBracket, lastBracket + 1);
-        }
-        translationsArray = JSON.parse(cleanJson);
-      } catch (parseErr) {
-        console.error("Failed to parse Gemini batch translation JSON response:", resultText);
       }
     } catch (error: any) {
-      console.error("[Batch Translation Service Error]", error.message || error);
+      console.error("[Batch General Error]", error.message || error);
     }
 
-    // Bulletproof Fallback: if the batch translation failed or returned empty/malformed results,
-    // translate each text individual using the highly reliable single translateText function.
-    if (!translationsArray || !Array.isArray(translationsArray) || translationsArray.length === 0) {
-      console.warn("Batch translation failed or returned empty. Falling back to individual/parallel translations.");
-      try {
-        translationsArray = await Promise.all(
-          uniqueTexts.map(async (text) => {
-            try {
-              return await translateText(text, targetLang);
-            } catch (err) {
-              return text;
-            }
-          })
-        );
-      } catch (fallbackErr) {
-        console.error("Batch translation fallback also failed:", fallbackErr);
-        translationsArray = [];
-      }
+    if (translationsArray.length === 0) {
+      translationsArray = [...uniqueTexts];
     }
 
     const translationMap = new Map<string, string>();

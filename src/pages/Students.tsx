@@ -75,9 +75,11 @@ import { useSearchParams } from "react-router-dom";
 import { User as UserType } from "@/types";
 import { cn, parseSafeInt, resolvePhotoUrl } from "@/lib/utils";
 import { useSystemLabels } from "@/context/LabelContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Students({ user }: { user: UserType }) {
   const { labels } = useSystemLabels();
+  const { t } = useLanguage();
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1390,8 +1392,8 @@ export default function Students({ user }: { user: UserType }) {
             <GraduationCap size={28} />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">{labels?.student || "Student"} Registry</h1>
-            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">Manage and track {labels?.student?.toLowerCase() || "student"} information across all {labels?.standard?.toLowerCase() || "standard"}s.</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">{t(`${labels?.student || "Student"} Registry`)}</h1>
+            <p className="text-slate-400 font-bold mt-1 text-xs sm:text-sm uppercase tracking-widest leading-none">{t(`Manage and track ${(labels?.student || "student").toLowerCase()} information across all ${(labels?.standard || "standard").toLowerCase()}s.`)}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
