@@ -4,7 +4,7 @@ Follow these steps to set up the application on your local machine with a .NET C
 
 ## 1. Prerequisites
 - **Visual Studio 2022** or **Visual Studio Code**
-- **.NET 8.0 SDK**
+- **.NET 10.0 SDK**
 - **SQL Server** (Express or Developer Edition)
 - **SQL Server Management Studio (SSMS)**
 - **Node.js** (v18 or higher)

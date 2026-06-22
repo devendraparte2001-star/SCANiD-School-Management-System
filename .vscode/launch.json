@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/backend/ScanID.Api/bin/Debug/net8.0/ScanID.Api.dll",
+            "program": "${workspaceFolder}/backend/ScanID.Api/bin/Debug/net10.0/ScanID.Api.dll",
             "args": [],
             "cwd": "${workspaceFolder}/backend/ScanID.Api",
             "stopAtEntry": false,
