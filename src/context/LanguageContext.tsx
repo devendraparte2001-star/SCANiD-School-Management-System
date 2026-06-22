@@ -245,6 +245,46 @@ export const TRANSLATIONS: TranslationDictionary = {
     fr: "Téléchargement Manuel",
     mr: "मॅन्युअल अपलोड"
   },
+  academicOperations: {
+    en: "Academic Operations",
+    hi: "अकादमिक संचालन",
+    es: "Operaciones Académicas",
+    ar: "العمليات الأكاديمية",
+    fr: "Opérations Académiques",
+    mr: "शैक्षणिक प्रक्रिया"
+  },
+  staffHR: {
+    en: "Staff & HR",
+    hi: "कर्मचारी और एचआर",
+    es: "Personal y Recursos Humanos",
+    ar: "الموظفين والموارد البشرية",
+    fr: "Personnel & RH",
+    mr: "कर्मचारी आणि मनुष्यबळ"
+  },
+  administrative: {
+    en: "Administrative",
+    hi: "प्रशासकीय",
+    es: "Administrativo",
+    ar: "إداري",
+    fr: "Administratif",
+    mr: "प्रशासकीय"
+  },
+  superadmin: {
+    en: "Super Admin",
+    hi: "सुपर एडमिन",
+    es: "Súper Administrador",
+    ar: "المسؤول الأعلى",
+    fr: "Super Administrateur",
+    mr: "मुख्य प्रशासक"
+  },
+  admin: {
+    en: "Admin",
+    hi: "एडमिन",
+    es: "Administrador",
+    ar: "مسؤول",
+    fr: "Administrateur",
+    mr: "प्रशासक"
+  },
   leavesRegister: {
     en: "Leaves Register",
     hi: "छुट्टी रजिस्टर",
@@ -294,32 +334,81 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  const fetchTranslation = async (text: string, lang: string) => {
+  const queue = useRef<{ text: string; lang: string; cacheKey: string }[]>([]);
+  const batchTimeout = useRef<any>(null);
+  const translateTimeout = useRef<any>(null);
+
+  const processTranslationBatch = async () => {
+    if (queue.current.length === 0) return;
+
+    const currentQueue = [...queue.current];
+    queue.current = [];
+
+    const langGroups: Record<string, typeof currentQueue> = {};
+    currentQueue.forEach(item => {
+      if (!langGroups[item.lang]) {
+        langGroups[item.lang] = [];
+      }
+      if (!langGroups[item.lang].some(x => x.text === item.text)) {
+        langGroups[item.lang].push(item);
+      }
+    });
+
+    for (const [targetLang, items] of Object.entries(langGroups)) {
+      if (items.length === 0) continue;
+
+      const chunkSize = 30;
+      for (let i = 0; i < items.length; i += chunkSize) {
+        const chunk = items.slice(i, i + chunkSize);
+        const texts = chunk.map(item => item.text);
+
+        try {
+          const response = await fetch("/api/translate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texts, targetLang }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.translations && Array.isArray(data.translations)) {
+              const updates: Record<string, string> = {};
+              chunk.forEach((item, index) => {
+                const translated = data.translations[index] || item.text;
+                localStorage.setItem(item.cacheKey, translated);
+                updates[item.cacheKey] = translated;
+              });
+
+              setDynamicTranslations(prev => ({
+                ...prev,
+                ...updates
+              }));
+            }
+          }
+        } catch (err) {
+          console.error("Failed to translate dynamically via batch:", err);
+        } finally {
+          chunk.forEach(item => {
+            activeFetches.current.delete(item.cacheKey);
+          });
+        }
+      }
+    }
+  };
+
+  const fetchTranslation = (text: string, lang: string) => {
     const cacheKey = `t_${lang}_${text}`;
     if (activeFetches.current.has(cacheKey)) return;
     activeFetches.current.add(cacheKey);
 
-    try {
-      const response = await fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, targetLang: lang }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.translation) {
-          localStorage.setItem(cacheKey, data.translation);
-          setDynamicTranslations(prev => ({
-            ...prev,
-            [cacheKey]: data.translation
-          }));
-        }
-      }
-    } catch (err) {
-      console.error("Failed to translate dynamically:", err);
-    } finally {
-      activeFetches.current.delete(cacheKey);
+    queue.current.push({ text, lang, cacheKey });
+
+    if (batchTimeout.current) {
+      clearTimeout(batchTimeout.current);
     }
+    batchTimeout.current = setTimeout(() => {
+      processTranslationBatch();
+    }, 150);
   };
 
   const t = (key: string, defaultText?: string): string => {
@@ -346,7 +435,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 3. Check localStorage persistent cache
     const cachedVal = localStorage.getItem(cacheKey);
     if (cachedVal) {
-      // cache in-memory to prevent future lookup slowdown
       dynamicTranslations[cacheKey] = cachedVal;
       return cachedVal;
     }
@@ -356,6 +444,169 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return textToTranslate;
   };
+
+  // Automated System-Wide localization engine
+  useEffect(() => {
+    let isTranslating = false;
+
+    const translateDOM = () => {
+      if (isTranslating) return;
+      isTranslating = true;
+      observer.disconnect();
+
+      try {
+        if (language === "en") {
+          // Restore all translated text nodes to their original English values
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+            {
+              acceptNode: (node) => {
+                const parent = node.parentElement;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                const tag = parent.tagName;
+                if (["SCRIPT", "STYLE", "SVG", "PATH", "CODE", "TEXTAREA"].includes(tag)) {
+                  return NodeFilter.FILTER_REJECT;
+                }
+                if ((node as any).__originalText) {
+                  return NodeFilter.FILTER_ACCEPT;
+                }
+                return NodeFilter.FILTER_REJECT;
+              }
+            }
+          );
+
+          let node;
+          while ((node = walker.nextNode())) {
+            const textNode = node as any;
+            if (textNode.__originalText && textNode.nodeValue !== textNode.__originalText) {
+              textNode.nodeValue = textNode.__originalText;
+              delete textNode.__lastTranslatedText;
+            }
+          }
+
+          // Restore input placeholders
+          const inputs = document.querySelectorAll("input[placeholder], textarea[placeholder]");
+          inputs.forEach((input: any) => {
+            if (input.__originalPlaceholder && input.placeholder !== input.__originalPlaceholder) {
+              input.placeholder = input.__originalPlaceholder;
+            }
+          });
+          return;
+        }
+
+        // Translate all text nodes
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_TEXT,
+          {
+            acceptNode: (node) => {
+              const parent = node.parentElement;
+              if (!parent) return NodeFilter.FILTER_REJECT;
+              const tag = parent.tagName;
+              if (["SCRIPT", "STYLE", "SVG", "PATH", "CODE", "TEXTAREA"].includes(tag)) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              const val = node.nodeValue?.trim();
+              if (!val || val.length < 2 || /^[0-9\s\-_.:,;+*&%#@!%()\[\]{}]*$/.test(val)) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              return NodeFilter.FILTER_ACCEPT;
+            }
+          }
+        );
+
+        let node;
+        while ((node = walker.nextNode())) {
+          const textNode = node as any;
+          const currentVal = textNode.nodeValue;
+          if (!currentVal || !currentVal.trim()) continue;
+
+          // If the text value changed outside our translator (e.g., React updating DOM or page transition), 
+          // we treat the new value as the new original text.
+          if (textNode.__lastTranslatedText && currentVal !== textNode.__lastTranslatedText) {
+            textNode.__originalText = currentVal;
+          }
+
+          if (!textNode.__originalText) {
+            textNode.__originalText = currentVal;
+          }
+
+          const origText = textNode.__originalText.trim();
+          const translated = t(origText);
+
+          if (translated && translated !== origText && textNode.nodeValue !== translated) {
+            const leadingWhitespace = textNode.__originalText.match(/^\s*/)?.[0] || "";
+            const trailingWhitespace = textNode.__originalText.match(/\s*$/)?.[0] || "";
+            textNode.nodeValue = leadingWhitespace + translated + trailingWhitespace;
+            textNode.__lastTranslatedText = textNode.nodeValue;
+          }
+        }
+
+        // Translate input & textarea placeholders automatically
+        const inputs = document.querySelectorAll("input[placeholder], textarea[placeholder]");
+        inputs.forEach((input: any) => {
+          const currentPlaceholder = input.placeholder?.trim();
+          if (!currentPlaceholder) return;
+
+          if (!input.__originalPlaceholder) {
+            input.__originalPlaceholder = input.placeholder;
+          }
+
+          const origPlaceholder = input.__originalPlaceholder.trim();
+          const translated = t(origPlaceholder);
+          if (translated && translated !== origPlaceholder && input.placeholder !== translated) {
+            input.placeholder = translated;
+          }
+        });
+      } catch (err) {
+        console.error("DOM translation error:", err);
+      } finally {
+        isTranslating = false;
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+    };
+
+    // Trigger translateDOM of mutations with clean debouncing
+    const observer = new MutationObserver((mutations) => {
+      let shouldTranslate = false;
+      for (const mutation of mutations) {
+        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+          shouldTranslate = true;
+          break;
+        }
+        if (mutation.type === "characterData") {
+          const textNode = mutation.target as any;
+          const val = textNode.nodeValue?.trim();
+          if (val && val !== textNode.__lastTranslatedText) {
+            shouldTranslate = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldTranslate) {
+        if (translateTimeout.current) {
+          clearTimeout(translateTimeout.current);
+        }
+        translateTimeout.current = setTimeout(translateDOM, 100);
+      }
+    });
+
+    // Run initial translation
+    translateDOM();
+
+    return () => {
+      observer.disconnect();
+      if (translateTimeout.current) {
+        clearTimeout(translateTimeout.current);
+      }
+    };
+  }, [language, dynamicTranslations]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

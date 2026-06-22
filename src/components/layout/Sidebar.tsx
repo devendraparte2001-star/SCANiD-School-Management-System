@@ -81,15 +81,21 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
       "Logout": "logout",
       "Roll Call": "rollCall",
       "Manual Upload": "manualUpload",
-      "Leaves Register": "leavesRegister"
+      "Leaves Register": "leavesRegister",
+      "Academic Operations": "academicOperations",
+      "Staff & HR": "staffHR",
+      "Administrative": "administrative"
     };
 
     const translationKey = navigationDictionary[title];
     if (translationKey) {
-      return t(translationKey);
+      const staticTranslated = t(translationKey);
+      if (staticTranslated !== translationKey) {
+        return staticTranslated;
+      }
     }
 
-    if (!labels) return title;
+    if (!labels) return t(title, title);
     let res = title;
     if (res === "Student Registry") {
       res = `${labels.student} Registry`;
@@ -105,7 +111,7 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
     } else if (res === "School Sections") {
       res = `School ${labels.section}s`;
     }
-    return res;
+    return t(res, res);
   };
 
   useEffect(() => {

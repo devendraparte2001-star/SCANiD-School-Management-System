@@ -1029,13 +1029,98 @@ Text to translate: "${text}"`,
     return text;
   }
 
+  async function translateTextsBatch(texts: string[], targetLang: string): Promise<string[]> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || !texts.length) {
+      return texts;
+    }
+
+    const uniqueTexts = Array.from(new Set(texts.map(t => t.trim()).filter(Boolean)));
+    if (!uniqueTexts.length) {
+      return texts;
+    }
+
+    let translationsArray: string[] = [];
+
+    try {
+      const aiClient = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const response = await aiClient.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `You are an automated, high-fidelity system-wide localizer translating an array of English text phrases into ${targetLang}.
+Translate each phrase exactly while maintaining formatting, casing, numbers, punctuation, and intent.
+Provide a JSON array of strings corresponding exactly to the index of each input item.
+
+Input array to translate:
+${JSON.stringify(uniqueTexts, null, 2)}`,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const resultText = response.text?.trim() || "";
+
+      try {
+        let cleanJson = resultText;
+        const firstBracket = cleanJson.indexOf("[");
+        const lastBracket = cleanJson.lastIndexOf("]");
+        if (firstBracket !== -1 && lastBracket !== -1) {
+          cleanJson = cleanJson.substring(firstBracket, lastBracket + 1);
+        }
+        translationsArray = JSON.parse(cleanJson);
+      } catch (parseErr) {
+        console.error("Failed to parse Gemini batch translation JSON response:", resultText);
+      }
+    } catch (error: any) {
+      console.error("[Batch Translation Service Error]", error.message || error);
+    }
+
+    // Bulletproof Fallback: if the batch translation failed or returned empty/malformed results,
+    // translate each text individual using the highly reliable single translateText function.
+    if (!translationsArray || !Array.isArray(translationsArray) || translationsArray.length === 0) {
+      console.warn("Batch translation failed or returned empty. Falling back to individual/parallel translations.");
+      try {
+        translationsArray = await Promise.all(
+          uniqueTexts.map(async (text) => {
+            try {
+              return await translateText(text, targetLang);
+            } catch (err) {
+              return text;
+            }
+          })
+        );
+      } catch (fallbackErr) {
+        console.error("Batch translation fallback also failed:", fallbackErr);
+        translationsArray = [];
+      }
+    }
+
+    const translationMap = new Map<string, string>();
+    uniqueTexts.forEach((text, idx) => {
+      const trans = translationsArray[idx] || text;
+      translationMap.set(text.toLowerCase(), trans);
+    });
+
+    return texts.map(text => {
+      const trimmed = text.trim();
+      return translationMap.get(trimmed.toLowerCase()) || trimmed;
+    });
+  }
+
   app.post("/api/translate", async (req, res) => {
     try {
-      const { text, targetLang } = req.body;
-      if (!text || !targetLang) {
+      const { text, texts, targetLang } = req.body;
+      if (!targetLang) {
         return res.status(400).json({ error: "Missing parameters" });
       }
-      
+
       const targetLangMap: Record<string, string> = {
         en: "English",
         hi: "Hindi",
@@ -1047,7 +1132,19 @@ Text to translate: "${text}"`,
       
       const mappedLang = targetLangMap[targetLang] || targetLang;
       if (targetLang === "en") {
+        if (texts && Array.isArray(texts)) {
+          return res.json({ translations: texts });
+        }
         return res.json({ translation: text });
+      }
+
+      if (texts && Array.isArray(texts)) {
+        const translations = await translateTextsBatch(texts, mappedLang);
+        return res.json({ translations });
+      }
+
+      if (!text) {
+        return res.status(400).json({ error: "Missing parameters" });
       }
       
       const translation = await translateText(text, mappedLang);

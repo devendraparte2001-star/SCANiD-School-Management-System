@@ -356,20 +356,20 @@ export default function Dashboard({ user }: DashboardProps) {
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-[10px] sm:text-xs font-semibold text-blue-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live Portal Connected
+              {t("Live Portal Connected")}
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-              {t("welcomeBack")}, <span className="bg-gradient-to-r from-blue-300 to-indigo-200 bg-clip-text text-transparent">{user.name}</span>!
+              {t("welcomeBack")}, <span className="bg-gradient-to-r from-blue-300 to-indigo-200 bg-clip-text text-transparent">{t(user.name, user.name)}</span>!
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-xl font-medium leading-relaxed">
-              Institution console is fully active for <span className="text-white font-bold uppercase text-[10px] tracking-widest px-2 py-0.5 rounded bg-white/15 border border-white/5">{user.role}</span>. You can manage student records, log attendance streams, review grades, or check master entries below.
+              {t("Institution console is fully active for")} <span className="text-white font-bold uppercase text-[10px] tracking-widest px-2 py-0.5 rounded bg-white/15 border border-white/5">{t(user.role, user.role)}</span>. {t("You can manage student records, log attendance streams, review grades, or check master entries below.")}
             </p>
           </div>
           
           <div className="flex flex-wrap gap-3 sm:gap-4 shrink-0 w-full md:w-auto">
             {user.schoolId === "all" && schoolsList.length > 0 ? (
               <div className="flex-1 md:flex-none px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex flex-col min-w-[180px]">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-300 mb-1">Institutional Branch</span>
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-300 mb-1">{t("Institutional Branch")}</span>
                 <Select
                   value={selectedCmsSchoolId}
                   onValueChange={(val) => {
@@ -377,12 +377,12 @@ export default function Dashboard({ user }: DashboardProps) {
                   }}
                 >
                   <SelectTrigger className="h-7 w-full bg-slate-950/40 hover:bg-slate-920 transition-all border border-white/15 rounded-lg text-white font-extrabold text-[11px] py-0 px-2.5 focus:ring-0">
-                    <SelectValue placeholder="Select branch..." />
+                    <SelectValue placeholder={t("Select branch...")} />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
                     {schoolsList.map((schoolItem) => (
                       <SelectItem key={schoolItem.id} value={schoolItem.id.toString()} className="font-bold text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
-                        {schoolItem.name || schoolItem.Name}
+                        {t(schoolItem.name || schoolItem.Name, schoolItem.name || schoolItem.Name)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -390,22 +390,22 @@ export default function Dashboard({ user }: DashboardProps) {
               </div>
             ) : (
               <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Institutional Branch</span>
-                <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100 truncate max-w-[150px]" title={user.schoolName || "Global Control"}>
-                  {user.schoolName || "Global Control"}
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">{t("Institutional Branch")}</span>
+                <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100 truncate max-w-[150px]" title={t(user.schoolName || "Global Control", user.schoolName || "Global Control")}>
+                  {t(user.schoolName || "Global Control", user.schoolName || "Global Control")}
                 </span>
               </div>
             )}
             <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 flex flex-col min-w-[120px]">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Academic Term</span>
+              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">{t("Academic Term")}</span>
               <span className="text-xs sm:text-sm font-bold mt-1 text-slate-100">
-                {user.academicYearName || "Current Term"}
+                {t(user.academicYearName || "Current Term", user.academicYearName || "Current Term")}
               </span>
             </div>
             <div className="flex-1 md:flex-none px-4 py-3 rounded-2xl bg-blue-600/20 backdrop-blur-sm border border-blue-500/20 flex flex-col min-w-[120px] shadow-lg shadow-blue-950/20">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-blue-300">Active Date</span>
+              <span className="text-[9px] uppercase font-bold tracking-widest text-blue-300">{t("Active Date")}</span>
               <span className="text-xs sm:text-sm font-bold mt-1 text-white">
-                {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {t(new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }), new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }))}
               </span>
             </div>
           </div>
@@ -422,11 +422,11 @@ export default function Dashboard({ user }: DashboardProps) {
               </div>
               <div className="text-left space-y-1">
                 <h3 className="font-black text-white text-base tracking-tight flex items-center gap-2">
-                  School Portal CMS Controller
-                  <span className="bg-blue-500/20 text-blue-400 font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider">Active</span>
+                  {t("School Portal CMS Controller")}
+                  <span className="bg-blue-500/20 text-blue-400 font-extrabold px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider">{t("Active")}</span>
                 </h3>
                 <p className="text-slate-300 font-medium text-xs leading-relaxed">
-                  Modify total counts, weekly curves, latest exam targets, notice bulletins, and academic events live inside the DB.
+                  {t("Modify total counts, weekly curves, latest exam targets, notice bulletins, and academic events live inside the DB.")}
                 </p>
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30"
               )}
             >
-              {isCmsMode ? "Hide CMS Workbench" : "Open CMS Workbench"}
+              {isCmsMode ? t("Hide CMS Workbench") : t("Open CMS Workbench")}
             </Button>
           </CardContent>
         </Card>
@@ -942,11 +942,11 @@ export default function Dashboard({ user }: DashboardProps) {
                   )}
                 </span>
                 <CardTitle className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2 leading-none">
-                  Real-Time Database Stream Engine
+                  {t("Real-Time Database Stream Engine")}
                 </CardTitle>
               </div>
               <p className="text-[10px] font-semibold text-slate-400">
-                Supervising transaction indexing nodes & RFID streams down to milliseconds
+                {t("Supervising transaction indexing nodes & RFID streams down to milliseconds")}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -962,7 +962,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 )}
               >
                 {isLiveActive ? <Pause size={14} /> : <Play size={14} />}
-                {isLiveActive ? "Pause Stream" : "Resume Stream"}
+                {isLiveActive ? t("Pause Stream") : t("Resume Stream")}
               </Button>
             </div>
           </CardHeader>
@@ -971,7 +971,7 @@ export default function Dashboard({ user }: DashboardProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[9px] uppercase font-black tracking-wider">Total Records Managed</span>
+                  <span className="text-[9px] uppercase font-black tracking-wider">{t("Total Records Managed")}</span>
                   <Database size={14} className="text-blue-400" />
                 </div>
                 <div className="mt-2">
@@ -980,47 +980,47 @@ export default function Dashboard({ user }: DashboardProps) {
                   </h3>
                   <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Syncing...
+                    {t("Syncing...")}
                   </span>
                 </div>
               </div>
 
               <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[9px] uppercase font-black tracking-wider">Throughput Speed</span>
+                  <span className="text-[9px] uppercase font-black tracking-wider">{t("Throughput Speed")}</span>
                   <Activity size={14} className="text-emerald-400" />
                 </div>
                 <div className="mt-2">
                   <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">
                     {liveStats?.throughputRate?.toLocaleString() || "12,492"}
                   </h3>
-                  <span className="text-[9px] font-semibold text-slate-400">records / min</span>
+                  <span className="text-[9px] font-semibold text-slate-400">{t("records / min")}</span>
                 </div>
               </div>
 
               <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[9px] uppercase font-black tracking-wider">Pipeline Latency</span>
+                  <span className="text-[9px] uppercase font-black tracking-wider">{t("Pipeline Latency")}</span>
                   <Cpu size={14} className="text-indigo-400" />
                 </div>
                 <div className="mt-2">
                   <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">
                     {liveStats?.queryLatencyMs ? `${liveStats.queryLatencyMs}ms` : "1.85ms"}
                   </h3>
-                  <span className="text-[9px] font-semibold text-slate-400">avg SQL indexing read</span>
+                  <span className="text-[9px] font-semibold text-slate-400">{t("avg SQL indexing read")}</span>
                 </div>
               </div>
 
               <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-[9px] uppercase font-black tracking-wider">Active Terminals</span>
+                  <span className="text-[9px] uppercase font-black tracking-wider">{t("Active Terminals")}</span>
                   <Wifi size={14} className="text-sky-400" />
                 </div>
                 <div className="mt-2">
                   <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">
                     {liveStats?.activeTerminalsConnected || "124"}
                   </h3>
-                  <span className="text-[9px] font-semibold text-slate-400">RFID nodes online</span>
+                  <span className="text-[9px] font-semibold text-slate-400">{t("RFID nodes online")}</span>
                 </div>
               </div>
             </div>
@@ -1030,14 +1030,14 @@ export default function Dashboard({ user }: DashboardProps) {
               <div className="flex items-center justify-between text-slate-400 text-[10px] font-black uppercase tracking-widest pb-2 border-b border-slate-900">
                 <span className="flex items-center gap-1.5 flex-nowrap shrink-0">
                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                  Live Activity Packet Telemetry
+                  {t("Live Activity Packet Telemetry")}
                 </span>
-                <span className="text-[9px]">UTC Millisecond Time</span>
+                <span className="text-[9px]">{t("UTC Millisecond Time")}</span>
               </div>
               <div className="flex-1 overflow-y-auto max-h-[180px] mt-2 pr-1 space-y-2 font-mono scrollbar-thin scrollbar-thumb-slate-800">
                 {liveActivities.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-xs text-slate-600 font-bold py-12">
-                     <RefreshCw size={16} className="animate-spin mr-2" /> Initializing Live Pipe Stream...
+                     <RefreshCw size={16} className="animate-spin mr-2" /> {t("Initializing Live Pipe Stream...")}
                   </div>
                 ) : (
                   liveActivities.map((act) => (
@@ -1057,9 +1057,9 @@ export default function Dashboard({ user }: DashboardProps) {
                         )}>
                           {act.type}
                         </span>
-                        <span className="text-slate-300 font-bold">{act.name}</span>
-                        <span className="text-slate-400 text-[10px]">{act.action}</span>
-                        <span className="text-slate-600 text-[9px] font-sans">({act.school})</span>
+                        <span className="text-slate-300 font-bold">{t(act.name, act.name)}</span>
+                        <span className="text-slate-400 text-[10px]">{t(act.action, act.action)}</span>
+                        <span className="text-slate-600 text-[9px] font-sans">({t(act.school, act.school)})</span>
                       </div>
                       <span className="text-slate-500 text-[9px] font-mono whitespace-nowrap text-right">
                         {new Date(act.timestamp).toISOString().split('T')[1].replace('Z', '')}
@@ -1077,8 +1077,8 @@ export default function Dashboard({ user }: DashboardProps) {
           <CardHeader className="pb-3 border-b border-slate-50">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <CardTitle className="text-base sm:text-lg font-bold text-slate-900">Database Engine</CardTitle>
-                <CardDescription className="text-xs font-semibold text-slate-400">Running performance optimizations</CardDescription>
+                <CardTitle className="text-base sm:text-lg font-bold text-slate-900">{t("Database Engine")}</CardTitle>
+                <CardDescription className="text-xs font-semibold text-slate-400">{t("Running performance optimizations")}</CardDescription>
               </div>
               <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                 <HardDrive size={20} />
@@ -1092,11 +1092,11 @@ export default function Dashboard({ user }: DashboardProps) {
                   <Layers size={16} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Engine Status</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">Active Partition Indexes</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{t("Engine Status")}</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">{t("Active Partition Indexes")}</p>
                 </div>
               </div>
-              <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-black uppercase">Optimized</span>
+              <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-black uppercase">{t("Optimized")}</span>
             </div>
 
             <div className="space-y-3">
@@ -1494,12 +1494,13 @@ export default function Dashboard({ user }: DashboardProps) {
 }
 
 function StatCard({ title, value, trend, icon: Icon, color, onClick }: any) {
+  const { t } = useLanguage();
   return (
-    <SimpleTooltip content={`Click to view details for ${title}`} side="top">
+    <SimpleTooltip content={t(`Click to view details for ${title}`)} side="top">
       <Card 
         className="border-none cursor-pointer overflow-hidden group rounded-[1.5rem] sm:rounded-[2rem] bg-white shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1" 
         onClick={onClick}
-        aria-label={`Show details for ${title}`}
+        aria-label={t(`Show details for ${title}`)}
       >
         <CardContent className="p-6 sm:p-8 relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 group-hover:bg-slate-100/50"></div>
@@ -1511,13 +1512,13 @@ function StatCard({ title, value, trend, icon: Icon, color, onClick }: any) {
               "flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm transition-all duration-300 group-hover:translate-x-1",
               trend.startsWith("+") ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"
             )}>
-              {trend}
+              {t(trend, trend)}
               <ArrowUpRight size={12} className="stroke-[3]" />
             </div>
           </div>
           <div className="mt-8 relative z-10">
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight transition-all duration-300 group-hover:translate-x-1">{value}</h2>
-            <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-2 group-hover:translate-x-1 transition-all duration-300">{title}</p>
+            <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-2 group-hover:translate-x-1 transition-all duration-300">{t(title, title)}</p>
           </div>
         </CardContent>
       </Card>
@@ -1526,6 +1527,7 @@ function StatCard({ title, value, trend, icon: Icon, color, onClick }: any) {
 }
 
 function AnnouncementItem({ title, date, desc, onClick }: any) {
+  const { t } = useLanguage();
   return (
     <div 
       className="group flex gap-5 p-6 sm:p-8 transition-colors hover:bg-slate-50/50 cursor-pointer active:scale-[0.99] origin-left"
@@ -1533,30 +1535,31 @@ function AnnouncementItem({ title, date, desc, onClick }: any) {
     >
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{title}</h3>
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{date}</span>
+          <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{t(title, title)}</h3>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t(date, date)}</span>
         </div>
-        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">{desc}</p>
+        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">{t(desc, desc)}</p>
       </div>
     </div>
   );
 }
 
 function EventItem({ time, label, type, color, onClick }: any) {
+  const { t } = useLanguage();
   return (
     <div 
       className="group flex items-center gap-6 p-5 sm:p-6 hover:bg-slate-50/50 transition-colors cursor-pointer active:scale-[0.99] origin-left"
       onClick={onClick}
     >
       <div className="flex flex-col items-center justify-center shrink-0 w-16">
-        <span className="text-xs font-black text-slate-900 tracking-tight">{time.split(' ')[0]}</span>
-        <span className="text-[9px] font-black text-slate-400 uppercase">{time.split(' ')[1]}</span>
+        <span className="text-xs font-black text-slate-900 tracking-tight">{t(time.split(' ')[0], time.split(' ')[0])}</span>
+        <span className="text-[9px] font-black text-slate-400 uppercase">{t(time.split(' ')[1], time.split(' ')[1])}</span>
       </div>
       <div className="flex-1">
-        <p className="text-sm font-bold text-slate-800 transition-colors group-hover:text-blue-600">{label}</p>
+        <p className="text-sm font-bold text-slate-800 transition-colors group-hover:text-blue-600">{t(label, label)}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={cn("px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest", color)}>
-            {type}
+            {t(type, type)}
           </span>
         </div>
       </div>
