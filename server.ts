@@ -64,7 +64,7 @@ async function startServer() {
   // transitions between mocked offline state and active live DB workflows.
   let apiProxyInstance: any = null;
   app.use((req, res, next) => {
-    if (isBackendOnline && apiProxyInstance && !req.url.includes('/api/stats/live') && (req.url.startsWith('/api') || req.url.startsWith('/uploads') || req.url.startsWith('/photos') || req.url.startsWith('/SCANiD_ERP_API'))) {
+    if (isBackendOnline && apiProxyInstance && !req.url.includes('/api/stats/live') && !req.url.includes('/api/translate') && (req.url.startsWith('/api') || req.url.startsWith('/uploads') || req.url.startsWith('/photos') || req.url.startsWith('/SCANiD_ERP_API'))) {
       return apiProxyInstance(req, res, next);
     }
     next();

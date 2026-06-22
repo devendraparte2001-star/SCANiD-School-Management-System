@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import AttendanceReports from "@/components/reports/AttendanceReports";
@@ -94,8 +95,15 @@ const STATUS_META: Record<string, { label: string; bg: string; text: string; cod
 };
 
 export default function Attendance({ user, defaultTab = "daily" }: { user: any; defaultTab?: string }) {
+  const navigate = useNavigate();
+
   // Navigation tabs: daily (Daily Roll Call), manual (Manual Attendance Upload), report (Attendance Reports)
   const [activeTab, setActiveTab ] = useState<"daily" | "manual" | "report" | "leaves" | "reprocess" | "lock" | "audit">(defaultTab as any);
+
+  const handleTabChange = (tab: "daily" | "manual" | "report" | "leaves" | "reprocess" | "lock" | "audit") => {
+    setActiveTab(tab);
+    navigate(`/attendance/${tab}`);
+  };
 
   // Sync active tab with prop changes from sidebar navigation
   useEffect(() => {
@@ -1360,6 +1368,43 @@ export default function Attendance({ user, defaultTab = "daily" }: { user: any; 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* -----------------------------------------
+          TAB SELECTION BAR
+         ----------------------------------------- */}
+      <div className="flex gap-2 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm overflow-x-auto scrollbar-none">
+        {[
+          { tab: "daily", label: "Daily Roll Call", icon: CalendarCheck },
+          { tab: "manual", label: "Manual Upload", icon: UploadCloud },
+          { tab: "leaves", label: "Leaves Register", icon: CalendarIcon },
+          { tab: "reprocess", label: "Reprocess Range", icon: RefreshCw },
+          ...(user.role === "superadmin" || user.role === "admin"
+            ? [
+                { tab: "lock", label: "Payroll Lock", icon: Lock },
+                { tab: "audit", label: "Correction Audit", icon: FileText },
+              ]
+            : []),
+          { tab: "report", label: "Reports", icon: BarChart3 },
+        ].map(({ tab, label, icon: Icon }) => {
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => handleTabChange(tab as any)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap",
+                isActive
+                  ? "bg-slate-900 text-white shadow-md shadow-slate-200"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              <Icon size={16} className={isActive ? "text-emerald-400" : "text-slate-400"} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* -----------------------------------------
