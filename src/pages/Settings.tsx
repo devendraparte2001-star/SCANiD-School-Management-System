@@ -42,17 +42,95 @@ export default function Settings({ user }: SettingsProps) {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 150 * 1024) {
-        toast.error("Please select a smaller logo image (under 150KB) for optimal performance.");
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select a valid image file.");
         return;
       }
+
+      // Safeguard against absolute massive files that might block browser memory
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error("The selected file is too large (above 25MB). Please choose a compressed/smaller image.");
+        return;
+      }
+
+      const isSvg = file.type === "image/svg+xml" || file.name.endsWith(".svg");
+      const isSmall = file.size <= 100 * 1024; // If already under 100KB, read directly
+
+      if (isSvg || isSmall) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLocalLabels((prev) => ({
+            ...prev,
+            logoImage: reader.result as string,
+          }));
+          toast.success("New brand logo image selected and loaded successfully.");
+        };
+        reader.onerror = () => {
+          toast.error("Failed to read the image file.");
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // For larger non-SVG images, dynamically optimize/compress on a Web Canvas
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setLocalLabels((prev) => ({
-          ...prev,
-          logoImage: reader.result as string,
-        }));
-        toast.success("New brand logo image selected and loaded successfully.");
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+
+            // Constrain branding visual header logos to high-dpi responsive size bounds
+            const MAX_WIDTH = 600;
+            const MAX_HEIGHT = 200;
+
+            if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+              const widthRatio = MAX_WIDTH / width;
+              const heightRatio = MAX_HEIGHT / height;
+              const ratio = Math.min(widthRatio, heightRatio);
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              throw new Error("Could not initialize 2D context.");
+            }
+
+            // Draw image to target size
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Output format selector: keep PNG for PNG files to maintain transparent channels
+            const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+            const dataUrl = canvas.toDataURL(outputType, outputType === "image/jpeg" ? 0.85 : undefined);
+
+            setLocalLabels((prev) => ({
+              ...prev,
+              logoImage: dataUrl,
+            }));
+            toast.success("New brand logo image optimized and loaded successfully.");
+          } catch (error) {
+            console.error("Error optimizing uploaded logo image:", error);
+            // Fallback directly to original file string if canvas optimization fails
+            setLocalLabels((prev) => ({
+              ...prev,
+              logoImage: event.target?.result as string,
+            }));
+            toast.success("Brand logo image selected and loaded.");
+          }
+        };
+        img.onerror = () => {
+          toast.error("Invalid image dimensions or format. Unable to load preview.");
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read image file stream.");
       };
       reader.readAsDataURL(file);
     }
