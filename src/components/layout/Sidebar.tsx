@@ -554,15 +554,28 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
               item.roleIds.includes(0)
             );
 
-        // 3. Recursive hierarchy builder
+        // 3. Recursive hierarchy builder with circular reference protection
+        const pathSet = new Set<number>();
         const buildMenu = (pId: number | null): NavItem[] => {
           return roleFiltered
             .filter(item => item.parentId === pId)
             .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map(item => ({
-              ...item,
-              subItems: buildMenu(item.id)
-            }));
+            .map(item => {
+              if (pathSet.has(item.id)) {
+                console.warn(`Circular navigation reference detected for item: ${item.title} (ID: ${item.id})`);
+                return {
+                  ...item,
+                  subItems: []
+                };
+              }
+              pathSet.add(item.id);
+              const subItems = buildMenu(item.id);
+              pathSet.delete(item.id);
+              return {
+                ...item,
+                subItems
+              };
+            });
         };
 
         const hierarchicalMenu = buildMenu(null);

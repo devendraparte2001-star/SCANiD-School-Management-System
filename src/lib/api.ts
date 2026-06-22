@@ -363,6 +363,8 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+const loggedWarnings = new Map<string, number>();
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -404,9 +406,14 @@ api.interceptors.response.use(
       // Clean up leading/trailing slashes for matching
       const cleanUrl = "/" + url.replace(/^\/+/, "").replace(/\/+$/, "");
       
-      console.warn(
-        `Backend connection issue at [${configUrl}]. Using demo fallback data for path: ${cleanUrl}`
-      );
+      const now = Date.now();
+      const lastLogged = loggedWarnings.get(cleanUrl);
+      if (!lastLogged || (now - lastLogged) > 60000) {
+        loggedWarnings.set(cleanUrl, now);
+        console.warn(
+          `Backend connection issue at [${configUrl}]. Using demo fallback data for path: ${cleanUrl}`
+        );
+      }
 
       // Try exact match in fallbacks
       let mockKey = Object.keys(mockFallbacks).find(key => 
