@@ -164,6 +164,37 @@ try
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<ApplicationDbContext>();
         
+        // 0.0 - ALIGN CORE SCHEMAS: Ensure Schools & LeaveApplications tables have all necessary columns before any queries run
+        _ = await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CityName')
+                    ALTER TABLE [dbo].[Schools] ADD [CityName] NVARCHAR(200) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'StateName')
+                    ALTER TABLE [dbo].[Schools] ADD [StateName] NVARCHAR(200) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'DashboardTheme')
+                    ALTER TABLE [dbo].[Schools] ADD [DashboardTheme] NVARCHAR(50) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsTotalStudents')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsTotalStudents] INT NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsTotalTeachers')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsTotalTeachers] INT NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsFeeCollection')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsFeeCollection] NVARCHAR(50) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsAttendanceRate')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsAttendanceRate] NVARCHAR(50) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsAnnouncements')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsAnnouncements] NVARCHAR(MAX) NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Schools]') AND name = 'CmsEvents')
+                    ALTER TABLE [dbo].[Schools] ADD [CmsEvents] NVARCHAR(MAX) NULL;
+            END
+
+            IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[LeaveApplications]') AND type in (N'U'))
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[LeaveApplications]') AND name = 'LeaveType')
+                    ALTER TABLE [dbo].[LeaveApplications] ADD [LeaveType] NVARCHAR(50) NULL;
+            END
+        ");
+
         // 0. SELF-HEALING SCHEMA UPGRADE: Create Weekdays and Holidays, update Shifts columns, and alter Master Tables to include SchoolId/AcademicYearId
         _ = await context.Database.ExecuteSqlRawAsync(@"
             -- Create Weekdays table if not exists
@@ -265,6 +296,7 @@ try
                     [FromDate] [datetime2](7) NOT NULL,
                     [ToDate] [datetime2](7) NOT NULL,
                     [Status] [nvarchar](50) NOT NULL CONSTRAINT [DF_LeaveApplications_Status] DEFAULT ('Approved'),
+                    [LeaveType] [nvarchar](50) NULL,
                     [Remarks] [nvarchar](max) NULL,
                     [SchoolId] [int] NULL,
                     [AcademicYearId] [int] NULL,
