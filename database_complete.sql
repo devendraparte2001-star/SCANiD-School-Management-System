@@ -436,8 +436,8 @@ CREATE TABLE [dbo].[Fees](
     [PaidDate] DATETIME2(7) NULL,
     [Status] NVARCHAR(50) NOT NULL DEFAULT (N'Pending'),
     [PaymentMethod] NVARCHAR(100) NULL,
-    [SchoolId] INT NULL,
-    [AcademicYearId] INT NULL,
+    [SchoolId] INT NULL REFERENCES [dbo].[Schools]([Id]),
+    [AcademicYearId] INT NULL REFERENCES [dbo].[AcademicYears]([Id]),
     [IsActive] BIT NOT NULL DEFAULT (1),
     [IsDeleted] BIT NOT NULL DEFAULT (0)
 );
@@ -452,8 +452,8 @@ CREATE TABLE [dbo].[Marks](
     [MarksObtained] DECIMAL(18,2) NOT NULL,
     [TotalMarks] DECIMAL(18,2) NOT NULL,
     [Grade] NVARCHAR(50) NULL,
-    [SchoolId] INT NULL,
-    [AcademicYearId] INT NULL,
+    [SchoolId] INT NULL REFERENCES [dbo].[Schools]([Id]),
+    [AcademicYearId] INT NULL REFERENCES [dbo].[AcademicYears]([Id]),
     [IsActive] BIT NOT NULL DEFAULT (1),
     [IsDeleted] BIT NOT NULL DEFAULT (0)
 );
@@ -469,8 +469,8 @@ CREATE TABLE [dbo].[Notifications](
     [Type] NVARCHAR(50) NOT NULL DEFAULT (N'info'),
     [IsRead] BIT NOT NULL DEFAULT (0),
     [CreatedAt] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()),
-    [SchoolId] INT NULL,
-    [AcademicYearId] INT NULL,
+    [SchoolId] INT NULL REFERENCES [dbo].[Schools]([Id]),
+    [AcademicYearId] INT NULL REFERENCES [dbo].[AcademicYears]([Id]),
     [IsActive] BIT NOT NULL DEFAULT (1),
     [IsDeleted] BIT NOT NULL DEFAULT (0),
     [CreatedBy] NVARCHAR(100) NULL
@@ -527,8 +527,8 @@ CREATE TABLE [dbo].[SystemLabels](
     [CreatedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()),
     [ModifiedBy] NVARCHAR(255) NULL,
     [ModifiedOn] DATETIME2(7) NOT NULL DEFAULT (GETUTCDATE()),
-    [SchoolId] INT NULL,
-    [AcademicYearId] INT NULL
+    [SchoolId] INT NULL REFERENCES [dbo].[Schools]([Id]),
+    [AcademicYearId] INT NULL REFERENCES [dbo].[AcademicYears]([Id])
 );
 GO
 
@@ -541,6 +541,28 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Students_SchoolId_IsDe
 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Staff_SchoolId' AND object_id = OBJECT_ID('dbo.Staff'))
     EXEC('CREATE NONCLUSTERED INDEX IX_Staff_SchoolId ON dbo.Staff(SchoolId) INCLUDE (EmployeeId, Subject);');
+
+-- High-performance compound indexes binding all critical transactional modules by SchoolId and AcademicYearId
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Students_School_Academics' AND object_id = OBJECT_ID('dbo.Students'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Students_School_Academics ON dbo.Students(SchoolId, AcademicYearId, IsDeleted) INCLUDE (Name, RollNumber, GrNo);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Staff_School_Academics' AND object_id = OBJECT_ID('dbo.Staff'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Staff_School_Academics ON dbo.Staff(SchoolId, AcademicYearId, IsActive, IsDeleted) INCLUDE (EmployeeId, Subject);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Attendance_School_Academics' AND object_id = OBJECT_ID('dbo.Attendance'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Attendance_School_Academics ON dbo.Attendance(SchoolId, AcademicYearId, Date, IsActive, IsDeleted);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Fees_School_Academics' AND object_id = OBJECT_ID('dbo.Fees'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Fees_School_Academics ON dbo.Fees(SchoolId, AcademicYearId, IsActive, IsDeleted);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Marks_School_Academics' AND object_id = OBJECT_ID('dbo.Marks'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Marks_School_Academics ON dbo.Marks(SchoolId, AcademicYearId, IsActive, IsDeleted);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_SystemLabels_School_Academics' AND object_id = OBJECT_ID('dbo.SystemLabels'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_SystemLabels_School_Academics ON dbo.SystemLabels(SchoolId, AcademicYearId, IsDeleted);');
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Notifications_School_Academics' AND object_id = OBJECT_ID('dbo.Notifications'))
+    EXEC('CREATE NONCLUSTERED INDEX IX_Notifications_School_Academics ON dbo.Notifications(SchoolId, AcademicYearId, IsRead, IsActive, IsDeleted);');
 
 
 -- ==========================================
