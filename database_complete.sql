@@ -88,7 +88,9 @@ CREATE TABLE [dbo].[Schools](
     [CmsFeeCollection] NVARCHAR(50) NULL,
     [CmsAttendanceRate] NVARCHAR(50) NULL,
     [CmsAnnouncements] NVARCHAR(MAX) NULL,
-    [CmsEvents] NVARCHAR(MAX) NULL
+    [CmsEvents] NVARCHAR(MAX) NULL,
+    [CityName] NVARCHAR(200) NULL,
+    [StateName] NVARCHAR(200) NULL
 );
 GO
 

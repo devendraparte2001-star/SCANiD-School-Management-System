@@ -367,6 +367,15 @@ CREATE TABLE [dbo].[Schools](
 	[CreatedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
     [ModifiedBy] [nvarchar](max) NULL,
     [ModifiedOn] [datetime2](7) NOT NULL DEFAULT (GETUTCDATE()),
+    [DashboardTheme] [nvarchar](50) NULL,
+    [CmsTotalStudents] [int] NULL,
+    [CmsTotalTeachers] [int] NULL,
+    [CmsFeeCollection] [nvarchar](50) NULL,
+    [CmsAttendanceRate] [nvarchar](50) NULL,
+    [CmsAnnouncements] [nvarchar](max) NULL,
+    [CmsEvents] [nvarchar](max) NULL,
+    [CityName] [nvarchar](200) NULL,
+    [StateName] [nvarchar](200) NULL,
  CONSTRAINT [PK_Schools] PRIMARY KEY CLUSTERED ([Id] ASC)
 )
 END

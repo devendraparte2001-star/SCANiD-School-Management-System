@@ -374,6 +374,8 @@ CREATE TABLE [dbo].[Schools](
     [CmsAttendanceRate] [nvarchar](50) NULL,
     [CmsAnnouncements] [nvarchar](max) NULL,
     [CmsEvents] [nvarchar](max) NULL,
+    [CityName] [nvarchar](200) NULL,
+    [StateName] [nvarchar](200) NULL,
  CONSTRAINT [PK_Schools] PRIMARY KEY CLUSTERED ([Id] ASC)
 )
 END
