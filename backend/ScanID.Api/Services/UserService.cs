@@ -139,7 +139,9 @@ namespace ScanID.Api.Services
 
         public async Task<User> CreateUserAsync(User user)
         {
-            user.PasswordHash = string.IsNullOrEmpty(user.PasswordHash) ? "password123" : user.PasswordHash;
+            var rawPassword = string.IsNullOrEmpty(user.PasswordHash) ? "Password123" : user.PasswordHash;
+            var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
+            user.PasswordHash = passwordHasher.HashPassword(user, rawPassword);
 
             return await ExecuteWithRetryAsync(async () =>
             {

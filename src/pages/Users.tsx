@@ -515,15 +515,15 @@ export default function Users({ user }: { user: any }) {
                                     <TableRow key={user.id} className="hover:bg-blue-50/10 border-slate-50 h-20 group">
                                         <TableCell className="pl-6">
                                             <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-slate-100">
-                                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} />
+                                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.username || "User"}`} />
                                                 <AvatarFallback className="bg-slate-900 text-white text-[10px] font-bold">
-                                                    {user.name.split(" ").map(n => n[0]).join("")}
+                                                    {(user.name || user.username || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
                                         </TableCell>
                                         <TableCell>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-900">{user.name}</p>
+                                                <p className="text-sm font-bold text-slate-900">{user.name || user.username || "Unnamed User"}</p>
                                                 <p className="text-xs text-slate-400 font-medium">{user.email}</p>
                                             </div>
                                         </TableCell>
@@ -575,16 +575,16 @@ export default function Users({ user }: { user: any }) {
                                     <div className="flex flex-col items-center text-center">
                                         <div className="relative mb-4">
                                             <Avatar className="h-20 w-20 border-4 border-white shadow-xl">
-                                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} />
+                                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || user.username || "User"}`} />
                                                 <AvatarFallback className="bg-slate-900 text-white text-lg font-black">
-                                                    {user.name.split(" ").map(n => n[0]).join("")}
+                                                    {(user.name || user.username || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-white rounded-full flex items-center justify-center shadow-sm">
                                                 <div className={cn("h-3 w-3 rounded-full", user.isActive !== false ? "bg-emerald-500 animate-pulse" : "bg-slate-300")} />
                                             </div>
                                         </div>
-                                        <h3 className="font-black text-slate-900 truncate w-full px-2">{user.name}</h3>
+                                        <h3 className="font-black text-slate-900 truncate w-full px-2">{user.name || user.username || "Unnamed User"}</h3>
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">{user.role}</p>
                                         
                                         <div className="space-y-2 w-full mb-6">

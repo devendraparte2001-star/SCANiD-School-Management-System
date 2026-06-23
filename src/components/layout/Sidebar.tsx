@@ -175,7 +175,6 @@ export default function Sidebar({ user, onLogout, isMobileOpen, onCloseMobile }:
             // RBAC Sub-group
             { id: 22, title: "Access Control (RBAC)", icon: "Key", path: null, parentId: 20, sortOrder: 2, roleIds: adminRoles },
             { id: 23, title: "Role Master", icon: "Shield", path: "/configuration/role-master", parentId: 22, sortOrder: 1, roleIds: adminRoles },
-            { id: 24, title: "User Accounts", icon: "UserCheck", path: "/configuration/role-assignment", parentId: 22, sortOrder: 2, roleIds: adminRoles },
             
             // Menu Designer Sub-group
             { id: 25, title: "Menu Designer", icon: "Layout", path: null, parentId: 20, sortOrder: 3, roleIds: adminRoles },

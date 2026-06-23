@@ -175,7 +175,6 @@ namespace ScanID.Api.Controllers
                 // RBAC Sub-group
                 new { id = 13, title = "Access Control (RBAC)", icon = "Key", path = (string?)null, parentId = 11, sortOrder = 2, roleIds = adminOnly },
                 new { id = 14, title = "Role Master", icon = "Shield", path = "/configuration/role-master", parentId = 13, sortOrder = 1, roleIds = adminOnly },
-                new { id = 15, title = "User Accounts", icon = "UserCheck", path = "/configuration/role-assignment", parentId = 13, sortOrder = 2, roleIds = adminOnly },
                 
                 // Menu Designer Sub-group
                 new { id = 16, title = "Menu Designer", icon = "Layout", path = (string?)null, parentId = 11, sortOrder = 3, roleIds = adminOnly },

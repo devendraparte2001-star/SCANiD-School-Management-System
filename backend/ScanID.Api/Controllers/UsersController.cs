@@ -118,6 +118,15 @@ namespace ScanID.Api.Controllers
             {
                 user.PasswordHash = existingUser.PasswordHash;
             }
+            else if (user.PasswordHash != existingUser.PasswordHash)
+            {
+                bool isAlreadyHashed = user.PasswordHash.StartsWith("AQAAAAEAACcQAAAA") && user.PasswordHash.Length >= 44;
+                if (!isAlreadyHashed)
+                {
+                    var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
+                    user.PasswordHash = passwordHasher.HashPassword(user, user.PasswordHash);
+                }
+            }
 
             var success = await _userService.UpdateUserAsync(user);
             if (!success)

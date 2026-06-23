@@ -134,12 +134,12 @@ export default function App() {
                 {(user.role === "superadmin" || user.role === "admin") && (
                   <>
                     <Route path="/schools" element={<Navigate to="/configuration/schools" replace />} />
-                    <Route path="/role-assignment" element={<Navigate to="/configuration/role-assignment" replace />} />
+                    <Route path="/role-assignment" element={<Navigate to="/configuration/users" replace />} />
                     <Route path="/navigation-management" element={<Navigate to="/configuration/navigation" replace />} />
                     <Route path="/configuration" element={<Configuration user={user} />} />
                     <Route path="/configuration/schools" element={<Configuration user={user} defaultTab="schools" />} />
                     <Route path="/configuration/role-master" element={<Configuration user={user} defaultTab="role-master" />} />
-                    <Route path="/configuration/role-assignment" element={<Configuration user={user} defaultTab="role-assignment" />} />
+                    <Route path="/configuration/role-assignment" element={<Navigate to="/configuration/users" replace />} />
                     <Route path="/configuration/standards" element={<Configuration user={user} defaultTab="standards" />} />
                     <Route path="/configuration/sections" element={<Configuration user={user} defaultTab="sections" />} />
                     <Route path="/configuration/academic-years" element={<Configuration user={user} defaultTab="academic-years" />} />

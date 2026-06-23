@@ -182,7 +182,6 @@ export default function Navbar({ user, onLogout, onUserUpdate, toggleSidebar }: 
     { id: 11, title: "Masters & Config", path: "/configuration" },
     { id: 12, title: "Global Schools", path: "/configuration/schools" },
     { id: 14, title: "Role Master", path: "/configuration/role-master" },
-    { id: 15, title: "User Accounts", path: "/configuration/role-assignment" },
     { id: 17, title: "Navigation Builder", path: "/configuration/navigation" },
     { id: 19, title: "Standards & Grades", path: "/configuration/standards" },
     { id: 20, title: "Divisions/Sections", path: "/configuration/sections" },

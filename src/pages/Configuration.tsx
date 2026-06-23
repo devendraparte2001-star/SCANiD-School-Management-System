@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import UsersManagement from "./Users";
 import * as LucideIcons from "lucide-react";
 import {
   Database,
@@ -116,12 +117,6 @@ const MASTER_TYPES: Record<
     icon: Shield,
     description: "Manage system access roles",
     apiPrefix: "Role",
-  },
-  "role-assignment": {
-    label: "User Accounts",
-    icon: UserCheck,
-    description: "Manage system user accounts and credentials",
-    apiPrefix: "User",
   },
   standards: {
     label: "Standards",
@@ -1045,6 +1040,10 @@ export default function Configuration({
 
     return true;
   });
+
+  if (activeTab === "role-assignment") {
+    return <UsersManagement user={user} />;
+  }
 
   const activeConfig = MASTER_TYPES[activeTab];
   const Icon = activeConfig.icon;
