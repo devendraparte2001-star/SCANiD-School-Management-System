@@ -131,7 +131,7 @@ export default function App() {
                   Only render routes that the current user has permission to view.
                   Superadmin and Admin can access configuration.
                 */}
-                {(user.role === "superadmin" || user.role === "admin") && (
+                {((user.role?.toLowerCase() === "superadmin" || user.role?.toLowerCase() === "super admin") || user.role?.toLowerCase() === "admin") && (
                   <>
                     <Route path="/schools" element={<Navigate to="/configuration/schools" replace />} />
                     <Route path="/role-assignment" element={<Navigate to="/configuration/users" replace />} />

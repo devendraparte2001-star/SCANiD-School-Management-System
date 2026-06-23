@@ -113,6 +113,7 @@ namespace ScanID.Api.Services
                         SchoolId = reader["SchoolId"] != DBNull.Value ? Convert.ToInt32(reader["SchoolId"]) : null,
                         IsActive = reader["IsActive"] != DBNull.Value && Convert.ToBoolean(reader["IsActive"]),
                         IsDeleted = reader["IsDeleted"] != DBNull.Value && Convert.ToBoolean(reader["IsDeleted"]),
+                        AcademicYearId = reader["AcademicYearId"] != DBNull.Value ? Convert.ToInt32(reader["AcademicYearId"]) : null,
                         CreatedOn = reader["CreatedOn"] != DBNull.Value ? Convert.ToDateTime(reader["CreatedOn"]) : DateTime.UtcNow,
                         ModifiedOn = reader["ModifiedOn"] != DBNull.Value ? Convert.ToDateTime(reader["ModifiedOn"]) : DateTime.UtcNow,
                         CreatedBy = reader["CreatedBy"] != DBNull.Value ? reader["CreatedBy"].ToString() : null,
@@ -160,7 +161,8 @@ namespace ScanID.Api.Services
                     ("RoleId", user.RoleId),
                     ("SchoolId", user.SchoolId),
                     ("CreatedBy", user.CreatedBy),
-                    ("ModifiedBy", user.CreatedBy)
+                    ("ModifiedBy", user.CreatedBy),
+                    ("AcademicYearId", user.AcademicYearId)
                 );
 
                 return user;
@@ -174,7 +176,7 @@ namespace ScanID.Api.Services
                 // Execute stored procedure. Note: Since sp_ManageUser starts with SET NOCOUNT ON, 
                 // it suppresses row counts and returns -1. Thus, we check 'rowsAffected >= 0 || rowsAffected == -1'.
                 var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
-                    $"EXEC dbo.sp_ManageUser 'UPDATE', {user.Id}, {user.Username}, {user.PasswordHash}, {user.Name}, {user.Email}, {user.Role}, {user.RoleId}, {user.SchoolId}, NULL, {user.ModifiedBy}"
+                    $"EXEC dbo.sp_ManageUser 'UPDATE', {user.Id}, {user.Username}, {user.PasswordHash}, {user.Name}, {user.Email}, {user.Role}, {user.RoleId}, {user.SchoolId}, NULL, {user.ModifiedBy}, {user.AcademicYearId}"
                 );
                 return rowsAffected >= 0 || rowsAffected == -1;
             });

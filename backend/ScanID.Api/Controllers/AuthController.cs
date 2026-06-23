@@ -36,7 +36,7 @@ namespace ScanID.Api.Controllers
             }
 
             // Helper to get RoleId from Role name string if not explicitly set
-            int roleId = user.RoleId ?? (user.Role?.ToLower() switch
+            int roleId = user.RoleId ?? (user.Role?.ToLower().Replace(" ", "") switch
             {
                 "superadmin" => 1,
                 "admin" => 2,
@@ -52,7 +52,8 @@ namespace ScanID.Api.Controllers
                 role = user.Role ?? "student",
                 roleId = roleId,
                 schoolId = user.SchoolId?.ToString(),
-                schoolName = user.School?.Name
+                schoolName = user.School?.Name,
+                academicYearId = user.AcademicYearId?.ToString()
             });
         }
 

@@ -28,6 +28,7 @@ namespace ScanID.Api.Controllers
             Role = user.Role,
             RoleId = user.RoleId,
             SchoolId = user.SchoolId,
+            AcademicYearId = user.AcademicYearId,
             IsActive = user.IsActive,
             CreatedOn = user.CreatedOn,
             ModifiedOn = user.ModifiedOn
@@ -46,6 +47,7 @@ namespace ScanID.Api.Controllers
             Role = dto.Role,
             RoleId = dto.RoleId,
             SchoolId = dto.SchoolId,
+            AcademicYearId = dto.AcademicYearId,
             CreatedBy = dto.CreatedBy,
             ModifiedBy = dto is UserUpdateDto updateDto ? updateDto.ModifiedBy : dto.CreatedBy,
             IsActive = dto is UserUpdateDto update ? update.IsActive : true

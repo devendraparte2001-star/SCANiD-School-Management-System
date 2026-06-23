@@ -14,6 +14,7 @@ namespace ScanID.Api.Models
         public string? Role { get; set; }
         public int? RoleId { get; set; }
         public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime ModifiedOn { get; set; }
@@ -33,6 +34,7 @@ namespace ScanID.Api.Models
         public string? Role { get; set; }
         public int? RoleId { get; set; }
         public int? SchoolId { get; set; }
+        public int? AcademicYearId { get; set; }
         public string? CreatedBy { get; set; }
     }
 

@@ -426,11 +426,14 @@ export default function Users({ user }: { user: any }) {
   const filteredUsers = users;
 
   const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'superadmin': return <Badge className="bg-purple-600">Super Admin</Badge>;
-      case 'admin': return <Badge className="bg-blue-600">Admin</Badge>;
-      case 'teacher': return <Badge className="bg-emerald-600">Teacher</Badge>;
-      default: return <Badge variant="outline" className="capitalize">{role}</Badge>;
+    const r = (role || "").trim().toLowerCase().replace(/\s+/g, '');
+    switch (r) {
+      case 'superadmin': return <Badge className="bg-purple-600 text-white font-semibold shadow-sm">Super Admin</Badge>;
+      case 'admin': return <Badge className="bg-blue-600 text-white font-semibold shadow-sm">Admin</Badge>;
+      case 'teacher': return <Badge className="bg-emerald-600 text-white font-semibold shadow-sm">Teacher</Badge>;
+      case 'student': return <Badge className="bg-amber-600 text-white font-semibold shadow-sm">Student</Badge>;
+      case 'parent': return <Badge className="bg-cyan-600 text-white font-semibold shadow-sm">Parent</Badge>;
+      default: return <Badge variant="outline" className="capitalize font-semibold text-slate-700">{role}</Badge>;
     }
   };
 
