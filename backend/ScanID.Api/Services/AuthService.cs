@@ -15,10 +15,12 @@ namespace ScanID.Api.Services
     public class AuthService : IAuthService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IErrorLogService _errorLogService;
 
-        public AuthService(ApplicationDbContext context)
+        public AuthService(ApplicationDbContext context, IErrorLogService errorLogService)
         {
             _context = context;
+            _errorLogService = errorLogService;
         }
 
         public async Task<User?> LogInAsync(string username, string password)
@@ -30,6 +32,12 @@ namespace ScanID.Api.Services
 
             if (user == null)
             {
+                await _errorLogService.InsertErrorLogAsync(
+                    $"Login failed: Username '{username}' not found in database.",
+                    "Warning",
+                    "UserNotFoundException",
+                    $"AuthService.LogInAsync({username})"
+                );
                 return null;
             }
 
@@ -53,11 +61,34 @@ namespace ScanID.Api.Services
                     {
                         isPasswordValid = true;
                     }
+                    else
+                    {
+                        await _errorLogService.InsertErrorLogAsync(
+                            $"Password verification failed for user '{username}'. Invalid credentials.",
+                            "Warning",
+                            "InvalidCredentialsException",
+                            $"AuthService.VerifyHashedPassword({username})"
+                        );
+                    }
                 }
-                catch
+                catch (System.Exception ex)
                 {
-                    // Ignore any hashing decode errors; fallback to invalid
+                    await _errorLogService.InsertErrorLogAsync(
+                        $"Cryptographic password hash verification failed for user '{username}': {ex.Message}",
+                        "Error",
+                        ex.ToString(),
+                        $"AuthService.LogInAsync; Hash: {user.PasswordHash}"
+                    );
                 }
+            }
+            else if (!isPasswordValid)
+            {
+                await _errorLogService.InsertErrorLogAsync(
+                    $"Login failed for user '{username}': Password mismatch or malformed hash.",
+                    "Warning",
+                    "PasswordMismatch",
+                    $"AuthService.LogInAsync({username})"
+                );
             }
 
             return isPasswordValid ? user : null;
