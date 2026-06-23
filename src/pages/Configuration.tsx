@@ -717,7 +717,7 @@ export default function Configuration({
     }
 
     // Mandatory multi-tenancy validation for master forms
-    if (activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment") {
+    if (activeTab !== "schools" && activeTab !== "role-assignment") {
       if (!formData.schoolId) newErrors.schoolId = true;
       if (activeTab !== "academic-years" && !formData.academicYearId) newErrors.academicYearId = true;
     }
@@ -782,8 +782,8 @@ export default function Configuration({
         payload.Description = formData.description;
       }
 
-      // Add global school and academic year selection, except when dealing with schools or navigations
-      if (activeTab !== "schools" && activeTab !== "navigation") {
+      // Add global school and academic year selection, except when dealing with schools
+      if (activeTab !== "schools") {
         if (formData.schoolId) {
           payload.schoolId = parseSafeInt(formData.schoolId);
           payload.SchoolId = parseSafeInt(formData.schoolId);
@@ -1794,8 +1794,8 @@ export default function Configuration({
               </div>
             )}
 
-            {/* School & Academic Year Selector on ALL masters except Schools, Navigation and Role Assignment */}
-            {activeTab !== "schools" && activeTab !== "navigation" && activeTab !== "role-assignment" && (
+            {/* School & Academic Year Selector on ALL masters except Schools and Role Assignment */}
+            {activeTab !== "schools" && activeTab !== "role-assignment" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className={cn(
