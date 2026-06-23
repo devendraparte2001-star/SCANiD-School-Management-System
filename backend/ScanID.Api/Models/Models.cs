@@ -122,7 +122,6 @@ namespace ScanID.Api.Models
         public Role? RoleEntity { get; set; }
         [ForeignKey("SchoolId")]
         public School? School { get; set; }
-        public int? AcademicYearId { get; set; }
         [ForeignKey("AcademicYearId")]
         public AcademicYear? AcademicYear { get; set; }
     }
