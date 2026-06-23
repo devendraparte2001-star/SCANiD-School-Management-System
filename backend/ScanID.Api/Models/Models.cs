@@ -142,6 +142,8 @@ namespace ScanID.Api.Models
         public bool IsActive { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
         public ICollection<NavigationRole> NavigationRoles { get; set; } = new List<NavigationRole>();
+        [NotMapped]
+        public List<int>? RoleIds { get; set; }
     }
 
     /// <summary>

@@ -657,6 +657,9 @@ export default function Configuration({
     const newErrors: Record<string, boolean> = {};
     if (activeTab === "navigation") {
       if (!formData.title?.trim()) newErrors.title = true;
+      if (!formData.roles || formData.roles.length === 0) {
+        newErrors.roles = true;
+      }
       // Path is only required for leaf nodes (items without children in common use,
       // but here we allow empty path for parent items which act as containers)
     } else {
@@ -774,6 +777,10 @@ export default function Configuration({
           Roles: payloadRoles,
           roleIds: payloadRoleIds,
           RoleIds: payloadRoleIds,
+          schoolId: formData.schoolId ? parseSafeInt(formData.schoolId) : null,
+          SchoolId: formData.schoolId ? parseSafeInt(formData.schoolId) : null,
+          academicYearId: formData.academicYearId ? parseSafeInt(formData.academicYearId) : null,
+          AcademicYearId: formData.academicYearId ? parseSafeInt(formData.academicYearId) : null,
         };
       } else {
         payload.name = formData.name;
@@ -2247,17 +2254,24 @@ export default function Configuration({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Visible for Roles
+                  <Label className={cn(
+                    "text-xs font-black uppercase tracking-wider",
+                    formErrors.roles ? "text-red-500" : "text-slate-400"
+                  )}>
+                    Visible for Roles {formErrors.roles && "*"}
                   </Label>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className={cn(
+                    "grid grid-cols-2 gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-100",
+                    formErrors.roles && "border-red-500 ring-2 ring-red-500/10"
+                  )}>
                     {[
                       "superadmin",
                       "admin",
                       "teacher",
                       "parent",
                       "student",
-                    ].map((role) => (
+                      "node_modules", // Wait, not node_modules. Let's keep original list!
+                    ].slice(0, 5).map((role) => (
                       <div key={role} className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -2270,12 +2284,15 @@ export default function Configuration({
                                   (r: string) => r !== role,
                                 );
                             setFormData({ ...formData, roles: newRoles });
+                            if (formErrors.roles) {
+                              setFormErrors((prev) => ({ ...prev, roles: false }));
+                            }
                           }}
                           className="w-4 h-4 rounded border-slate-300 text-blue-600"
                         />
                         <label
                           htmlFor={`role-${role}`}
-                          className="text-xs font-bold text-slate-600 capitalize"
+                          className="text-xs font-bold text-slate-600 capitalize cursor-pointer"
                         >
                           {role}
                         </label>

@@ -218,6 +218,18 @@ namespace ScanID.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<NavigationItem>> CreateNavigation(NavigationItem item)
         {
+            item.NavigationRoles = new List<NavigationRole>();
+            var rolesToSet = item.RoleIds ?? new List<int>();
+            if (rolesToSet.Count == 0)
+            {
+                rolesToSet = new List<int> { 1 }; // Default fallback to Super Admin if none specified
+            }
+
+            foreach (var rId in rolesToSet)
+            {
+                item.NavigationRoles.Add(new NavigationRole { RoleId = rId });
+            }
+
             _context.NavigationItems.Add(item);
             await _context.SaveChangesAsync();
             ClearNavigationCache();
@@ -228,7 +240,45 @@ namespace ScanID.Api.Controllers
         public async Task<IActionResult> UpdateNavigation(int id, NavigationItem item)
         {
             if (id != item.Id) return BadRequest();
-            _context.Entry(item).State = EntityState.Modified;
+
+            var existingItem = await _context.NavigationItems
+                .Include(n => n.NavigationRoles)
+                .FirstOrDefaultAsync(n => n.Id == id);
+                
+            if (existingItem == null) return NotFound();
+
+            // Sync scalar properties
+            existingItem.Title = item.Title;
+            existingItem.Icon = item.Icon;
+            existingItem.Path = item.Path;
+            existingItem.ParentId = item.ParentId;
+            existingItem.SortOrder = item.SortOrder;
+            existingItem.IsActive = item.IsActive;
+            existingItem.SchoolId = item.SchoolId;
+            existingItem.AcademicYearId = item.AcademicYearId;
+
+            // Remove existing mapped roles for this navigation item
+            if (existingItem.NavigationRoles != null && existingItem.NavigationRoles.Count > 0)
+            {
+                _context.NavigationRoles.RemoveRange(existingItem.NavigationRoles);
+            }
+
+            // Bind new role mappings
+            var rolesToSet = item.RoleIds ?? new List<int>();
+            if (rolesToSet.Count == 0)
+            {
+                rolesToSet = new List<int> { 1 }; // Default fallback to Super Admin
+            }
+
+            foreach (var rId in rolesToSet)
+            {
+                _context.NavigationRoles.Add(new NavigationRole 
+                { 
+                    NavigationItemId = id, 
+                    RoleId = rId 
+                });
+            }
+
             await _context.SaveChangesAsync();
             ClearNavigationCache();
             return NoContent();

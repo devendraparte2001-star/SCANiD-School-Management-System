@@ -27,10 +27,44 @@ import UsersPage from "@/pages/Users";
 
 import { Role, User } from "@/types";
 
+function normalizeUser(u: User | null): User | null {
+  if (!u) return null;
+  const parsed = { ...u };
+  const roleLower = (parsed.role || "").trim().toLowerCase().replace(/\s+/g, "");
+  if (roleLower === "superadmin" || roleLower === "superadminrole" || roleLower === "super admin") {
+    parsed.role = "superadmin";
+    parsed.roleId = 1;
+  } else if (roleLower === "admin") {
+    parsed.role = "admin";
+    parsed.roleId = 2;
+  } else if (roleLower === "teacher") {
+    parsed.role = "teacher";
+    parsed.roleId = 3;
+  } else if (roleLower === "student") {
+    parsed.role = "student";
+    parsed.roleId = 4;
+  } else if (roleLower === "parent") {
+    parsed.role = "parent";
+    parsed.roleId = 5;
+  }
+  return parsed;
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Helper to standardise state and local cache updates
+  const handleSetUser = (u: User | null) => {
+    const norm = normalizeUser(u);
+    setUser(norm);
+    if (norm) {
+      localStorage.setItem("user", JSON.stringify(norm));
+    } else {
+      localStorage.removeItem("user");
+    }
+  };
 
   // Mock authentication for development
   useEffect(() => {
@@ -43,9 +77,8 @@ export default function App() {
           if (parsed.email !== "devendraparte2001@gmail.com") {
             parsed.email = "devendraparte2001@gmail.com";
             parsed.name = parsed.name && parsed.name !== "Demo User" && parsed.name !== "User" ? parsed.name : "Devendra Parte";
-            localStorage.setItem("user", JSON.stringify(parsed));
           }
-          setUser(parsed);
+          handleSetUser(parsed);
         }
       } catch (err) {
         console.error("Invalid user JSON", err);
@@ -61,8 +94,7 @@ export default function App() {
   };
 
   const handleUpdateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    handleSetUser(updatedUser);
   };
 
   if (loading) return <div className="h-screen w-screen flex items-center justify-center">Loading...</div>;
@@ -71,8 +103,8 @@ export default function App() {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login onLogin={setUser} />} />
-          <Route path="/login" element={<Login onLogin={setUser} />} />
+          <Route path="/" element={<Login onLogin={handleSetUser} />} />
+          <Route path="/login" element={<Login onLogin={handleSetUser} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />
