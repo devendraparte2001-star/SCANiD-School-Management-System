@@ -43,7 +43,7 @@ namespace ScanID.Api.Services
             }
 
             // 2. Try ASP.NET Core Identity PasswordHasher verification if not already matched
-            if (!isPasswordValid && !string.IsNullOrEmpty(user.PasswordHash))
+            if (!isPasswordValid && !string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash.Length >= 44 && IsBase64Encoded(user.PasswordHash))
             {
                 try
                 {
@@ -61,6 +61,33 @@ namespace ScanID.Api.Services
             }
 
             return isPasswordValid ? user : null;
+        }
+
+        private static bool IsBase64Encoded(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s))
+                return false;
+
+            // Check if length is multiple of 4
+            if (s.Length % 4 != 0)
+                return false;
+
+            // Check for valid base-64 characters
+            foreach (char c in s)
+            {
+                if (!(char.IsLetterOrDigit(c) || c == '+' || c == '/' || c == '='))
+                    return false;
+            }
+
+            try
+            {
+                System.Convert.FromBase64String(s);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public async Task<User?> FindUserByUsernameAsync(string username)
