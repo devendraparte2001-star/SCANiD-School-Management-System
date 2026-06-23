@@ -83,6 +83,7 @@ export default function Users({ user }: { user: any }) {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, boolean>>({});
   const [schools, setSchools] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -240,6 +241,7 @@ export default function Users({ user }: { user: any }) {
 
   const handleOpenDialog = (userItem: User | null = null) => {
     setEditingUser(userItem);
+    setFormErrors({});
     if (userItem) {
       // Normalize role string to lowercase with spaces stripped to match Select dropdown item option values
       const normalizedRole = userItem.role ? userItem.role.toLowerCase().replace(/\s+/g, '') : "";
@@ -271,35 +273,87 @@ export default function Users({ user }: { user: any }) {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.email || !formData.username) {
-        toast.error("Please fill in all required fields");
-        return;
+    const newErrors: Record<string, boolean> = {};
+    let firstErrorField = "";
+
+    const checkField = (field: string, condition: boolean) => {
+      if (condition) {
+        newErrors[field] = true;
+        if (!firstErrorField) firstErrorField = field;
+      }
+    };
+
+    const nameTrimmed = formData.name?.trim() || "";
+    checkField("name", !nameTrimmed);
+
+    const usernameTrimmed = formData.username?.trim() || "";
+    const isInvalidUsername = !usernameTrimmed || usernameTrimmed.length < 3 || /\s/.test(usernameTrimmed);
+    checkField("username", isInvalidUsername);
+
+    checkField("role", !formData.role);
+    checkField("schoolId", !formData.schoolId);
+    checkField("academicYearId", !formData.academicYearId);
+
+    // Email format validation if entered
+    const emailTrimmed = formData.email?.trim() || "";
+    let isInvalidEmail = false;
+    if (emailTrimmed !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      isInvalidEmail = !emailRegex.test(emailTrimmed);
+      checkField("email", isInvalidEmail);
     }
 
-    if (!formData.role) {
-        toast.error("System Role is a required field");
-        return;
+    // Passwords required check for NEW users
+    const isNewUser = !editingUser;
+    const passwordTrimmed = formData.password || "";
+    const confirmPasswordTrimmed = formData.confirmPassword || "";
+    if (isNewUser) {
+      checkField("password", !passwordTrimmed);
+      checkField("confirmPassword", !confirmPasswordTrimmed);
     }
 
-    if (!formData.schoolId) {
-        toast.error("Assigned School Branch is a required field");
-        return;
+    // Password and confirm password mismatch
+    const isMismatch = (formData.password !== "" || formData.confirmPassword !== "") && formData.password !== formData.confirmPassword;
+    
+    if (isMismatch) {
+      checkField("password", true);
+      checkField("confirmPassword", true);
     }
 
-    if (!formData.academicYearId) {
-        toast.error("Academic Year is a required field");
-        return;
+    setFormErrors(newErrors);
+
+    if (firstErrorField) {
+      if (firstErrorField === "name") {
+        toast.error("Please enter a valid display name.");
+      } else if (firstErrorField === "username" && !usernameTrimmed) {
+        toast.error("Username is mandatory.");
+      } else if (firstErrorField === "username" && usernameTrimmed.length < 3) {
+        toast.error("Username must be at least 3 characters long.");
+      } else if (firstErrorField === "username" && /\s/.test(usernameTrimmed)) {
+        toast.error("Username cannot contain spaces.");
+      } else if (firstErrorField === "role") {
+        toast.error("Please select a System Role.");
+      } else if (firstErrorField === "schoolId") {
+        toast.error("Please select an Assigned School Branch.");
+      } else if (firstErrorField === "academicYearId") {
+        toast.error("Please select an Academic Year.");
+      } else if (firstErrorField === "email" && isInvalidEmail) {
+        toast.error("Please enter a valid email address.");
+      } else if (firstErrorField === "password" && isNewUser && !passwordTrimmed) {
+        toast.error("Password is required for new users.");
+      } else if (firstErrorField === "confirmPassword" && isNewUser && !confirmPasswordTrimmed) {
+        toast.error("Please confirm your password.");
+      } else if (isMismatch) {
+        toast.error("Passwords do not match.");
+      } else {
+        toast.error("Please fill all required fields correctly.");
+      }
+      return;
     }
 
-    // Passwords validation
-    if (!editingUser && !formData.password) {
-        toast.error("Password is required for new users");
-        return;
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
+    if (isMismatch) {
+      toast.error("Passwords do not match.");
+      return;
     }
 
     try {
@@ -703,29 +757,59 @@ export default function Users({ user }: { user: any }) {
 
             <div className="p-8 space-y-5">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Display Name</Label>
+                    <Label className={cn("text-[10px] font-black uppercase tracking-widest", formErrors.name ? "text-red-500" : "text-slate-400")}>
+                        Full Display Name <span className="text-red-500 font-bold">*</span>
+                    </Label>
                     <Input 
                         placeholder="e.g. John Doe"
-                        className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold"
+                        className={cn(
+                            "h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold",
+                            formErrors.name && "border-red-500 ring-2 ring-red-500/10"
+                        )}
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => {
+                            setFormData({...formData, name: e.target.value});
+                            if (formErrors.name) setFormErrors(prev => ({ ...prev, name: false }));
+                        }}
                     />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Username</Label>
+                        <Label className={cn("text-[10px] font-black uppercase tracking-widest", formErrors.username ? "text-red-500" : "text-slate-400")}>
+                            Username <span className="text-red-500 font-bold">*</span>
+                        </Label>
                         <Input 
                             placeholder="jdoe"
-                            className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold"
+                            className={cn(
+                                "h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold",
+                                formErrors.username && "border-red-500 ring-2 ring-red-500/10"
+                            )}
                             value={formData.username}
-                            onChange={(e) => setFormData({...formData, username: e.target.value})}
+                            onChange={(e) => {
+                                setFormData({...formData, username: e.target.value});
+                                if (formErrors.username) setFormErrors(prev => ({ ...prev, username: false }));
+                            }}
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">System Role <span className="text-red-500 font-bold">*</span></Label>
-                        <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
-                            <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
-                                <SelectValue placeholder="Select System Role" />
+                        <Label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", formErrors.role ? "text-red-500" : "text-slate-400")}>
+                            System Role <span className="text-red-500 font-bold">*</span>
+                        </Label>
+                        <Select value={formData.role} onValueChange={(v) => {
+                            setFormData({...formData, role: v});
+                            if (formErrors.role) setFormErrors(prev => ({ ...prev, role: false }));
+                        }}>
+                            <SelectTrigger className={cn("h-12 rounded-xl bg-slate-50 border-slate-100 font-bold", formErrors.role && "border-red-500 ring-2 ring-red-500/10")}>
+                                <SelectValue placeholder="Select System Role">
+                                    {formData.role ? (
+                                        formData.role === "superadmin" ? "Super Admin" :
+                                        formData.role === "admin" ? "Admin" :
+                                        formData.role === "teacher" ? "Teacher" :
+                                        formData.role === "student" ? "Student" :
+                                        formData.role === "parent" ? "Parent" :
+                                        formData.role
+                                    ) : undefined}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent className="rounded-xl shadow-xl">
                                 <SelectItem value="" className="italic text-slate-400">Select System Role</SelectItem>
@@ -739,21 +823,34 @@ export default function Users({ user }: { user: any }) {
                     </div>
                 </div>
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Contact</Label>
+                    <Label className={cn("text-[10px] font-black uppercase tracking-widest", formErrors.email ? "text-red-500" : "text-slate-400")}>Email Contact</Label>
                     <Input 
                         placeholder="john@example.com"
-                        className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold"
+                        className={cn(
+                            "h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold",
+                            formErrors.email && "border-red-500 ring-2 ring-red-500/10"
+                        )}
                         value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        onChange={(e) => {
+                            setFormData({...formData, email: e.target.value});
+                            if (formErrors.email) setFormErrors(prev => ({ ...prev, email: false }));
+                        }}
                     />
                 </div>
                 
                 {/* School dropdown */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600 flex items-center gap-1">Assigned School Branch <span className="text-red-500 font-bold">*</span></Label>
-                    <Select value={formData.schoolId} onValueChange={(v) => setFormData({...formData, schoolId: v})}>
-                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
-                            <SelectValue placeholder="Select School Branch" />
+                    <Label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", formErrors.schoolId ? "text-red-500" : "text-slate-400")}>
+                        Assigned School Branch <span className="text-red-500 font-bold">*</span>
+                    </Label>
+                    <Select value={formData.schoolId} onValueChange={(v) => {
+                        setFormData({...formData, schoolId: v});
+                        if (formErrors.schoolId) setFormErrors(prev => ({ ...prev, schoolId: false }));
+                    }}>
+                        <SelectTrigger className={cn("h-12 rounded-xl bg-slate-50 border-slate-100 font-bold", formErrors.schoolId && "border-red-500 ring-2 ring-red-500/10")}>
+                            <SelectValue placeholder="Select School Branch">
+                                {formData.schoolId ? (schools.find(s => s.id.toString() === formData.schoolId)?.name || formData.schoolId) : undefined}
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="rounded-xl shadow-xl max-h-60">
                             <SelectItem value="" className="italic text-slate-400">Select School Branch</SelectItem>
@@ -763,13 +860,20 @@ export default function Users({ user }: { user: any }) {
                         </SelectContent>
                     </Select>
                 </div>
-
+ 
                 {/* Academic Year dropdown */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-semibold text-slate-600 flex items-center gap-1">Academic Year <span className="text-red-500 font-bold">*</span></Label>
-                    <Select value={formData.academicYearId} onValueChange={(v) => setFormData({...formData, academicYearId: v})}>
-                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100 font-bold">
-                            <SelectValue placeholder="Select Academic Year" />
+                    <Label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", formErrors.academicYearId ? "text-red-500" : "text-slate-400")}>
+                        Academic Year <span className="text-red-500 font-bold">*</span>
+                    </Label>
+                    <Select value={formData.academicYearId} onValueChange={(v) => {
+                        setFormData({...formData, academicYearId: v});
+                        if (formErrors.academicYearId) setFormErrors(prev => ({ ...prev, academicYearId: false }));
+                    }}>
+                        <SelectTrigger className={cn("h-12 rounded-xl bg-slate-50 border-slate-100 font-bold", formErrors.academicYearId && "border-red-500 ring-2 ring-red-500/10")}>
+                            <SelectValue placeholder="Select Academic Year">
+                                {formData.academicYearId ? (academicYears.find(ay => ay.id.toString() === formData.academicYearId)?.name || formData.academicYearId) : undefined}
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="rounded-xl shadow-xl max-h-60">
                             <SelectItem value="" className="italic text-slate-400">Select Academic Year</SelectItem>
@@ -781,27 +885,43 @@ export default function Users({ user }: { user: any }) {
                         </SelectContent>
                     </Select>
                 </div>
-
+ 
                 {/* Password and Confirm Password fields */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Password</Label>
+                        <Label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", formErrors.password ? "text-red-500" : "text-slate-400")}>
+                            Password {!editingUser && <span className="text-red-500 font-bold">*</span>} {editingUser && "(Optional)"}
+                        </Label>
                         <Input 
                             type="password"
                             placeholder={editingUser ? "Leave blank" : "••••••••"}
-                            className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold"
+                            className={cn(
+                                "h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold",
+                                formErrors.password && "border-red-500 ring-2 ring-red-500/10"
+                            )}
                             value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            onChange={(e) => {
+                                setFormData({...formData, password: e.target.value});
+                                if (formErrors.password) setFormErrors(prev => ({ ...prev, password: false, confirmPassword: false }));
+                            }}
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Confirm Password</Label>
+                        <Label className={cn("text-[10px] font-black uppercase tracking-widest flex items-center gap-1", formErrors.confirmPassword ? "text-red-500" : "text-slate-400")}>
+                            Confirm Password {!editingUser && <span className="text-red-500 font-bold">*</span>} {editingUser && "(Optional)"}
+                        </Label>
                         <Input 
                             type="password"
                             placeholder={editingUser ? "Leave blank" : "••••••••"}
-                            className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold"
+                            className={cn(
+                                "h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all font-bold",
+                                formErrors.confirmPassword && "border-red-500 ring-2 ring-red-500/10"
+                            )}
                             value={formData.confirmPassword}
-                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                            onChange={(e) => {
+                                setFormData({...formData, confirmPassword: e.target.value});
+                                if (formErrors.confirmPassword) setFormErrors(prev => ({ ...prev, password: false, confirmPassword: false }));
+                            }}
                         />
                     </div>
                 </div>
