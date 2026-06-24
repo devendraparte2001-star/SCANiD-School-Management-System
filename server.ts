@@ -2380,8 +2380,8 @@ Input array: ${JSON.stringify(chunk)}`,
 
   app.post("/api/navigation", (req, res) => {
     const rolesMap: Record<string, number> = { superadmin: 1, admin: 2, teacher: 3, student: 4, parent: 5 };
-    const roles = Array.isArray(req.body.roles) ? req.body.roles : ["superadmin"];
-    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map(r => rolesMap[r]).filter(Boolean);
+    const roles: string[] = Array.isArray(req.body.roles) ? req.body.roles : ["superadmin"];
+    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map((r: string) => rolesMap[r]).filter(Boolean);
 
     const newItem = { 
       id: navigationItems.length > 0 ? Math.max(...navigationItems.map((n: any) => n.id)) + 1 : 1, 
@@ -2399,8 +2399,8 @@ Input array: ${JSON.stringify(chunk)}`,
     const index = navigationItems.findIndex((n: any) => n.id === id);
     if (index !== -1) {
       const rolesMap: Record<string, number> = { superadmin: 1, admin: 2, teacher: 3, student: 4, parent: 5 };
-      const roles = Array.isArray(req.body.roles) ? req.body.roles : (navigationItems[index].roles || ["superadmin"]);
-      const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map(r => rolesMap[r]).filter(Boolean);
+      const roles: string[] = Array.isArray(req.body.roles) ? req.body.roles : (navigationItems[index].roles || ["superadmin"]);
+      const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds : roles.map((r: string) => rolesMap[r]).filter(Boolean);
 
       navigationItems[index] = { 
         ...navigationItems[index], 
