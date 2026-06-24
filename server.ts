@@ -1746,7 +1746,7 @@ Input array: ${JSON.stringify(chunk)}`,
         const startTime = Date.now();
         // Fetch real statistics and database counts from the developed .NET backend
         const [statsRes, studentsRes, schoolsRes, attendanceRes] = await Promise.all([
-          axios.get("http://127.0.0.1:5000/api/Stats").catch(() => null),
+          axios.get("http://127.0.0.1:5000/api/Stats/live").catch(() => null),
           axios.get("http://127.0.0.1:5000/api/Students?pageSize=100").catch(() => null),
           axios.get("http://127.0.0.1:5000/api/Schools").catch(() => null),
           axios.get("http://127.0.0.1:5000/api/Attendance?pageSize=10").catch(() => null)
