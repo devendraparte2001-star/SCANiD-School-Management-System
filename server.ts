@@ -1740,20 +1740,35 @@ Input array: ${JSON.stringify(chunk)}`,
     let schoolsList = [...fallbackSchools];
     let dbQueryLatencyMs = parseFloat((Math.random() * 1.5 + 1.1).toFixed(2));
     let isRealDbUsed = false;
+    let feeds: any[] = [];
 
     if (isBackendOnline) {
       try {
         const startTime = Date.now();
         // Fetch real statistics and database counts from the developed .NET backend
-        const [statsRes, studentsRes, schoolsRes, attendanceRes] = await Promise.all([
+        const [statsRes, studentsRes, schoolsRes, attendanceRes, auditLogsRes] = await Promise.all([
           axios.get("http://127.0.0.1:5000/api/Stats/live").catch(() => null),
           axios.get("http://127.0.0.1:5000/api/Students?pageSize=100").catch(() => null),
           axios.get("http://127.0.0.1:5000/api/Schools").catch(() => null),
-          axios.get("http://127.0.0.1:5000/api/Attendance?pageSize=10").catch(() => null)
+          axios.get("http://127.0.0.1:5000/api/Attendance?pageSize=10").catch(() => null),
+          axios.get("http://127.0.0.1:5000/api/AuditLogs?pageSize=8&sortOrder=desc").catch(() => null)
         ]);
         
         dbQueryLatencyMs = parseFloat((Date.now() - startTime).toFixed(1));
         isRealDbUsed = true;
+        
+        feeds = [];
+        if (auditLogsRes && auditLogsRes.data && auditLogsRes.data.data) {
+           feeds = auditLogsRes.data.data.map((log: any) => ({
+             id: `tx-${log.id}`,
+             name: log.userId || "System",
+             action: `${log.type || 'Action'} on ${log.tableName || 'Table'}`,
+             type: log.type || "SYSTEM",
+             severity: "info",
+             school: log.schoolId ? `School ID: ${log.schoolId}` : "General",
+             timestamp: log.dateTime
+           }));
+        }
 
         if (statsRes && statsRes.data) {
           totalStudents = statsRes.data.totalStudents || totalStudents;
@@ -1812,23 +1827,24 @@ Input array: ${JSON.stringify(chunk)}`,
     const totalRecords = totalStudents + totalTeachers + totalSchools + totalAttendance;
     const finalRecordsManaged = Math.max(totalRecords, 50) + liveIncrementCounter;
 
-    // Generate 8 randomized micro-events with fully dynamic student/school properties from SQL database
-    const feeds = [];
-    for (let i = 0; i < 8; i++) {
-       const randomName = namesList[Math.floor(Math.random() * namesList.length)];
-       const randomEvent = events[Math.floor(Math.random() * events.length)];
-       const randomSchool = schoolsList[Math.floor(Math.random() * schoolsList.length)];
-       const timestamp = new Date(Date.now() - i * 3500 - Math.random() * 2000).toISOString();
-       
-       feeds.push({
-         id: `tx-${Math.random().toString(36).substr(2, 9)}`,
-         name: randomName,
-         action: randomEvent.action,
-         type: randomEvent.type,
-         severity: randomEvent.severity,
-         school: randomSchool,
-         timestamp
-       });
+    // Generate 8 randomized micro-events if real DB logs are not available
+    if (feeds.length === 0) {
+        for (let i = 0; i < 8; i++) {
+           const randomName = namesList[Math.floor(Math.random() * namesList.length)];
+           const randomEvent = events[Math.floor(Math.random() * events.length)];
+           const randomSchool = schoolsList[Math.floor(Math.random() * schoolsList.length)];
+           const timestamp = new Date(Date.now() - i * 3500 - Math.random() * 2000).toISOString();
+           
+           feeds.push({
+             id: `tx-${Math.random().toString(36).substr(2, 9)}`,
+             name: randomName,
+             action: randomEvent.action,
+             type: randomEvent.type,
+             severity: randomEvent.severity,
+             school: randomSchool,
+             timestamp
+           });
+        }
     }
 
     res.json({
