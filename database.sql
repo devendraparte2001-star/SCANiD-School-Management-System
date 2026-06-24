@@ -1334,7 +1334,9 @@ CREATE PROCEDURE dbo.sp_ManageStudent
     @IsStateBoard BIT = 0,
     @DigitalUniform BIT = 0,
     @DigitalNotebook BIT = 0,
-    @OptedForBus BIT = 0
+    @OptedForBus BIT = 0,
+    @CreatedBy NVARCHAR(100) = NULL,
+    @ModifiedBy NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1349,12 +1351,12 @@ BEGIN
                 Name, FirstName, MiddleName, LastName, SchoolId, StandardId, SectionId, AcademicYearId, RollNumber, 
                 GrNo, Gender, DateOfBirth, CategoryId, ReligionId, CasteId, SubCasteId, Status, FatherContactNo, Address, 
                 MotherName, AadharCard, Rfid, ShiftId, BloodGroupId, HouseId, AdmissionTypeId, Sms, UniformId,
-                MotherContactNo, ProfilePhotoPath, SchoolSectionId, AdmissionDate, Email, CityId, StateId, IsStateBoard, DigitalUniform, DigitalNotebook, OptedForBus, IsActive, IsDeleted, CreatedOn, ModifiedOn
+                MotherContactNo, ProfilePhotoPath, SchoolSectionId, AdmissionDate, Email, CityId, StateId, IsStateBoard, DigitalUniform, DigitalNotebook, OptedForBus, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
             ) VALUES (
                 @Name, @FirstName, @MiddleName, @LastName, @SchoolId, @StandardId, @SectionId, @AcademicYearId, @RollNumber,
                 @GrNo, @Gender, @DateOfBirth, @CategoryId, @ReligionId, @CasteId, @SubCasteId, @Status, @FatherContactNo, @Address,
                 @MotherName, @AadharCard, @Rfid, @ShiftId, @BloodGroupId, @HouseId, @AdmissionTypeId, @Sms, @UniformId,
-                @MotherContactNo, @ProfilePhotoPath, @SchoolSectionId, @AdmissionDate, @Email, @CityId, @StateId, @IsStateBoard, @DigitalUniform, @DigitalNotebook, @OptedForBus, 1, 0, GETUTCDATE(), GETUTCDATE()
+                @MotherContactNo, @ProfilePhotoPath, @SchoolSectionId, @AdmissionDate, @Email, @CityId, @StateId, @IsStateBoard, @DigitalUniform, @DigitalNotebook, @OptedForBus, 1, 0, GETUTCDATE(), GETUTCDATE(), ISNULL(@CreatedBy, 'System'), ISNULL(@ModifiedBy, 'System')
             );
             SELECT SCOPE_IDENTITY();
         END
@@ -1400,7 +1402,8 @@ BEGIN
                 DigitalUniform = ISNULL(@DigitalUniform, DigitalUniform),
                 DigitalNotebook = ISNULL(@DigitalNotebook, DigitalNotebook),
                 OptedForBus = ISNULL(@OptedForBus, OptedForBus),
-                ModifiedOn = GETUTCDATE()
+                ModifiedOn = GETUTCDATE(),
+                ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy)
             WHERE Id = @Id;
         END
         ELSE IF @Action = 'DELETE'
@@ -2308,7 +2311,8 @@ CREATE PROCEDURE dbo.sp_ManageUser
     @RoleId INT = NULL,
     @SchoolId INT = NULL,
     @CreatedBy NVARCHAR(100) = NULL,
-    @ModifiedBy NVARCHAR(100) = NULL
+    @ModifiedBy NVARCHAR(100) = NULL,
+    @AcademicYearId INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2320,9 +2324,9 @@ BEGIN
         END
 
         INSERT INTO [dbo].[Users] (
-            Username, PasswordHash, Name, Email, Role, RoleId, SchoolId, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy
+            Username, PasswordHash, Name, Email, Role, RoleId, SchoolId, IsActive, IsDeleted, CreatedOn, ModifiedOn, CreatedBy, ModifiedBy, AcademicYearId
         ) VALUES (
-            @Username, @PasswordHash, @Name, @Email, @Role, @RoleId, @SchoolId, 1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy, @ModifiedBy
+            @Username, @PasswordHash, @Name, @Email, @Role, @RoleId, @SchoolId, 1, 0, GETUTCDATE(), GETUTCDATE(), @CreatedBy, @ModifiedBy, @AcademicYearId
         );
         SELECT SCOPE_IDENTITY();
     END
@@ -2336,6 +2340,7 @@ BEGIN
             Role = ISNULL(@Role, Role),
             RoleId = ISNULL(@RoleId, RoleId),
             SchoolId = ISNULL(@SchoolId, SchoolId),
+            AcademicYearId = ISNULL(@AcademicYearId, AcademicYearId),
             ModifiedBy = ISNULL(@ModifiedBy, ModifiedBy),
             ModifiedOn = GETUTCDATE()
         WHERE Id = @Id;
