@@ -56,7 +56,7 @@ CREATE TABLE [dbo].[Schools](
     [Address] NVARCHAR(500) NULL,
     [Email] NVARCHAR(150) NULL,
     [Phone] NVARCHAR(50) NULL,
-    [TotalStudents] INT NOT NULL DEFAULT (0),
+    [TotalStudents] INT NULL,
     [ProfilePhotoPath] NVARCHAR(255) NULL,
     [Status] NVARCHAR(50) NOT NULL DEFAULT (N'Active'),
     [ShortName] NVARCHAR(100) NULL,

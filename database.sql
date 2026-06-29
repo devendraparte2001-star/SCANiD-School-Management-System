@@ -339,7 +339,7 @@ CREATE TABLE [dbo].[Schools](
 	[Address] [nvarchar](max) NULL,
 	[Email] [nvarchar](max) NULL,
 	[Phone] [nvarchar](max) NULL,
-	[TotalStudents] [int] NOT NULL,
+	[TotalStudents] [INT] NULL,
 	[ProfilePhotoPath] [nvarchar](max) NULL,
 	[Status] [nvarchar](max) NOT NULL DEFAULT (N'Active'),
 
